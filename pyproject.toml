@@ -1,0 +1,54 @@
+[project]
+name = "ieq-ops"
+version = "0.1.0"
+description = "IEQ-Ops — autonomous building operations multi-agent system (CASA0022 dissertation)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Zihang He", email = "zihang.he.24@ucl.ac.uk" }]
+
+# Core runtime. Kept deliberately lean — MCP (fastmcp), vector store
+# (qdrant-client), embedding/rerank (FlagEmbedding) and InfluxDB are added
+# with `uv add` when their Phase lands, not pre-installed.
+dependencies = [
+    "langgraph",                      # state machine; the only orchestration layer (no LangChain Chain/AgentExecutor — Hard Constraint #6/#7)
+    "langgraph-checkpoint-postgres",  # Postgres checkpointer for the 15-min suspend/resume across restarts (Phase 1 risk #1)
+    "psycopg[binary]",                # Postgres driver used by the checkpointer + ticket server
+    "pydantic",                       # all LLM-facing schemas
+    "pydantic-settings",              # typed .env loading
+    "structlog",                      # structured JSON logs forwarded to LangFuse
+    "openai",                         # DeepSeek is OpenAI-API-compatible; this client talks to deepseek-v4-pro / -flash
+    "langfuse",                       # observability; every agent invocation logs a trace
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+]
+
+# This repo is a deployable application, not a distributable library, so uv
+# does not need to build/install it as a package. Code runs from the repo root
+# (`uv run python -m core.xxx`), which puts the root on sys.path.
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "agents", "memory", "rag", "mcp_servers", "sensing", "eval"]
+
+# mypy --strict is mandated on core/ only (CLAUDE.md Coding Standards).
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "eval"]
