@@ -31,7 +31,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 **目标:** 仓库能 `uv run`、三件套基础设施起飞、路由地基落盘。
 
 - [~] 工程化:`pyproject.toml`(uv) · `ruff format`+`ruff check` · `mypy --strict` on `core/` · `structlog` JSON 日志 · `pydantic-settings` + `.env.example` — 脚手架/lint/类型链 + `.env.example` 就位;`structlog` logger 配置与 `pydantic-settings` config 类待写(随 core/ 批)
-- [ ] `docker-compose.yml`:Postgres + Qdrant + LangFuse 起飞
+- [~] `docker-compose.yml`:Postgres + Qdrant + LangFuse 起飞 — 文件写好、YAML 合法(3 服务);**待装 Docker 后实测 `docker compose up`**(本机 WSL2 未装 Docker)
 - [ ] `TECH_STACK.md`:把散落在 CLAUDE.md/llm_routing.md 的选型抽出来定稿
 - [x] `README.md` 骨架
 - [ ] **A4.5 归档**:把已完成的能力实验(题库 + 跑分 + 能力边界表)落盘到 `eval/capability_profile/`,让 `llm_routing.md` 的引用有实体、论文可直接引。**不重做。**
