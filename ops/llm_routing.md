@@ -1,5 +1,19 @@
 # LLM Routing — Per-Node Model Selection
 
+> ## ⚠️ ROUTING OVERRIDE (active 2026-05-25)
+>
+> Two changes layered on top of the per-node table below. Env (`.env`): `DEEPSEEK_MODEL_PRO=deepseek-v4-pro`, `DEEPSEEK_MODEL_FLASH=deepseek-v4-flash`, base `https://api.deepseek.com`.
+>
+> **(A) PERMANENT — DeepSeek-V3 → `deepseek-v4-pro`.** DeepSeek retired V3 upstream; the API now exposes only `deepseek-v4-pro` and `deepseek-v4-flash` (confirmed 2026-05-25 via the API's own 400 error). `deepseek-v4-pro` is the official successor (≥ V3 capability), so nodes **#3 Planner** and **#7/#8 Reflector** run on `deepseek-v4-pro` in **both dev and target production**. The `Cloud DeepSeek-V3` cells below have been updated accordingly.
+>
+> **(B) TEMPORARY (revert before Phase 6, ~2026-09-14) — local → cloud.** To move fast in Phase 0–5, the nodes the table marks **Local Qwen3-8B** (`#1 Monitor`, `#4d rewrite`, `#5 Critic`, `#6 Verifier`) temporarily run on `deepseek-v4-flash`. These MUST be restored to local before the Phase 6 autonomous run.
+>
+> **Known constraint breach (accepted, temporary):** routing `#1 Monitor` to cloud violates `CLAUDE.md` Hard Constraint #1 (no cloud in monitoring hot path). Tolerable in dev (simulator, not 24/7 production). Revert `#1/#4d/#5/#6` to local before Phase 6.
+>
+> **Latency caveat:** both `deepseek-v4-flash` and `deepseek-v4-pro` return `reasoning_content` (reasoning models), so real latency exceeds the table's `< 5 s` / `< 3 s first token` budgets. Don't validate latency claims against them; re-measure with production routing.
+>
+> **Not covered:** `#11 eval.judge` (GPT-4o + Claude, no keys yet — Phase 4 concern).
+
 **Authority:** This file is the canonical source for which LLM runs at each LangGraph node in IEQ-Ops. `CLAUDE.md` references this file; `core/router.py` must implement it.
 
 **Why this exists:** Agent-level routing ("Monitor=local, Planner=cloud") is too coarse. The same agent can have nodes with very different capability requirements (e.g. Specialist's `grade` is reasoning-heavy, `rewrite` is a short-string transform). Routing happens **per node**, driven by capability profiling (A4.5 experiment) and cost.
@@ -14,7 +28,7 @@
 |---|------|------|------|----------------|-------|----------------|-----------|
 | 1 | `MonitorAgent.scan` | Monitoring | 8640/mo (every 5 min) | sensor readings + threshold rules → `{anomaly, sensor, value, rule_violated}` | **Local Qwen3-8B** | < 5 s | **Yes** (hard floor) |
 | 2 | `MemoryAgent.retrieve` | Incident | ~300/mo | incident description → top-k episodic cases | **No LLM** (embedding only, BGE-M3) | < 200 ms | No |
-| 3 | `PlannerAgent.plan` | Incident | ~300/mo | incident + similar cases + specialist list → subtask DAG | **Cloud DeepSeek-V3** | < 30 s (first DAG node visible) | No |
+| 3 | `PlannerAgent.plan` | Incident | ~300/mo | incident + similar cases + specialist list → subtask DAG | **Cloud `deepseek-v4-pro`** (was DeepSeek-V3) | < 30 s (first DAG node visible) | No |
 | 4a | `Specialist.decompose` | Per-subtask | ~300/mo | subtask → ≤3 sub-queries | **Cloud V4-Flash** | < 5 s | No |
 | 4b | `Specialist.retrieve` | Per-sub-query | ~1500/mo | sub-query → top-5 chunks | **No LLM** (`mcp-rag-server`) | < 500 ms | No |
 | 4c | `Specialist.grade` ★ | Per-sub-query | ~1500/mo | (sub-query, chunks) → `{sufficient: bool, missing: [...]}` | **Cloud V4-Flash (mandatory)** | < 5 s | No |
@@ -22,8 +36,8 @@
 | 4e | `Specialist.generate` ★ | Per-subtask | ~300/mo | accumulated chunks + subtask → grounded answer + `expected_outcome` block | **Cloud V4-Flash (mandatory)** | < 10 s | No |
 | 5 | `CriticAgent.validate` | Per-answer | ~300/mo | (answer, chunks) → unsupported-claim list | **Local Qwen3-8B for numeric; escalate to V4-Flash on inductive claims** | < 5 s | No |
 | 6 | `VerifierAgent.check` | Post-action | ~300/mo | (pre/post sensor readings, `expected_outcome` schema) → `{verdict, delta}` | **Local Qwen3-8B** (depends on Hard Constraint #13) | < 5 s | No |
-| 7 | `Reflector.semantic` ★ | Weekly | 4/mo | one week of incidents (chunked by type) → semantic facts | **Cloud DeepSeek-V3 (mandatory)** | < 5 min total | No |
-| 8 | `Reflector.procedural` ★ | Weekly | 4/mo | one week of successful trajectories → SOP templates (queued for human sign-off) | **Cloud DeepSeek-V3 (mandatory)** | < 5 min total | No |
+| 7 | `Reflector.semantic` ★ | Weekly | 4/mo | one week of incidents (chunked by type) → semantic facts | **Cloud `deepseek-v4-pro` (mandatory)** (was DeepSeek-V3) | < 5 min total | No |
+| 8 | `Reflector.procedural` ★ | Weekly | 4/mo | one week of successful trajectories → SOP templates (queued for human sign-off) | **Cloud `deepseek-v4-pro` (mandatory)** (was DeepSeek-V3) | < 5 min total | No |
 | 9 | `ConversationalAgent.respond` | On-demand | ~200/mo | user query + memory-first dispatch → answer | **Cloud V4-Flash, streaming; escalate to V3 if self-confidence < 0.7** | < 3 s first token | No |
 | 10 | `rag.ingest.contextual_prefix` | One-shot | per corpus update | (chunk, full document) → 50–100 word prefix | **Cloud V4-Flash + implicit KV cache** (Track A validated, 96.4 % cache hit) | n/a | No |
 | 11 | `eval.judge` | Per-commit | ~20 commits/mo × 200 tasks | (agent answer, expected) → hit/partial/miss | **GPT-4o + Claude Sonnet 4.6 dual-judge** | n/a | No |
@@ -45,11 +59,12 @@
 - **Rationale:** Vector recall is deterministic; embedding model handles semantic similarity.
 - **Phase 2 evolution:** Once episodic memory > 200 incidents, recall ceiling drops. Add `bge-reranker-v2-m3` (already loaded for RAG) on top — still no LLM. Do not introduce a "judge similarity" LLM call here.
 
-### #3 PlannerAgent.plan — Cloud DeepSeek-V3
+### #3 PlannerAgent.plan — Cloud `deepseek-v4-pro`
 
-- **Rationale:** Multi-fact composition, reasoning depth. V4-Flash produces over-decomposed DAGs (verified in Specialist decompose ablation; same model class behaves similarly here).
-- **Ablate condition:** If IEQ-Bench plan-quality metric is within 2 pp of V3, downgrade to V4-Flash to save latency.
-- **Fallback:** V3 timeout > 30 s or 5xx → retry once on V4-Flash. Second failure → create Tier 3 incident "Planner offline, manual triage required". Never silently drop the incident.
+- **Changed:** 2026-05-25, reason: DeepSeek-V3 retired upstream (API now exposes only `deepseek-v4-pro` / `deepseek-v4-flash`). `deepseek-v4-pro` is the official successor with ≥ V3 capability — an upgrade, not a downgrade, so no re-justification needed beyond this note.
+- **Rationale:** Multi-fact composition, reasoning depth. V4-Flash produces over-decomposed DAGs (verified in Specialist decompose ablation; same model class behaves similarly here), so the reasoning tier (now `deepseek-v4-pro`) is required.
+- **Ablate condition:** If IEQ-Bench plan-quality metric is within 2 pp of `deepseek-v4-flash`, downgrade to flash to save latency/cost.
+- **Fallback:** `deepseek-v4-pro` timeout > 30 s or 5xx → retry once on `deepseek-v4-flash`. Second failure → create Tier 3 incident "Planner offline, manual triage required". Never silently drop the incident.
 
 ### #4a Specialist.decompose — Cloud V4-Flash
 
@@ -88,12 +103,13 @@
 - **Dependency:** Only safe **because** Hard Constraint #13 forces structured `expected_outcome`. If Specialist ever emits free-text expected outcomes ("should improve"), this node must escalate to V4-Flash.
 - **Fallback:** Local 8B unavailable → V4-Flash.
 
-### #7 / #8 Reflector ★ — Cloud DeepSeek-V3 (mandatory)
+### #7 / #8 Reflector ★ — Cloud `deepseek-v4-pro` (mandatory)
 
+- **Changed:** 2026-05-25, reason: DeepSeek-V3 retired upstream; `deepseek-v4-pro` is the official successor (≥ V3). The "mandatory cloud reasoning tier" guarantee is preserved — `deepseek-v4-pro`, never local, never `deepseek-v4-flash`. Pin this exact model for the dissertation's Week 8 vs Week 1 run; do not mix model versions across the 8-week window.
 - **Rationale:** Multi-incident induction + causal mechanism extraction. A4.5 confirms local 8B fabricates wholesale on this task class. Quality of semantic facts and SOPs determines whether the Week 8 vs Week 1 improvement claim holds.
 - **Token-size hazard:** A week of incidents can exceed 100K tokens. **Must chunk by incident type** (one Reflector call per category: AirQuality / Thermal / Lighting / Acoustic) and merge results in a final summarisation pass. Single-shot reflection will OOM V3's 128K window.
 - **Output gating:** Procedural SOPs (#8) are written to a `pending_sops` queue, not directly to Procedural Memory. Human signs off before activation — a hallucinated SOP would silently corrupt all future incident handling.
-- **Fallback:** V3 failure → defer to next Sunday, alert operator. Never run on local.
+- **Fallback:** `deepseek-v4-pro` failure → defer to next Sunday, alert operator. Never run on local, never silently downgrade to flash.
 
 ### #9 ConversationalAgent.respond — Cloud V4-Flash with escalation
 
@@ -137,16 +153,18 @@ Routing in this document follows these profiles. Re-run the capability profile a
 | Node | Calls/mo | Unit cost | Monthly |
 |------|----------|-----------|---------|
 | #1 Monitor | 8640 | local | ¥0 |
-| #3 Planner V3 | 300 | ~¥0.02 | ~¥6 |
+| #3 Planner v4-pro † | 300 | ~¥0.02 | ~¥6 |
 | #4a/c/e Specialist (Flash) | ~2100 | ~¥0.0015 avg | ~¥3 |
 | #5/#6 Critic + Verifier | 600 | local | ¥0 |
-| #7/#8 Reflector V3 (chunked × 4 cats) | ~32 | ~¥0.10 | ~¥3 |
+| #7/#8 Reflector v4-pro † (chunked × 4 cats) | ~32 | ~¥0.10 | ~¥3 |
 | #9 Conversational | ~200 | ~¥0.002 | ~¥0.5 |
 | #10 Ingestion | one-shot | — | ~¥50/full pass |
 | #11 Dual judge | ~20 × 200 | ~¥0.50/task | ~¥50 |
 | **Running monthly** | | | **~¥65** |
 
 4-week autonomous run budget: ≈ ¥80 ops + ¥50 ingestion = **¥130 total LLM spend**. Inside dissertation budget.
+
+> † Unit costs for `#3`/`#7`/`#8` are carried over from the retired DeepSeek-V3 pricing. `deepseek-v4-pro` is a Pro-tier reasoning model and likely prices higher — **re-confirm against DeepSeek's current price list before quoting these numbers in the dissertation.** Low call volume (≤ 300/mo + 32/mo) keeps the absolute impact small regardless.
 
 ---
 
