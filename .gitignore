@@ -1,0 +1,58 @@
+# ---- Project-specific (per CLAUDE.md hard constraints) ----
+.env
+.env.*
+!.env.example
+rag/corpus/
+eval/reports/
+
+# ---- Secrets / local config ----
+*.key
+*.pem
+.claude/settings.local.json
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# uv
+.uv/
+
+# ---- Testing / type checking ----
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- Data stores / runtime ----
+*.db
+*.sqlite3
+*.log
+data/
+postgres_data/
+qdrant_data/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
