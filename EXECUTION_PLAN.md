@@ -37,8 +37,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 - [ ] **A4.5 归档**:把已完成的能力实验(题库 + 跑分 + 能力边界表)落盘到 `eval/capability_profile/`,让 `llm_routing.md` 的引用有实体、论文可直接引。**不重做。**
 - [ ] **6GB 显存共存 spike**:确认 Qwen3-8B + BGE-M3 + bge-reranker-v2-m3 能否在 RTX 3060 6GB 同时常驻,定下加载策略(常驻/分时/CPU offload),写进 `TECH_STACK.md`
 - [x] `core/state.py`:全局 Pydantic State — `MainIncidentState` + locked schema(`AnomalyRecord` #10 / `ExpectedOutcome` #13,`extra="forbid"`)
-- [ ] `core/checkpointer.py`:Postgres checkpoint
-- [ ] `core/router.py`:实现 `llm_routing.md` 的节点→模型映射 + fallback 链(V3 超时→Flash→Tier3 incident)
+- [~] `core/checkpointer.py`:Postgres checkpoint — `open_checkpointer()` + `setup_checkpointer()` 封装 `PostgresSaver`;**待 Postgres 起后实测 setup + 跨重启恢复**(Phase 1 风险点 #1)
+- [x] `core/router.py`:实现 `llm_routing.md` 的节点→模型映射 + fallback 链(V3 超时→Flash→Tier3 incident) — 11 节点 tier 映射 + override A/B 编码 + `RouterExhausted`;真实 API 调用待 Phase 1 集成验证
 
 **验收:** `docker compose up` 起 3 服务;`core/` 过 `mypy --strict`;`eval/capability_profile/` 有 A4.5 实体;显存策略已定稿。
 
