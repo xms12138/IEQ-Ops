@@ -32,7 +32,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 - [x] 工程化:`pyproject.toml`(uv) · `ruff format`+`ruff check` · `mypy --strict` on `core/` · `structlog` JSON 日志(`core/logging.py`) · `pydantic-settings`(`core/config.py`) + `.env.example`
 - [~] `docker-compose.yml`:Postgres + Qdrant + LangFuse 起飞 — 文件写好、YAML 合法(3 服务);**待装 Docker 后实测 `docker compose up`**(本机 WSL2 未装 Docker)
-- [ ] `TECH_STACK.md`:把散落在 CLAUDE.md/llm_routing.md 的选型抽出来定稿
+- [x] `TECH_STACK.md`:把散落在 CLAUDE.md/llm_routing.md 的选型抽出来定稿 — 选型总表 + 关键决策 + 6GB 显存共存 spike 待办小节(策略候选已记,实测待跑)
 - [x] `README.md` 骨架
 - [ ] **A4.5 归档**:把已完成的能力实验(题库 + 跑分 + 能力边界表)落盘到 `eval/capability_profile/`,让 `llm_routing.md` 的引用有实体、论文可直接引。**不重做。**
 - [ ] **6GB 显存共存 spike**:确认 Qwen3-8B + BGE-M3 + bge-reranker-v2-m3 能否在 RTX 3060 6GB 同时常驻,定下加载策略(常驻/分时/CPU offload),写进 `TECH_STACK.md`
