@@ -3,7 +3,7 @@
 > Autonomous Building Operations Multi-Agent System
 > CASA0022 dissertation · MSc Connected Environments · UCL CASA
 
-**Status: 🚧 early development (Phase 0).** Not yet runnable end-to-end.
+**Status: 🚧 early development — Phase 0 complete (infra up, `core/` typed); Phase 1 next.** Not yet runnable end-to-end.
 
 A 24/7 self-running multi-agent system that monitors indoor environmental quality
 (IEQ) sensors, autonomously diagnoses anomalies, executes graded interventions,
@@ -50,7 +50,7 @@ uv run ruff check .
 uv run mypy            # strict, on core/
 ```
 
-> ⚠️ Steps 3–4 are scaffolding targets for Phase 0 and may not all pass yet.
+> ✅ Steps 1–4 pass as of Phase 0 (2026-05-25). The end-to-end incident loop lands in Phase 1.
 
 ## License
 

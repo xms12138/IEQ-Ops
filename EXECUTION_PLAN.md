@@ -14,8 +14,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 | Phase | 内容 | 目标窗口 | 性质 |
 |---|---|---|---|
-| 0 | 地基 + 风险归档 | 05-26 → 06-06 (~1.5w) | 开发 |
-| 1 | 首条垂直闭环(模拟器 + 单 domain 桩) | 06-08 → 06-21 (2w) | 开发 |
+| 0 | 地基 + 风险归档 | 05-26 → 06-06 (~1.5w) | 开发 · ✅ 2026-05-25 关闭 |
+| 1 | 首条垂直闭环(模拟器 + 单 domain 桩) | 06-08 → 06-21 (2w) | 开发 · ✅ 2026-05-26 关闭(超前) |
 | 2 | Agentic RAG 做实 + Planner 完整 DAG | 06-22 → 07-12 (3w) | 开发 |
 | 3 | 三层记忆 + 周反思 | 07-13 → 07-31 (2.5w) | 开发 |
 | 4 | IEQ-Bench 评测体系 + baseline | 08-03 → 08-21 (3w) | 开发 |
@@ -31,16 +31,16 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 **目标:** 仓库能 `uv run`、三件套基础设施起飞、路由地基落盘。
 
 - [x] 工程化:`pyproject.toml`(uv) · `ruff format`+`ruff check` · `mypy --strict` on `core/` · `structlog` JSON 日志(`core/logging.py`) · `pydantic-settings`(`core/config.py`) + `.env.example`
-- [~] `docker-compose.yml`:Postgres + Qdrant + LangFuse 起飞 — 文件写好、YAML 合法(3 服务);**待装 Docker 后实测 `docker compose up`**(本机 WSL2 未装 Docker)
-- [x] `TECH_STACK.md`:把散落在 CLAUDE.md/llm_routing.md 的选型抽出来定稿 — 选型总表 + 关键决策 + 6GB 显存共存 spike 待办小节(策略候选已记,实测待跑)
+- [x] `docker-compose.yml`:Postgres + Qdrant + LangFuse 三服务 2026-05-25 实测起飞(Docker Engine 29.5.2,WSL2 原生)——postgres healthy / qdrant 1.18.1 "all shards ready" / langfuse :3000 HTTP 200
+- [x] `TECH_STACK.md`:选型总表 + 关键决策 + 6GB 显存共存 spike(2026-05-25 已实测定稿,见下方显存 spike 项)
 - [x] `README.md` 骨架
-- [ ] **A4.5 归档**:把已完成的能力实验(题库 + 跑分 + 能力边界表)落盘到 `eval/capability_profile/`,让 `llm_routing.md` 的引用有实体、论文可直接引。**不重做。**
-- [ ] **6GB 显存共存 spike**:确认 Qwen3-8B + BGE-M3 + bge-reranker-v2-m3 能否在 RTX 3060 6GB 同时常驻,定下加载策略(常驻/分时/CPU offload),写进 `TECH_STACK.md`
+- [~] **A4.5 归档**:作者决定跳过(2026-05-25)——能力实验结论已固化为 `llm_routing.md` 的节点路由决策,不再单独落盘 `eval/capability_profile/`。原始实验在 `~/projects/rag/douluo`(a4*.py + runs/a4*.jsonl)可追溯。
+- [x] **6GB 显存共存 spike**:`ops/scripts/vram_spike.py` 实测(2026-05-25)。结论:三方共驻不可行(Qwen 单独 5.6GB 已 CPU offload 2.1GB);retrieve 必须 GPU(CPU 3.76s 爆 <500ms 预算 7.5x,GPU fp16 98ms,推翻 douluo 的 CPU 策略);dev 期 GPU 只跑 retrieve(4.0GB),Phase 6 用 ollama keep_alive 分时。定稿写入 `TECH_STACK.md`
 - [x] `core/state.py`:全局 Pydantic State — `MainIncidentState` + locked schema(`AnomalyRecord` #10 / `ExpectedOutcome` #13,`extra="forbid"`)
-- [~] `core/checkpointer.py`:Postgres checkpoint — `open_checkpointer()` + `setup_checkpointer()` 封装 `PostgresSaver`;**待 Postgres 起后实测 setup + 跨重启恢复**(Phase 1 风险点 #1)
+- [x] `core/checkpointer.py`:`setup_checkpointer()` 2026-05-25 实测连通 Postgres 建表成功(checkpoints / checkpoint_blobs / checkpoint_writes / checkpoint_migrations 4 表)。**跨重启恢复留 Phase 1 🔴 验证**(风险点 #1)
 - [x] `core/router.py`:实现 `llm_routing.md` 的节点→模型映射 + fallback 链(V3 超时→Flash→Tier3 incident) — 11 节点 tier 映射 + override A/B 编码 + `RouterExhausted`;真实 API 调用待 Phase 1 集成验证
 
-**验收:** `docker compose up` 起 3 服务;`core/` 过 `mypy --strict`;`eval/capability_profile/` 有 A4.5 实体;显存策略已定稿。
+**验收:✅ 2026-05-25 全部达成,Phase 0 关闭** — `docker compose up` 起 3 服务(postgres/qdrant/langfuse 实测健康);`core/` 过 `mypy --strict`(6 文件无错);显存策略实测定稿;checkpointer 建表实测通过。A4.5 归档经作者决定移出验收(结论已固化进 `llm_routing.md`)。
 
 ---
 
@@ -48,19 +48,19 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **目标:** `MainIncidentGraph` 在模拟器上端到端跑通一个 CO2 incident,状态持久化、15 分钟挂起能**跨重启**恢复。
 
-- [ ] `sensing/simulator/`:physics-based CO2 模型(先只喂 AirQuality 这一条线)
-- [ ] `mcp-sensor-server`:FastMCP,先直读模拟器(暂不接 InfluxDB)
-- [ ] `mcp-ticket-server`:FastMCP,incident CRUD on Postgres
-- [ ] `MonitorAgent.scan`:本地 Qwen3-8B,schema 锁死 `{anomaly,sensor,value,rule_violated}`(硬约束 #10)→ 建 incident
-- [ ] 极简 `PlannerAgent`:先出单子任务,**不做**完整 DAG(DeepSeek-V3)
-- [ ] `AirQualityExpert` 桩:暂不做 5 节点 RAG,直接返回带 `expected_outcome` schema 的诊断
-- [ ] `autonomy_gate`:三级 Tier 评估,Tier3 走 `interrupt()` 持久化。判定可先简单,**结构必须在**(硬约束 #2)
-- [ ] `mcp-actuator-server`:FastMCP,假执行器(dev 模式打日志不动真设备)
-- [ ] `VerifierAgent.check`:本地,读 `expected_outcome` schema 做数值比对
-- [ ] `core/graph.py`:串 `monitor→memory_retrieve(占位)→planner→dispatch→airquality→critic(占位)→autonomy_gate→action→(15min suspend)→verifier`
-- [ ] 🔴 **验证 15 分钟 checkpoint suspend 跨重启恢复**:杀进程再起,incident 从 suspend 点续上。全架构最大技术风险。
+- [x] `sensing/simulator/co2.py`:physics-based CO2 模型(质量平衡:occupancy 产气 + 通风换气);`reset_room`/`save_room`/`get_room` 房间状态持久化,供 resume 跨进程读回
+- [x] `mcp-sensor-server`:FastMCP,直读模拟器(`read_sensors`)
+- [x] `mcp-ticket-server`:FastMCP,incident CRUD on Postgres(`create/update_incident` + `init_schema`)
+- [x] `MonitorAgent.scan`:schema 锁死 `{anomaly,sensor,value,rule_violated}`(硬约束 #10);LLM 失败走 `sensing/thresholds.py` 确定性兜底,监控环永不静默卡死。dev 期 LOCAL 节点 override → deepseek-v4-flash
+- [x] 极简 `PlannerAgent`:单子任务(非完整 DAG);`_retrieve_similar` 为 planner 内 inline 占位(Phase 3 换真 episodic)。dev 期 V3 override → deepseek-v4-pro
+- [x] `AirQualityExpert` 桩:返回带 `expected_outcome:{target_metric,target_value,target_time_min}` 的固定诊断(硬约束 #13);Phase 2 换 SpecialistSubgraph 薄包装
+- [x] `autonomy_gate`:三级 Tier 评估,Tier3 走 `interrupt()` 持久化(硬约束 #2 结构落地)。airquality=Tier1,interrupt 分支结构在但本阶段不触发
+- [x] `mcp-actuator-server`:FastMCP 假执行器(`set_ventilation`,dev-fake 只打日志不动真设备)
+- [x] `VerifierAgent.check`:读 `expected_outcome` 做数值比对,met→closed / missed→failed;LLM 失败走确定性比对兜底。dev 期 LOCAL override → deepseek-v4-flash
+- [x] `core/graph.py`:`monitor→planner→dispatch→airquality→critic→autonomy_gate→action→(interrupt_before=["verifier"] suspend)→verifier`。memory_retrieve 按 CLAUDE.md 实现为 planner 内 inline 占位(**非独立节点**);critic 为 pass-through 占位(Phase 2 做 claim 分类)
+- [x] 🔴 **15 分钟 checkpoint suspend 跨重启恢复 — 2026-05-26 实测通过**:进程A `start` 挂起(checkpoint 写 Postgres,`next=('verifier',)`)→ 进程A退出 → 全新进程B `resume <thread_id>` 从 Postgres 读回续跑。incident `I-20260526-R1-AQ-103812`:CO2 1300→679.4 ppm,verdict=met(delta −220.6),closed。incident 态 + 模拟器房间态均从持久化恢复,无内存残留。全架构最大技术风险**已坐实**
 
-**验收:** 模拟器灌一个 CO2 超标 → 自动建单 → 计划 → 诊断 → Tier 判定 → 假执行 → 15 分钟后验证关单;LangFuse 看到完整 trace。
+**验收:✅ 2026-05-26 全部达成,Phase 1 关闭(早于目标窗口)** — 模拟器灌 CO2 超标 → 自动建单 → 计划 → 诊断 → Tier 判定 → 假执行 → 15min 后验证关单端到端跑通(`ops/scripts/run_incident.py auto`,Postgres `incidents` 5 条历史 + 本次跨进程一条为证);🔴 跨进程重启恢复实测通过(风险点 #1 关闭)。LangFuse 接入:每节点 `@observe` span + `langfuse.openai` LLM generation 嵌套(代码层接入,trace 上传 UI 未单独核验)。**遗留**:`memory_retrieve`/`critic` 为占位待 Phase 2-3 做实;真实硬件/InfluxDB 留 Phase 5。
 
 ---
 

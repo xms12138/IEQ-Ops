@@ -63,25 +63,41 @@ Specialist subgraph nodes, routed per `ops/llm_routing.md`.
 
 ---
 
-## ⚠️ Open spike: 6 GB VRAM coexistence (Phase 0 item, not yet run)
+## ✅ Resolved spike: 6 GB VRAM coexistence (measured 2026-05-25)
 
-**Question:** can Qwen3-8B + BGE-M3 + bge-reranker-v2-m3 stay resident together on
-6 GB? Rough budget: Qwen3-8B at 4-bit ≈ 5–6 GB alone, BGE-M3 ≈ 2 GB, reranker ≈
-2 GB → **all-resident is infeasible at 6 GB.** A loading strategy is mandatory.
+Measured on the real RTX 3060 (6 GB, shared Windows+WSL2) via
+[`ops/scripts/vram_spike.py`](ops/scripts/vram_spike.py) plus the ollama runbook at
+the bottom of that file. Embedders at fp16; Qwen3-8B served by Windows ollama.
 
-**Mitigating reality:** dev-phase override B runs Qwen on cloud flash, so until
-Phase 6 only BGE-M3 + reranker (~4 GB) need to be local — comfortably fits. The
-three-way contention is a **Phase 6 problem**, to resolve before the autonomous run.
+| Resident set | Physical-card VRAM | Retrieve latency (1 query + 32-pair rerank) |
+|---|---|---|
+| Windows desktop idle (baseline) | ~1.2 GB | — |
+| + BGE-M3 + reranker, **GPU fp16** | **4.0 GB** (peak) | **98 ms** ✅ |
+| BGE-M3 + reranker, **CPU fp32** | (off-GPU) | **3 763 ms** ❌ (7.5× over budget) |
+| Qwen3-8B alone (ollama) | **5.6 GB** | — (already spills ~2.1 GB to CPU to fit) |
 
-**Candidate strategy (to validate in the spike):**
-- Qwen3-8B as **4-bit GGUF via Ollama/llama.cpp**, kept resident.
-- BGE-M3 + reranker **time-shared** (load on demand) or **CPU-offloaded** — the
-  monitoring loop only needs Qwen; RAG retrieval needs the embedders, and the two
-  rarely fire in the same 100 ms.
+**Three findings, all measured:**
+1. **All-resident is impossible — harder than the back-of-envelope estimate.**
+   Qwen3-8B alone pins 5.6/6.1 GB and ollama already offloads ~2.1 GB of layers to
+   CPU RAM to fit (`size` 6.6 GB vs `size_vram` 4.5 GB). No room for *any* co-resident
+   GPU model, let alone two embedders.
+2. **Retrieve must run on GPU, not CPU.** CPU fp32 reranking of 32 candidates takes
+   3.6 s — 7.5× over the Specialist's `< 500 ms` budget; GPU fp16 does it in 98 ms.
+   This **overturns douluo's CPU-embedder choice**: douluo uses a lightweight bge-small
+   with no latency floor, IEQ-Ops uses BGE-M3 against a real budget, so CPU is out.
+3. **GPU-resident retrieve is cheap.** BGE-M3 + reranker at fp16 peak at only 4.0 GB
+   (2.1 GB headroom) and load in ~9 s.
 
-**To measure:** peak VRAM with each combination resident; load/unload latency vs.
-the Monitor's 5-min cadence and the Specialist's `< 500 ms` retrieve budget.
-**Decision will be recorded here once the spike runs.**
+**Loading strategy (decided):**
+- **Dev phase (Phase 0–5, routing override B → Qwen on cloud flash):** the GPU runs
+  only the retrieve stack (BGE-M3 + reranker, fp16, 4.0 GB). No contention — usable today.
+- **Phase 6 (local Qwen goes live):** Qwen (5.6 GB) and retrieve (4.0 GB) cannot
+  co-reside, and retrieve cannot fall back to CPU. → **Time-share the GPU via ollama
+  `keep_alive`:** the Monitor's 5-min loop loads Qwen (10 s cold-load, comfortably inside
+  the cadence); incident handling unloads Qwen and loads the retrieve stack (~9 s). The
+  two never need the GPU in the same instant. Cold-load cost is charged to the 5-min tick
+  and the off-hot-path incident pipeline, never to the `< 500 ms` retrieve step (which
+  only times resident-model inference). Validate the swap orchestration at Phase 6 start.
 
 ---
 
