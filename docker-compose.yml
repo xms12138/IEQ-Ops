@@ -48,9 +48,18 @@ services:
       NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-changeme-nextauth-secret}
       SALT: ${LANGFUSE_SALT:-changeme-salt}
       TELEMETRY_ENABLED: "false"
-      # Optional: auto-provision a project with these keys on first boot.
+      # Headless auto-provision on first boot (DB starts empty). Creates the org,
+      # project, an initial user, and the API key pair the app authenticates with —
+      # no manual UI step. Keys come from .env so app and server share one pair.
+      LANGFUSE_INIT_ORG_ID: ieqops-org
+      LANGFUSE_INIT_ORG_NAME: IEQ-Ops
+      LANGFUSE_INIT_PROJECT_ID: ieqops-proj
+      LANGFUSE_INIT_PROJECT_NAME: IEQ-Ops
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-dev@ieq-ops.local}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-dev}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-ieqops-dev-pw}
 
 volumes:
   postgres_data:

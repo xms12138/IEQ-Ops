@@ -18,6 +18,12 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
+# TracedOpenAI is langfuse.openai's drop-in client: it traces every completion
+# (model, tokens_in/out, latency) to LangFuse — the single point all LLM calls pass,
+# exactly where the CLAUDE.md per-invocation log contract belongs. It ships no
+# py.typed, so it's bound to the real OpenAI type below to keep the router fully
+# type-checked (langfuse.* is ignore_missing_imports in pyproject).
+from langfuse.openai import OpenAI as TracedOpenAI
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 
 from core.config import Settings, get_settings
@@ -58,7 +64,7 @@ class RouterExhausted(RuntimeError):
 class Router:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
-        self._client = OpenAI(
+        self._client: OpenAI = TracedOpenAI(
             api_key=self.settings.deepseek_api_key,
             base_url=self.settings.deepseek_base_url,
         )
