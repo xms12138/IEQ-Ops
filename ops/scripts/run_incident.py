@@ -23,6 +23,7 @@ import uuid
 from typing import Any
 
 from langfuse.decorators import langfuse_context, observe
+from pydantic import ValidationError
 
 from core.checkpointer import open_checkpointer
 from core.config import get_settings
@@ -55,12 +56,13 @@ def _invoke_traced(graph: Any, graph_input: MainIncidentState | None, thread_id:
 
 
 def _target_minutes(values: dict[str, Any]) -> int:
-    """Read ExpectedOutcome.target_time_min from the checkpointed state."""
+    """Read target_time_min from the PRIMARY (actionable) subtask's expected
+    outcome — the one whose domain matches the anomaly, not an arbitrary first
+    result, now that a DAG can carry advisory cross-domain subtasks too."""
     try:
-        result = next(iter(values["subtask_results"].values()))
-        eo = getattr(result, "expected_outcome", None) or result["expected_outcome"]
-        return int(getattr(eo, "target_time_min", None) or eo["target_time_min"])
-    except (KeyError, StopIteration, TypeError, AttributeError):
+        result = MainIncidentState.model_validate(values).primary_result()
+        return result.expected_outcome.target_time_min if result is not None else 15
+    except (ValidationError, AttributeError):
         return 15
 
 

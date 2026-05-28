@@ -48,7 +48,7 @@ NODE_TIERS: dict[str, ModelTier] = {
     "specialist.grade": ModelTier.FAST,  # #4c  mandatory cloud — never local (#11)
     "specialist.rewrite": ModelTier.LOCAL,  # #4d  dev->flash
     "specialist.generate": ModelTier.FAST,  # #4e  mandatory cloud — never local (#11)
-    "critic.validate": ModelTier.LOCAL,  # #5   numeric local; inductive escalates at call site
+    "critic.validate": ModelTier.LOCAL,  # #5   Plan B: floor + coherence; no chunk trace-back
     "verifier.check": ModelTier.LOCAL,  # #6
     "reflector.semantic": ModelTier.REASONING,  # #7   mandatory pro — never local (#12)
     "reflector.procedural": ModelTier.REASONING,  # #8   mandatory pro — never local (#12)

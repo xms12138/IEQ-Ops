@@ -9,6 +9,7 @@ eval/reports/
 *.key
 *.pem
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # ---- Python ----
 __pycache__/

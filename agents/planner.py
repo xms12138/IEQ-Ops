@@ -1,11 +1,14 @@
 """PlannerAgent — node `planner.plan` (ops/llm_routing.md #3).
 
-Phase 1 is deliberately minimal: produce ONE subtask routed to the right domain
-specialist, not a full ReWOO DAG (that is Phase 2). Routing: REASONING tier
-(deepseek-v4-pro).
+Phase 2: produce a real Plan-and-Execute + ReWOO DAG — a primary diagnosis
+subtask plus any cross-domain side-effect subtasks that depend on it (via
+`#{id}.diagnosis` placeholders, hydrated downstream). Routing: REASONING tier
+(deepseek-v4-pro), temperature 0 so the plan shape is reproducible while thinking
+stays on (the DAG decomposition is the reasoning task — unlike the specialist's
+JSON/short-string nodes, planner keeps thinking enabled).
 
 Memory retrieval is done INLINE here, not as a LangGraph node (CLAUDE.md:
-"MemoryAgent is not a LangGraph node"). Phase 1 it is a placeholder returning no
+"MemoryAgent is not a LangGraph node"). Phase 1/2 it is a placeholder returning no
 similar cases; Phase 3 swaps in memory/episodic.py::retrieve_similar().
 """
 
@@ -18,24 +21,15 @@ from pydantic import ValidationError
 from agents.prompt_loader import load_prompt
 from core.logging import get_logger
 from core.router import Router, RouterExhausted
-from core.state import IncidentStatus, MainIncidentState, Plan, Subtask
+from core.state import SENSOR_DOMAIN, IncidentStatus, MainIncidentState, Plan, Subtask
 
 log = get_logger("planner")
-
-# sensor → specialist domain (used by the deterministic fallback plan)
-_SENSOR_DOMAIN = {
-    "co2": "airquality",
-    "temperature": "thermal",
-    "humidity": "thermal",
-    "lux": "lighting",
-    "noise_db": "acoustic",
-}
 
 
 class PlannerAgent:
     def __init__(self, router: Router | None = None) -> None:
         self.router = router or Router()
-        self._template = load_prompt("planner")
+        self._template = load_prompt("planner", 2)
 
     def run(self, state: MainIncidentState) -> dict[str, Any]:
         similar_cases = self._retrieve_similar(state)  # inline placeholder (Phase 3)
@@ -63,6 +57,7 @@ class PlannerAgent:
                 "planner.plan",
                 [{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
+                temperature=0.0,
             )
             plan = Plan.model_validate_json(raw)
             if not plan.subtasks:
@@ -73,7 +68,7 @@ class PlannerAgent:
             return self._fallback_plan(anomaly.sensor, anomaly.rule_violated)
 
     def _fallback_plan(self, sensor: str, rule_violated: str) -> Plan:
-        domain = _SENSOR_DOMAIN.get(sensor, "airquality")
+        domain = SENSOR_DOMAIN.get(sensor, "airquality")
         return Plan(
             subtasks=[
                 Subtask(

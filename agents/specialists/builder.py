@@ -37,8 +37,6 @@ from core.logging import get_logger
 from core.router import Router, RouterExhausted
 from core.state import (
     ExpectedOutcome,
-    IncidentStatus,
-    MainIncidentState,
     SpecialistResult,
     Subtask,
 )
@@ -81,7 +79,10 @@ def _extract_json(text: str) -> dict[str, Any]:
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if not m:
         raise ValueError(f"no JSON in response: {text[:120]!r}")
-    return json.loads(m.group(0))
+    data: Any = json.loads(m.group(0))
+    if not isinstance(data, dict):
+        raise ValueError(f"expected a JSON object, got {type(data).__name__}")
+    return data
 
 
 def _clean_query(text: str) -> str:
@@ -101,11 +102,18 @@ def _make_decompose(router: Router) -> Any:
         subs: list[str]
         try:
             data = _extract_json(
-                router.complete("specialist.decompose", [{"role": "user", "content": prompt}],
-                                response_format=_JSON, extra_body=_NO_THINK, temperature=0.0)
+                router.complete(
+                    "specialist.decompose",
+                    [{"role": "user", "content": prompt}],
+                    response_format=_JSON,
+                    extra_body=_NO_THINK,
+                    temperature=0.0,
+                )
             )
             subs = data.get("sub_queries") or [st.goal]
-            if not isinstance(subs, list) or not all(isinstance(s, str) and s.strip() for s in subs):
+            if not isinstance(subs, list) or not all(
+                isinstance(s, str) and s.strip() for s in subs
+            ):
                 subs = [st.goal]
         except (RouterExhausted, ValueError, json.JSONDecodeError) as exc:
             log.warning("decompose_fallback", error=str(exc))  # degrade to single-query
@@ -133,8 +141,13 @@ def _make_retrieve() -> Any:
                     continue
                 seen.add(key)
                 new.append(
-                    {"text": c.text, "source": c.source, "domain": c.domain,
-                     "chunk_idx": c.chunk_idx, "score": c.score}
+                    {
+                        "text": c.text,
+                        "source": c.source,
+                        "domain": c.domain,
+                        "chunk_idx": c.chunk_idx,
+                        "score": c.score,
+                    }
                 )
         log.info("retrieve", round=state.rewrite_count, new=len(new), total=len(seen))
         return {"retrieved_chunks": new}  # Annotated[..., add] appends to the accumulator
@@ -149,13 +162,19 @@ def _make_grade(router: Router) -> Any:
         chunks = state.retrieved_chunks
         context = (
             "\n\n---\n\n".join(f"[{i + 1}] {c['text']}" for i, c in enumerate(chunks))
-            if chunks else "(none)"
+            if chunks
+            else "(none)"
         )
         prompt = tmpl.safe_substitute(goal=state.subtask.goal, context=context)
         try:
             data = _extract_json(
-                router.complete("specialist.grade", [{"role": "user", "content": prompt}],
-                                response_format=_JSON, extra_body=_NO_THINK, temperature=0.0)
+                router.complete(
+                    "specialist.grade",
+                    [{"role": "user", "content": prompt}],
+                    response_format=_JSON,
+                    extra_body=_NO_THINK,
+                    temperature=0.0,
+                )
             )
             sufficient = bool(data.get("sufficient", False))
             reason = str(data.get("reason", "") or "")
@@ -177,10 +196,17 @@ def _make_rewrite(router: Router) -> Any:
         old = state.current_query or state.subtask.goal
         prompt = tmpl.safe_substitute(query=old, reason=state.grade_reason or "(none)")
         try:  # plain string out (no JSON) — short-string transform, LOCAL tier (#4d)
-            new_q = _clean_query(
-                router.complete("specialist.rewrite", [{"role": "user", "content": prompt}],
-                                extra_body=_NO_THINK, temperature=0.3)
-            ) or old
+            new_q = (
+                _clean_query(
+                    router.complete(
+                        "specialist.rewrite",
+                        [{"role": "user", "content": prompt}],
+                        extra_body=_NO_THINK,
+                        temperature=0.3,
+                    )
+                )
+                or old
+            )
         except RouterExhausted as exc:
             log.warning("rewrite_fallback", error=str(exc))
             new_q = old
@@ -191,7 +217,7 @@ def _make_rewrite(router: Router) -> Any:
 
 
 def _make_generate(router: Router) -> Any:
-    tmpl = load_prompt("specialist/generate")
+    tmpl = load_prompt("specialist/generate", 2)
 
     def generate(state: SpecialistState) -> dict[str, Any]:
         st = state.subtask
@@ -200,13 +226,19 @@ def _make_generate(router: Router) -> Any:
             "\n\n---\n\n".join(
                 f"[{i + 1} · {c['source']}] {c['text']}" for i, c in enumerate(chunks)
             )
-            if chunks else "(none)"
+            if chunks
+            else "(none)"
         )
         prompt = tmpl.safe_substitute(domain=st.domain, goal=st.goal, context=context)
         try:
             data = _extract_json(
-                router.complete("specialist.generate", [{"role": "user", "content": prompt}],
-                                response_format=_JSON, extra_body=_NO_THINK, temperature=0.2)
+                router.complete(
+                    "specialist.generate",
+                    [{"role": "user", "content": prompt}],
+                    response_format=_JSON,
+                    extra_body=_NO_THINK,
+                    temperature=0.2,
+                )
             )
             # subtask_id is injected by code, not trusted from the LLM. ExpectedOutcome
             # is Pydantic-locked (extra="forbid") — Hard Constraint #13.
@@ -215,9 +247,17 @@ def _make_generate(router: Router) -> Any:
                 diagnosis=str(data["diagnosis"]),
                 expected_outcome=ExpectedOutcome.model_validate(data["expected_outcome"]),
             )
-            log.info("generate", subtask_id=st.subtask_id, metric=result.expected_outcome.target_metric)
+            log.info(
+                "generate", subtask_id=st.subtask_id, metric=result.expected_outcome.target_metric
+            )
             return {"final_diagnosis": result}
-        except (RouterExhausted, ValidationError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        except (
+            RouterExhausted,
+            ValidationError,
+            ValueError,
+            KeyError,
+            json.JSONDecodeError,
+        ) as exc:
             # generate is mandatory cloud; there is no safe local/numeric fallback for a
             # typed diagnosis. Surface None → the wrapper escalates (Tier 3 / replan).
             log.error("generate_failed", subtask_id=st.subtask_id, error=str(exc))
@@ -244,7 +284,9 @@ def build_specialist_subgraph(router: Router) -> Any:
     g.add_edge(START, "decompose")
     g.add_edge("decompose", "retrieve")
     g.add_edge("retrieve", "grade")
-    g.add_conditional_edges("grade", _route_after_grade, {"rewrite": "rewrite", "generate": "generate"})
+    g.add_conditional_edges(
+        "grade", _route_after_grade, {"rewrite": "rewrite", "generate": "generate"}
+    )
     g.add_edge("rewrite", "retrieve")
     g.add_edge("generate", END)
     return g.compile()
@@ -254,21 +296,30 @@ def build_specialist_subgraph(router: Router) -> Any:
 SPECIALIST_SUBGRAPH = build_specialist_subgraph(Router())
 
 
-def run_specialist(state: MainIncidentState, domain: str) -> dict[str, Any]:
-    """Parent-graph entry point shared by the four {domain}.py wrappers. Invokes the
-    shared subgraph with the matching subtask and lifts ONLY `final_diagnosis` back —
-    the subgraph's bulky intermediate state (retrieved_chunks, grade_reason,
-    rewrite_count) stays isolated from the parent checkpoint (🔴 Phase 2 risk #2).
+def run_specialist(payload: dict[str, Any], domain: str) -> dict[str, Any]:
+    """Parent-graph entry point shared by the four {domain}.py wrapper NODES.
 
-    generate failure surfaces as final_diagnosis=None → mark FAILED here (Phase 2
-    next step: route to replan / Tier 3 rather than dead-end)."""
-    plan = state.current_plan
-    assert plan is not None and plan.subtasks, "specialist reached without a plan"
-    subtask = next((s for s in plan.subtasks if s.domain == domain), plan.subtasks[0])
-    out = SPECIALIST_SUBGRAPH.invoke({"subtask": subtask})
+    Fed by the dispatch fan-out as a LangGraph `Send(domain, {"subtask": ...})`, so
+    `payload` is the Send arg (the parent state is NOT visible here — by design,
+    one isolated subtask per parallel branch). Runs the shared subgraph on this
+    subtask's HYDRATED goal and lifts ONLY `final_diagnosis` back; the subgraph's
+    bulky state (retrieved_chunks, grade_reason, rewrite_count) never enters the
+    parent checkpoint (🔴 Phase 2 risk #2).
+
+    Status is deliberately NOT written here: parallel branches writing the same
+    non-reducer `status` channel would be a concurrent-update error. Success writes
+    `subtask_results` (merge reducer); failure appends to `failed_subtasks`
+    (add reducer) so the dispatch loop counts it resolved and stops re-dispatching.
+    The critic node sets status once after the wave (Phase 2-next: route failures
+    to replan / Tier 3 instead of proceeding)."""
+    raw = payload["subtask"]
+    subtask = raw if isinstance(raw, Subtask) else Subtask.model_validate(raw)
+    # Run on the hydrated goal (ReWOO refs already resolved by hydrate_placeholders).
+    child = subtask.model_copy(update={"goal": subtask.effective_goal})
+    out = SPECIALIST_SUBGRAPH.invoke({"subtask": child})
     diagnosis = out["final_diagnosis"] if isinstance(out, dict) else out.final_diagnosis
     if diagnosis is None:
         log.error("specialist_no_diagnosis", domain=domain, subtask_id=subtask.subtask_id)
-        return {"status": IncidentStatus.FAILED}
+        return {"failed_subtasks": [subtask.subtask_id]}
     log.info("specialist_done", domain=domain, subtask_id=subtask.subtask_id)
-    return {"subtask_results": {subtask.subtask_id: diagnosis}, "status": IncidentStatus.ACTING}
+    return {"subtask_results": {subtask.subtask_id: diagnosis}}

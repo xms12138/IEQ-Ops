@@ -34,7 +34,7 @@
 | 4c | `Specialist.grade` ★ | Per-sub-query | ~1500/mo | (sub-query, chunks) → `{sufficient: bool, missing: [...]}` | **Cloud V4-Flash (mandatory)** | < 5 s | No |
 | 4d | `Specialist.rewrite` | Per-failed-grade | ~500/mo | (old query, grade feedback) → new query | **Local Qwen3-8B** (ablate-watched) *(currently `deepseek-v4-flash` — override B)* | < 3 s | No |
 | 4e | `Specialist.generate` ★ | Per-subtask | ~300/mo | accumulated chunks + subtask → grounded answer + `expected_outcome` block | **Cloud V4-Flash (mandatory)** | < 10 s | No |
-| 5 | `CriticAgent.validate` | Per-answer | ~300/mo | (answer, chunks) → unsupported-claim list | **Local Qwen3-8B for numeric; escalate to V4-Flash on inductive claims** *(currently all on `deepseek-v4-flash` — override B)* | < 5 s | No |
+| 5 | `CriticAgent.validate` | Per-answer | ~300/mo | (diagnosis, expected_outcome) → unsupported-claim list | **Local Qwen3-8B (Plan B: deterministic floor + coherence judgement, no chunk trace-back)** *(currently `deepseek-v4-flash` — override B)* | < 5 s | No |
 | 6 | `VerifierAgent.check` | Post-action | ~300/mo | (pre/post sensor readings, `expected_outcome` schema) → `{verdict, delta}` | **Local Qwen3-8B** (depends on Hard Constraint #13) *(currently `deepseek-v4-flash` — override B)* | < 5 s | No |
 | 7 | `Reflector.semantic` ★ | Weekly | 4/mo | one week of incidents (chunked by type) → semantic facts | **Cloud `deepseek-v4-pro` (mandatory)** (was DeepSeek-V3) | < 5 min total | No |
 | 8 | `Reflector.procedural` ★ | Weekly | 4/mo | one week of successful trajectories → SOP templates (queued for human sign-off) | **Cloud `deepseek-v4-pro` (mandatory)** (was DeepSeek-V3) | < 5 min total | No |
@@ -91,11 +91,13 @@
 - **Fallback:** V4-Flash failure → V3 → Tier 3 incident.
 - **Required output schema:** Must include `expected_outcome: {target_metric: str, target_value: float, target_time_min: int}`. Enforced by Pydantic at node output (Hard Constraint #13).
 
-### #5 CriticAgent.validate — Local with cloud-escalation
+### #5 CriticAgent.validate — Local (Plan B: no chunk trace-back)
 
-- **Rationale (caveat):** Numeric trace-back ("does '5 cfm/person' appear in cited chunks?") is fine on local. But Specialist `generate` may emit inductive synthesis ("via raising ventilation rate + adjusting setpoint") which is supported by chunks in aggregate but not as a literal string — local 8B would false-positive flag this as unsupported.
-- **Implementation:** Classify each claim type at the front of Critic. Numeric / direct-quote claims → local. Inductive / multi-fact claims → escalate to V4-Flash.
-- **Ablate condition:** Track false-positive rate on IEQ-Bench. If > 10 %, route all claims to V4-Flash. Cost delta ≤ ¥2/mo.
+- **Plan B (2026-05-28, supersedes the trace-back design below):** The original plan was numeric trace-back of each claim against the cited chunks. That is **impossible** under the SpecialistSubgraph state isolation (🔴 Phase 2 risk #2): `retrieved_chunks` never enter the parent checkpoint by design, so the parent critic cannot see the source text. Decision: the critic validates only what it CAN see — (1) a **deterministic** plausibility floor on `expected_outcome` (target_metric known, target_value in a physical range, target_time_min sane — no LLM), and (2) an LLM judgement of the diagnosis's **internal coherence + outcome-to-diagnosis fit**. On disapproval the incident fails WITHOUT acting (Phase 3 will route to replan).
+- **Rationale:** Both checks are within local 8B's reach — the deterministic floor needs no LLM, and the coherence judgement is a self-contained "does this paragraph contradict itself / does the outcome follow" call, not a long-context faithfulness task. No claim-type classification is needed because there is no source text to trace against. Routed LOCAL (currently `deepseek-v4-flash` — override B).
+- **Fallback:** LLM unavailable → deterministic plausibility floor alone decides (approve iff no floor violation); the numeric floor still blocks unsafe actuation, so an outage degrades coverage without deadlocking the loop.
+- **Ablate condition:** Track the action-on-bad-diagnosis rate on IEQ-Bench (Phase 4). If coherence false-negatives let through unsafe diagnoses, escalate the coherence call to V4-Flash. Original trace-back design (claim classification, numeric→local / inductive→Flash) is retained below only as the spec for a future variant where citations are surfaced (Plan A).
+- ~~**Trace-back design (Plan A, not taken):** Classify each claim type at the front of Critic. Numeric / direct-quote claims → local. Inductive / multi-fact claims → escalate to V4-Flash. Requires `SpecialistResult.citations` to cross the isolation boundary.~~
 
 ### #6 VerifierAgent.check — Local Qwen3-8B
 

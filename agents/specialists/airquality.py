@@ -1,9 +1,9 @@
 """AirQualityExpert — thin wrapper over SpecialistSubgraph (domain="airquality").
 
-Phase 1 was a hard-coded stub. Phase 2: invoke the shared 5-node Agentic RAG
-subgraph and lift only `final_diagnosis` back into the parent graph. All the RAG
-intermediate state stays inside the subgraph (🔴 risk #2). The class keeps its
-`run(state) -> dict` shape so core/graph.py wires it unchanged.
+Phase 2: this is a fan-out target node. The dispatch loop sends it a single
+subtask via `Send("airquality", {"subtask": ...})`, so `run` receives the Send
+payload (NOT the parent state) and delegates to the shared 5-node Agentic RAG
+subgraph. All RAG intermediate state stays inside the subgraph (🔴 risk #2).
 """
 
 from __future__ import annotations
@@ -11,11 +11,10 @@ from __future__ import annotations
 from typing import Any
 
 from agents.specialists.builder import run_specialist
-from core.state import MainIncidentState
 
 
 class AirQualityExpert:
     DOMAIN = "airquality"
 
-    def run(self, state: MainIncidentState) -> dict[str, Any]:
-        return run_specialist(state, self.DOMAIN)
+    def run(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return run_specialist(payload, self.DOMAIN)

@@ -21,9 +21,33 @@ Design notes
 
 from __future__ import annotations
 
+import operator
 from enum import IntEnum, StrEnum
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# sensor → specialist domain. The "primary" subtask of an incident is the one
+# whose domain matches the anomaly's sensor (e.g. a co2 anomaly → airquality):
+# that is the actionable diagnosis the autonomy_gate / action / verifier operate
+# on, while any dependent subtasks (e.g. thermal side-effect of ventilation) are
+# advisory context. Shared by planner (fallback routing) and the parent graph.
+SENSOR_DOMAIN: dict[str, str] = {
+    "co2": "airquality",
+    "temperature": "thermal",
+    "humidity": "thermal",
+    "lux": "lighting",
+    "noise_db": "acoustic",
+}
+
+
+def _merge_results(
+    a: dict[str, SpecialistResult], b: dict[str, SpecialistResult]
+) -> dict[str, SpecialistResult]:
+    """Reducer for subtask_results: parallel specialist fan-out (Send) writes this
+    key concurrently, one subtask_id each. Merge instead of last-write-wins, which
+    LangGraph would reject as a concurrent update to a non-reducer channel."""
+    return {**a, **b}
 
 
 class IncidentStatus(StrEnum):
@@ -82,6 +106,14 @@ class Subtask(BaseModel):
     domain: str  # airquality | thermal | lighting | acoustic
     goal: str  # may embed ReWOO refs like #S1.diagnosis, hydrated before it runs
     depends_on: list[str] = Field(default_factory=list)
+    # Filled by the hydrate_placeholders node once depends_on results exist: goal
+    # with every #{id}.{field} ref resolved. The specialist runs `hydrated_goal or
+    # goal`. Kept separate from `goal` so the ReWOO template stays inspectable.
+    hydrated_goal: str | None = None
+
+    @property
+    def effective_goal(self) -> str:
+        return self.hydrated_goal or self.goal
 
 
 class Plan(BaseModel):
@@ -129,10 +161,16 @@ class MainIncidentState(BaseModel):
     current_plan: Plan | None = None
     replan_count: int = 0
 
-    # specialists, keyed by subtask_id (hydrates ReWOO placeholders downstream).
-    # NOTE Phase 2: parallel specialist fan-out writes this key concurrently and
-    # will need an Annotated reducer to merge instead of overwrite.
-    subtask_results: dict[str, SpecialistResult] = Field(default_factory=dict)
+    # specialists, keyed by subtask_id. Parallel fan-out (Send) writes this
+    # concurrently → merge reducer (one subtask_id per branch, no key collisions).
+    subtask_results: Annotated[dict[str, SpecialistResult], _merge_results] = Field(
+        default_factory=dict
+    )
+    # subtask_ids whose specialist failed (no usable diagnosis). Append-reducer so
+    # the dispatch loop counts them as "resolved" and never re-dispatches them —
+    # a failed dependency simply leaves its dependents un-runnable and the wave
+    # loop terminates instead of spinning. Full replan/Tier-3 routing is future.
+    failed_subtasks: Annotated[list[str], operator.add] = Field(default_factory=list)
 
     # critic
     critic_verdict: CriticVerdict | None = None
@@ -143,3 +181,17 @@ class MainIncidentState(BaseModel):
 
     # verifier (runs 15 min after action)
     verifier_verdict: VerifierVerdict | None = None
+
+    def primary_result(self) -> SpecialistResult | None:
+        """The actionable subtask's result — the one whose domain matches the
+        anomaly's sensor (SENSOR_DOMAIN). With a multi-subtask DAG the others are
+        advisory (e.g. a thermal side-effect check), so autonomy_gate / action /
+        verifier all key off this one. Falls back to the first available result."""
+        if not self.subtask_results:
+            return None
+        if self.anomaly is not None and self.current_plan is not None:
+            domain = SENSOR_DOMAIN.get(self.anomaly.sensor)
+            for st in self.current_plan.subtasks:
+                if st.domain == domain and st.subtask_id in self.subtask_results:
+                    return self.subtask_results[st.subtask_id]
+        return next(iter(self.subtask_results.values()))
