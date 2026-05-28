@@ -6,9 +6,9 @@
 >
 > **(A) PERMANENT — DeepSeek-V3 → `deepseek-v4-pro`.** DeepSeek retired V3 upstream; the API now exposes only `deepseek-v4-pro` and `deepseek-v4-flash` (confirmed 2026-05-25 via the API's own 400 error). `deepseek-v4-pro` is the official successor (≥ V3 capability), so nodes **#3 Planner** and **#7/#8 Reflector** run on `deepseek-v4-pro` in **both dev and target production**. The `Cloud DeepSeek-V3` cells below have been updated accordingly.
 >
-> **(B) TEMPORARY (revert before Phase 6, ~2026-09-14) — local → cloud.** To move fast in Phase 0–5, the nodes the table marks **Local Qwen3-8B** (`#1 Monitor`, `#4d rewrite`, `#5 Critic`, `#6 Verifier`) temporarily run on `deepseek-v4-flash`. These MUST be restored to local before the Phase 6 autonomous run.
+> **(B) STANDING POLICY — local-tier nodes run on `deepseek-v4-flash`.** The nodes the table marks **Local Qwen3-8B** (`#1 Monitor`, `#4d rewrite`, `#5 Critic`, `#6 Verifier`) run on `deepseek-v4-flash` in **both dev and production**. This is the active policy until the author wires a local Qwen3-8B client and switches these four nodes back — there is **no Phase 6 deadline** on that cutover. The local rationale, ablate conditions, and Qwen3-8B target in the per-node sections below are **retained** as the spec for that future switch-back, not deleted.
 >
-> **Known constraint breach (accepted, temporary):** routing `#1 Monitor` to cloud violates `CLAUDE.md` Hard Constraint #1 (no cloud in monitoring hot path). Tolerable in dev (simulator, not 24/7 production). Revert `#1/#4d/#5/#6` to local before Phase 6.
+> **Known constraint breach (accepted, ongoing):** routing `#1 Monitor` to cloud is a known, ongoing deviation from `CLAUDE.md` Hard Constraint #1 (no cloud in the monitoring hot path). Restoring #1 compliance is deferred to the future local cutover above — it is **not** gated on Phase 6.
 >
 > **Latency caveat:** both `deepseek-v4-flash` and `deepseek-v4-pro` return `reasoning_content` (reasoning models), so real latency exceeds the table's `< 5 s` / `< 3 s first token` budgets. Don't validate latency claims against them; re-measure with production routing.
 >
@@ -26,16 +26,16 @@
 
 | # | Node | Loop | Freq | Input → Output | Model | Latency budget | Hot path? |
 |---|------|------|------|----------------|-------|----------------|-----------|
-| 1 | `MonitorAgent.scan` | Monitoring | 8640/mo (every 5 min) | sensor readings + threshold rules → `{anomaly, sensor, value, rule_violated}` | **Local Qwen3-8B** | < 5 s | **Yes** (hard floor) |
+| 1 | `MonitorAgent.scan` | Monitoring | 8640/mo (every 5 min) | sensor readings + threshold rules → `{anomaly, sensor, value, rule_violated}` | **Local Qwen3-8B** *(currently `deepseek-v4-flash` — override B)* | < 5 s | **Yes** (hard floor) |
 | 2 | `MemoryAgent.retrieve` | Incident | ~300/mo | incident description → top-k episodic cases | **No LLM** (embedding only, BGE-M3) | < 200 ms | No |
 | 3 | `PlannerAgent.plan` | Incident | ~300/mo | incident + similar cases + specialist list → subtask DAG | **Cloud `deepseek-v4-pro`** (was DeepSeek-V3) | < 30 s (first DAG node visible) | No |
 | 4a | `Specialist.decompose` | Per-subtask | ~300/mo | subtask → ≤3 sub-queries | **Cloud V4-Flash** | < 5 s | No |
 | 4b | `Specialist.retrieve` | Per-sub-query | ~1500/mo | sub-query → top-5 chunks | **No LLM** (`mcp-rag-server`) | < 500 ms | No |
 | 4c | `Specialist.grade` ★ | Per-sub-query | ~1500/mo | (sub-query, chunks) → `{sufficient: bool, missing: [...]}` | **Cloud V4-Flash (mandatory)** | < 5 s | No |
-| 4d | `Specialist.rewrite` | Per-failed-grade | ~500/mo | (old query, grade feedback) → new query | **Local Qwen3-8B** (ablate-watched) | < 3 s | No |
+| 4d | `Specialist.rewrite` | Per-failed-grade | ~500/mo | (old query, grade feedback) → new query | **Local Qwen3-8B** (ablate-watched) *(currently `deepseek-v4-flash` — override B)* | < 3 s | No |
 | 4e | `Specialist.generate` ★ | Per-subtask | ~300/mo | accumulated chunks + subtask → grounded answer + `expected_outcome` block | **Cloud V4-Flash (mandatory)** | < 10 s | No |
-| 5 | `CriticAgent.validate` | Per-answer | ~300/mo | (answer, chunks) → unsupported-claim list | **Local Qwen3-8B for numeric; escalate to V4-Flash on inductive claims** | < 5 s | No |
-| 6 | `VerifierAgent.check` | Post-action | ~300/mo | (pre/post sensor readings, `expected_outcome` schema) → `{verdict, delta}` | **Local Qwen3-8B** (depends on Hard Constraint #13) | < 5 s | No |
+| 5 | `CriticAgent.validate` | Per-answer | ~300/mo | (answer, chunks) → unsupported-claim list | **Local Qwen3-8B for numeric; escalate to V4-Flash on inductive claims** *(currently all on `deepseek-v4-flash` — override B)* | < 5 s | No |
+| 6 | `VerifierAgent.check` | Post-action | ~300/mo | (pre/post sensor readings, `expected_outcome` schema) → `{verdict, delta}` | **Local Qwen3-8B** (depends on Hard Constraint #13) *(currently `deepseek-v4-flash` — override B)* | < 5 s | No |
 | 7 | `Reflector.semantic` ★ | Weekly | 4/mo | one week of incidents (chunked by type) → semantic facts | **Cloud `deepseek-v4-pro` (mandatory)** (was DeepSeek-V3) | < 5 min total | No |
 | 8 | `Reflector.procedural` ★ | Weekly | 4/mo | one week of successful trajectories → SOP templates (queued for human sign-off) | **Cloud `deepseek-v4-pro` (mandatory)** (was DeepSeek-V3) | < 5 min total | No |
 | 9 | `ConversationalAgent.respond` | On-demand | ~200/mo | user query + memory-first dispatch → answer | **Cloud V4-Flash, streaming; escalate to V3 if self-confidence < 0.7** | < 3 s first token | No |

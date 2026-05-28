@@ -5,12 +5,14 @@ maps to a capability tier; the tier maps to a concrete DeepSeek model plus one
 fallback. On exhaustion the caller is expected to raise a Tier 3 incident
 ("Planner offline, manual triage required") — the router never silently drops work.
 
-ACTIVE OVERRIDES (ops/llm_routing.md header, 2026-05-25):
+ACTIVE OVERRIDES (ops/llm_routing.md header):
   (A) DeepSeek-V3 retired upstream -> REASONING tier = deepseek-v4-pro (permanent).
-  (B) Dev-phase: LOCAL-tier nodes (#1 monitor, #4d rewrite, #5 critic, #6 verifier)
-      run on deepseek-v4-flash instead of Qwen3-8B. MUST revert to local before
-      Phase 6 (breaches Hard Constraint #1 in the monitoring hot path — accepted
-      in dev only). The local client is therefore not wired here yet.
+  (B) LOCAL-tier nodes (#1 monitor, #4d rewrite, #5 critic, #6 verifier) run on
+      deepseek-v4-flash, not Qwen3-8B — standing policy in BOTH dev and prod until
+      the author wires a local Qwen3-8B client and switches them back. This is a
+      known, ongoing deviation from Hard Constraint #1 (cloud in the monitoring hot
+      path); restoring #1 compliance is deferred to that future local cutover. No
+      local client is wired yet, so REASONING/FAST/LOCAL all resolve to DeepSeek.
 """
 
 from __future__ import annotations
@@ -70,19 +72,18 @@ class Router:
         )
 
     def _tier_models(self, tier: ModelTier) -> tuple[str, str]:
-        """(primary, fallback) model names for a tier, honouring the dev override."""
+        """(primary, fallback) model names for a tier (see ACTIVE OVERRIDES above)."""
         pro = self.settings.deepseek_model_pro
         flash = self.settings.deepseek_model_flash
         if tier is ModelTier.REASONING:
             return pro, flash  # #3/#7/#8: pro -> retry once on flash -> Tier 3
         if tier is ModelTier.FAST:
             return flash, pro  # flash -> escalate to pro
-        # LOCAL
-        if self.settings.is_dev:
-            return flash, pro  # override B: dev runs local nodes on flash
-        raise NotImplementedError(
-            "Local Qwen3-8B client not wired yet — required before Phase 6 (override B revert)."
-        )
+        # LOCAL — override B standing policy: flash in BOTH dev and prod until a
+        # local Qwen3-8B client is wired, at which point this branch should gate on
+        # self.settings.is_dev again and return the local model in prod. Kept
+        # unconditional today so prod does not crash on an unwired local backend.
+        return flash, pro
 
     def resolve(self, node: str) -> tuple[str, str]:
         """Return (primary_model, fallback_model) for a node."""

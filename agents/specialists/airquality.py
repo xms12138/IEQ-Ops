@@ -1,43 +1,21 @@
-"""AirQualityExpert — Phase 1 STUB.
+"""AirQualityExpert — thin wrapper over SpecialistSubgraph (domain="airquality").
 
-Phase 1 does not implement the 5-node Agentic RAG loop. This stub returns a
-fixed diagnosis carrying the mandatory ExpectedOutcome schema (Hard Constraint
-#13) so the downstream autonomy gate, action, and Verifier can run end to end.
-
-Phase 2 replaces this file with a thin wrapper that invokes the shared
-SpecialistSubgraph (agents/specialists/builder.py) with domain="airquality";
-the diagnosis and expected_outcome will then come from `generate`, not a
-hard-coded string.
+Phase 1 was a hard-coded stub. Phase 2: invoke the shared 5-node Agentic RAG
+subgraph and lift only `final_diagnosis` back into the parent graph. All the RAG
+intermediate state stays inside the subgraph (🔴 risk #2). The class keeps its
+`run(state) -> dict` shape so core/graph.py wires it unchanged.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from core.logging import get_logger
-from core.state import ExpectedOutcome, IncidentStatus, MainIncidentState, SpecialistResult
-
-log = get_logger("airquality")
+from agents.specialists.builder import run_specialist
+from core.state import MainIncidentState
 
 
 class AirQualityExpert:
+    DOMAIN = "airquality"
+
     def run(self, state: MainIncidentState) -> dict[str, Any]:
-        plan = state.current_plan
-        assert plan is not None and plan.subtasks, "specialist reached without a plan"
-        subtask = plan.subtasks[0]  # Phase 1: single subtask
-        result = SpecialistResult(
-            subtask_id=subtask.subtask_id,
-            diagnosis=(
-                "CO2 is elevated because the occupancy load exceeds the current "
-                "fresh-air supply. Increasing ventilation will bring it back within "
-                "the ASHRAE 62.1 guideline."
-            ),
-            expected_outcome=ExpectedOutcome(
-                target_metric="co2", target_value=900.0, target_time_min=15
-            ),
-        )
-        log.info("airquality_diagnosis", subtask_id=subtask.subtask_id)
-        return {
-            "subtask_results": {subtask.subtask_id: result},
-            "status": IncidentStatus.ACTING,
-        }
+        return run_specialist(state, self.DOMAIN)

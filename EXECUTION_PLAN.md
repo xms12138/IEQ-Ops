@@ -68,17 +68,23 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **目标:** `SpecialistSubgraph` 五节点真跑(四 domain 共享一个编译实例);Planner 出真正的 ReWOO DAG。
 
-- [ ] `rag/ingest.py`:ASHRAE/WELL/EN/WHO PDF → chunk → contextual prefix(V4-Flash + KV cache)→ BGE-M3 嵌入入 Qdrant
-- [ ] `rag/retrieve.py`:BM25 + BGE-M3 双路召回 + bge-reranker-v2-m3 精排
-- [ ] `mcp-rag-server`:FastMCP 包 `retrieve.py`,**绝不含 LLM**(硬约束 #9)
-- [ ] `agents/specialists/builder.py`:五节点 `decompose`(V4-Flash)/`retrieve`(无LLM)/`grade`(V4-Flash 强制)/`rewrite`(本地,watched)/`generate`(V4-Flash 强制);domain 参数化;**module-load 时 compile 一次**(禁止 per-incident 重编译)
-- [ ] 四个 wrapper `airquality/thermal/lighting/acoustic.py`:薄包装,只传 domain
-- [ ] 🔴 **subgraph 状态隔离**:`SpecialistState` 独立 schema,只 `subtask` 进、`final_diagnosis` 出;`retrieved_chunks`/`grade_history`/`rewrite_count` 不进父 checkpoint。验证父 checkpoint 不含 RAG 中间态。
-- [ ] `generate` 输出强制 `expected_outcome:{target_metric,target_value,target_time_min}`,Pydantic 卡(硬约束 #13)
-- [ ] `CriticAgent.validate`:claim 分类(数值/直引→本地;归纳/多事实→V4-Flash 升级)
+- [~] `rag/ingest.py`:chunk → BGE-M3 嵌入入 Qdrant — 管线 2026-05-27 实测通(mini-corpus 占位 `rag/sample_corpus.py`,12 chunks 入 `ieq_standards`)。**遗留**:contextual prefix(V4-Flash+KV cache,节点 #10)+ 真 PDF 读取待接(现 `embed_text`=text)
+- [x] `rag/retrieve.py`:BM25 + BGE-M3 双路召回 + bge-reranker-v2-m3 精排 — 2026-05-27 实测 GPU fp16 **51ms**(<500ms 预算),top1 命中正确条款,domain filter 生效。加载对齐 `vram_spike`(SentenceTransformer+safetensors / 手写 transformers reranker),非 douluo 的 CPU/CrossEncoder
+- [x] `mcp-rag-server`:FastMCP 包 `retrieve.py`,**绝不含 LLM**(硬约束 #9) — lazy singleton,MCP 协议实测返回结构化 chunks
+- [x] `agents/specialists/builder.py`:五节点 `decompose`(flash)/`retrieve`(无LLM,调 mcp-rag)/`grade`(flash 强制)/`rewrite`(LOCAL)/`generate`(flash 强制);domain 参数化;**module-load 时 compile 一次** — 2026-05-27 子图独立 + 接主图 `run_incident auto` 端到端实测跑通
+- [x] 四个 wrapper `airquality/thermal/lighting/acoustic.py`:薄包装,共享 `run_specialist(state,domain)`;airquality 已接主图,其余三个 Phase 5(有 actuator)接
+- [x] 🔴 **subgraph 状态隔离**:`SpecialistState` 独立 schema,只 `subtask` 进、`final_diagnosis` 出 — 2026-05-27 实证父 checkpoint 仅 11 个 `MainIncidentState` 字段,`retrieved_chunks`/`grade_reason`/`rewrite_count` 零泄漏(风险点#2 关闭)
+- [x] `generate` 输出强制 `expected_outcome:{target_metric,target_value,target_time_min}`,Pydantic `extra=forbid` 卡(硬约束 #13) — subtask_id 代码注入不信 LLM
+- [ ] `CriticAgent.validate`:claim 分类(数值/直引→本地;归纳/多事实→V4-Flash 升级)。**待定(状态隔离带来的冲突)**:critic 在父图看不到子图 `retrieved_chunks`,无法直接 trace-back。需二选一——A) `SpecialistResult` 加少量 `citations` 字段(generate 附引用证据,跨界但不带全部 chunks);B) critic 只验 diagnosis 内部一致性 + `expected_outcome` 合理性,不对照原文
 - [ ] `PlannerAgent` 升级:完整 Plan-and-Execute + ReWOO DAG;`#{subtask_id}.{field}` 占位符 + `hydrate_placeholders` 节点;无依赖子任务并行;rewrite 重试 ≤3
+- [ ] **demo 场景库 + 展示 runner**(现场展示 / 边做边学用):把 `simulator/co2.py::reset_room()` 的单一硬编码异常泛化成 `sensing/simulator/scenarios.py` 命名场景注册表(每场景 = 一组房间初始参数 + 预期触发的 domain);模拟器从单 CO2 扩到覆盖四 domain 的可注入读数(这本就是四 specialist 能跑通的前提,不是额外工作)。`ops/scripts/demo.py` 是 `run_incident.py` 的**展示导向包装**——共用 `build_main_graph`,绝不另起平行系统;用 `graph.stream(stream_mode="updates")` 逐节点打印「现在到哪个 agent → state 出现哪些字段变更 → 该节点 LLM 输出」,首要目的是把闭环讲清楚(给作者自学、也给现场观众看)。本阶段只做**突发跳变**场景(值一次性冲过阈值);渐变劣化、复发模式(依赖 Phase 3 记忆)留后。
 
-**验收:** 一个需多子任务 + RAG 的复杂 incident 跑通;grade 失败触发 rewrite;ReWOO 占位符正确 hydrate;父 checkpoint 不含 RAG 中间态。
+**验收:** 一个需多子任务 + RAG 的复杂 incident 跑通;grade 失败触发 rewrite;ReWOO 占位符正确 hydrate;父 checkpoint 不含 RAG 中间态;`demo.py` 能选一个突发跳变场景把闭环逐节点演示到关单。
+
+**📍 进度(2026-05-27 session):** 检索地基 + Agentic RAG 子图整条打通并实测——retrieve 51ms / mcp-rag 无 LLM / 五节点 / 🔴状态隔离关闭 / rewrite 反思循环(构造缺失信息 query 触发 grade 判不够→rewrite×3→generate 诚实"原文未提及")。依赖经 `uv add` 进 `pyproject.toml`(torch cu121 + sentence-transformers + transformers + qdrant-client + rank-bm25 + langchain-text-splitters)。
+**本次额外修复(已落代码)**:① builder 四节点 `extra_body={"thinking":{"type":"disabled"}}` —— v4 reasoning 偶发空 `content` 会让 generate 无端失败;② grade/decompose `temperature=0`、generate 0.2、rewrite 0.3 —— 否则 self-reflective 判断随机、rewrite 循环不可复现。修完延迟 ~11s→~3s/轮、判断可复现。
+**未完成,下次接(优先级序)**:1) Planner 完整 DAG(改主图 dispatch fan-out + `#{Sx.field}` 占位符 + `hydrate_placeholders` + 无依赖并行)——验收核心;2) CriticAgent(先定上面的 chunks 可见性方案 A/B);3) ingest contextual prefix(接 router #10,等真 PDF 才显效);4) grade prompt 可能偏严,真 corpus 后调。
+**未提交**:本 session 全部改动(rag/ · mcp_servers/rag/ · agents/specialists/ · 4 prompts · pyproject · plan · memory)尚未 commit。
 
 ---
 
@@ -159,6 +165,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 - `mcp-rag-server` 内**永不放 LLM**(硬约束 #9)
 - 永不引用泄漏的 Claude Code 源码(硬约束 #8)
 - `generate`/`grade`/Reflector **永不降级到本地**(硬约束 #11/#12)——A4.5 已证伪的失败模式
+- 每落地一个 domain specialist,在 `sensing/simulator/scenarios.py` 注册一个对应的**突发跳变** demo 场景并验证 `ops/scripts/demo.py` 能端到端关单——现场展示靠注入场景而非真实传感器造异常(传感器现场无法试验出 CO2 飙升 / 温度异常)
 
 ## 两个必须早验证的架构风险点
 

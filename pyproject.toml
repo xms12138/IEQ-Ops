@@ -20,6 +20,14 @@ dependencies = [
     "openai",                         # DeepSeek is OpenAI-API-compatible; this client talks to deepseek-v4-pro / -flash
     "langfuse<3",                       # observability; every agent invocation logs a trace
     "fastmcp>=3.3.1",
+    # ── Phase 2 retrieval stack (rag/ + mcp-rag-server). Heavy; lands with Phase 2.
+    #    Loaded on GPU per the 6 GB VRAM spike (BGE-M3 + reranker fp16, TECH_STACK).
+    "torch>=2.5,<2.7",           # cu121 wheel (see [tool.uv.sources]); same pin as the douluo spike venv
+    "sentence-transformers",     # BGE-M3 dense encode — loaded exactly as ops/scripts/vram_spike.py
+    "transformers",              # bge-reranker-v2-m3 via AutoModelForSequenceClassification (CrossEncoder/FlagReranker break in this venv)
+    "qdrant-client",             # dense vectors + payload filter by domain
+    "rank-bm25",                 # BM25 sparse path for dual recall
+    "langchain-text-splitters",  # RecursiveCharacterTextSplitter only — NOT langchain Chain/Agent (Hard Constraint #6/#7)
 ]
 
 [dependency-groups]
@@ -34,6 +42,17 @@ dev = [
 # (`uv run python -m core.xxx`), which puts the root on sys.path.
 [tool.uv]
 package = false
+
+# torch from the CUDA 12.1 wheel index (the RTX 3060 runs cu121; same pin as the
+# douluo spike venv). Without this uv resolves the CPU build, and retrieve blows
+# the < 500 ms budget by 7.5x (TECH_STACK VRAM spike, 2026-05-25).
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
 
 [tool.ruff]
 target-version = "py311"
