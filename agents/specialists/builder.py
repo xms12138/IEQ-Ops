@@ -217,7 +217,7 @@ def _make_rewrite(router: Router) -> Any:
 
 
 def _make_generate(router: Router) -> Any:
-    tmpl = load_prompt("specialist/generate", 2)
+    tmpl = load_prompt("specialist/generate", 3)
 
     def generate(state: SpecialistState) -> dict[str, Any]:
         st = state.subtask

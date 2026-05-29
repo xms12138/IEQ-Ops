@@ -83,7 +83,12 @@ _TIER_BY_DOMAIN: dict[str, AutonomyTier] = {
 }
 
 # ReWOO placeholder: #{subtask_id}.{field} e.g. #S1.diagnosis (CLAUDE.md naming).
-_REWOO_REF = re.compile(r"#(\w+)\.(\w+)")
+# Optional braces tolerate the #{S1}.diagnosis variant too: the planner LLM
+# sometimes copies the {subtask_id} meta-notation literally, and an unhydrated
+# dependency silently breaks ReWOO (the dependent specialist never sees the
+# upstream diagnosis). Lenient parsing here is cheaper + safer than relying on
+# prompt discipline to never drift.
+_REWOO_REF = re.compile(r"#\{?(\w+)\}?\.(\w+)")
 
 
 # ── DAG helpers ───────────────────────────────────────────────────────────────

@@ -18,14 +18,8 @@ mcp = FastMCP("mcp-sensor-server")
 def read_sensors() -> dict[str, float]:
     """Return the current reading of every sensor in the room.
 
-    Phase 1: CO2 comes from the live simulator; the others sit at nominal
-    in-band values so only the AirQuality line produces anomalies.
+    All readings come from the simulator's RoomState: CO2 evolves under the
+    mass-balance model, the other three domains hold whatever the active
+    scenario injected (in band by default). Phase 5 swaps the body for InfluxDB.
     """
-    room = get_room()
-    return {
-        "co2": room.read_co2(),
-        "temperature": 22.5,
-        "humidity": 45.0,
-        "lux": 420.0,
-        "noise_db": 41.0,
-    }
+    return get_room().read_all()
