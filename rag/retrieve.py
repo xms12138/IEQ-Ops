@@ -145,7 +145,9 @@ class RetrievalStack:
         # rebuilt in memory at startup.
         self._pos_by_id: dict[Any, int] = {}
         self._docs: list[dict[str, Any]] = self._load_docs()
-        self._bm25 = self._BM25([tokenize(d["embed_text"]) for d in self._docs]) if self._docs else None
+        self._bm25 = (
+            self._BM25([tokenize(d["embed_text"]) for d in self._docs]) if self._docs else None
+        )
 
     def _load_docs(self) -> list[dict[str, Any]]:
         """Scroll every point out of Qdrant once → ordered doc list. The list

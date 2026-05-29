@@ -17,7 +17,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 | 0 | 地基 + 风险归档 | 05-26 → 06-06 (~1.5w) | 开发 · ✅ 2026-05-25 关闭 |
 | 1 | 首条垂直闭环(模拟器 + 单 domain 桩) | 06-08 → 06-21 (2w) | 开发 · ✅ 2026-05-26 关闭(超前) |
 | 2 | Agentic RAG 做实 + Planner 完整 DAG | 06-22 → 07-12 (3w) | 开发 |
-| 3 | 三层记忆 + 周反思 | 07-13 → 07-31 (2.5w) | 开发 |
+| 3 | 三层记忆 + 周反思 | 07-13 → 07-31 (2.5w) | 开发 · ✅ 2026-05-29 关闭(超前) |
 | 4 | IEQ-Bench 评测体系 + baseline | 08-03 → 08-21 (3w) | 开发 |
 | 5 | 对话 + 前端 + 硬件落地 + 上线稳定化 | 08-24 → 09-11 (3w) | 开发 |
 | **冻结** | **代码冻结 ~09-12** | | |
@@ -94,14 +94,18 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **目标:** 系统开始"变聪明",记忆闭环成立(Week8>Week1 的机制基础)。
 
-- [ ] `memory/episodic.py`:Qdrant 存已结案 incident 轨迹 + `retrieve_similar()`——被 planner 节点 **inline 调用,不是 LangGraph 节点**
-- [ ] `memory/semantic.py`(building facts JSON+向量) · `memory/procedural.py`(SOP 模板+触发条件)
-- [ ] **memory 写入只走 `memory/` 模块函数 + 审计日志**,agent 不直接写(硬约束 #3)
-- [ ] `ReflectionGraph`:每周日 03:00 cron,读 episodic 写 semantic+procedural;Reflector **V3 强制**(硬约束 #12);**按 incident type 分块**(四类各一次 + 汇总)防 OOM 128K 窗口
-- [ ] procedural SOP 写 `pending_sops` 队列 → **人工签核才激活**(防幻觉 SOP 污染)
-- [ ] 把 Phase 1 的 `memory_retrieve` 占位换成真 episodic 召回
+- [x] `memory/episodic.py`(2026-05-29):Qdrant collection `ieq_incidents` 存结案轨迹 + `retrieve_similar()`——被 planner 节点 **inline 调用,非 LangGraph 节点**。**非对称 embedding**(作者拍板):相似度只锚定 anomaly 特征(召回时 planner 唯一可用信息),诊断/动作/结果进 payload 当"经验"带回;CPU BGE-M3(复用 rag loader、device=cpu,不抢 dev 期 GPU 的 RAG 4.0GB),lazy singleton;确定性 point_id(`uuid5(ns,incident_id)`)幂等覆盖
+- [x] `memory/semantic.py`(2026-05-29):Qdrant `ieq_semantic_facts`,fact 文本入向量(复用 episodic 的 CPU BGE-M3),payload 带 incident_type/evidence_ids/week;`save_facts`(reflection 写)+`retrieve_facts`(召回,实测模糊 query score 0.75 命中)。`memory/procedural.py`:Postgres `sops` 表,`SOPTemplate` 走 pending→active|rejected 生命周期;`queue_sop`(reflection 写 pending)+`approve_sop`/`reject_sop`(人工签核)+`active_sops`(未来触发匹配,Phase 5+)
+- [x] **memory 写入只走 `memory/` 模块函数 + 审计日志**,agent 不直接写(硬约束 #3)——三层全落实:verifier 调 `save_trajectory`,reflection `consolidate` 节点调 `save_facts`/`queue_sop`,均 structlog 审计(`episodic_saved`/`semantic_saved`/`sop_queued`/`sop_reviewed`);无 agent 内联 upsert
+- [x] `ReflectionGraph`(`core/reflection.py`,2026-05-29):`load_episodes→route_by_type(Send fan-out)→reflect→consolidate`;**按 incident type 分块**——每类一个 `Send` 分支(复用主图 dispatch 范式),各分支独立调 reflector 防 OOM 128K;Reflector **v4-pro 强制**(硬约束 #12,router `reflector.semantic`/`reflector.procedural`→REASONING);LLM 失败返 [] 不编造(defer+alert);独立图无 checkpointer(周批处理无须 resume)。cron 接线留 Phase 5,本阶段 `ops/scripts/run_reflection.py` 手动触发(默认近 7 天窗口,`--since`/`--week` 可调)
+- [x] procedural SOP 写 `pending_sops` 队列 → **人工签核才激活**(防幻觉 SOP 污染,硬约束 #8)——`queue_sop` 落 status=pending,`approve_sop` 才转 active;`run_reflection.py --pending` 列队列;实测 reflector 忠于轨迹(SOP 步骤=轨迹真实单动作 set_ventilation,未编造多余步骤)
+- [x] 把 Phase 1 的 `memory_retrieve` 占位换成真 episodic 召回(2026-05-29)——`PlannerAgent._retrieve_similar` 接真召回;prompt **bump v3** 加"如何利用相似案例"(resolved 当正面证据 / FAILED 当反面警告 / 低相似则忽略,案例 advisory 不凭空造子任务);state.similar_cases 只存 ids(审计),完整 EpisodicCase 只进 prompt 不进 checkpoint
 
-**验收:** 结案 incident 落 episodic;手动触发一次 reflection 产出 semantic facts + pending SOP;新 incident 能召回相似旧案并影响 planner。
+**验收:✅ 2026-05-29 三点全达成,Phase 3 关闭(早于目标窗口)** — ①结案 incident 落 episodic(库内 2 条 co2 met);②手动触发 reflection 产 `SF-2026-W22-001`(建筑特定 fact:"R1 CO2 达 1300ppm 时通风调高 450m³/h 可降至 800 以下",2 条证据,召回 score 0.75)+ `SOP-2026-001`(pending,触发 co2>1000,步骤忠于轨迹);③新 incident 召回相似旧案影响 planner(上个 session run2 plan 由 S1+S2 收敛为 S1)。
+
+**📍 进度(2026-05-29 session):** Phase 3 **分步推进——episodic 闭环先落地并端到端实测**(作者拍板:先打通"记忆影响规划"骨架,reflection 下个 session)。烟测:save→count→recall 召回自身 score=0.92、payload 完整往返。端到端 demo `co2_spike` 两跑实证:run1 冷启动(`episodic_recall_empty`,planner `recalled=[]`)→ 关单 → `episodic_saved`;run2 召回到 run1(`hit_ids=[I-…035351]`,planner `recalled=[…]`,plan 形状从 S1+S2 收敛为 S1),Qdrant `ieq_incidents` points=2。**验收 ①③ 达成;② reflection 待**。途中确认 critic 偶发正当否决(generate 在诊断里塞"15min 降 150-300 ppm"物理估计、与自定 target 800 的降幅矛盾)——非 Phase 3 回归,属已知 generate 非确定性,留 Phase 4 bench 量化。顺带修 `rag/retrieve.py` 一处既有 E501。
+**📍 进度(2026-05-29 session 续):** Phase 3 剩余全部落地,**Phase 3 关闭**。新增 `memory/semantic.py`(Qdrant facts)+`memory/procedural.py`(Postgres SOP 生命周期)+`agents/reflector.py`(semantic/procedural 双 prompt,REASONING tier,失败返 [] 不编造)+`ops/prompts/reflector/{semantic,procedural}/v1.md`+`core/reflection.py`(ReflectionGraph,按 type fan-out,复用 graph.py 的 wrap node plumbing 兼容 typed StateGraph)+`ops/scripts/run_reflection.py`(手动 runner + `--pending` 列签核队列)。episodic 加 `list_trajectories`(窗口全扫,区别于 `retrieve_similar` 的 top-k 召回)。端到端实测:2 条 co2 episodic → reflection 产 1 fact + 1 pending SOP,均建筑特定、2 条证据、忠于轨迹(SOP 未编造多余步骤);`retrieve_facts` 模糊 query score 0.75 命中。ruff + mypy --strict core/ clean。
+**下次接(优先级序):** 1) **Phase 4 IEQ-Bench 评测体系 + baseline**(200 任务 / 双裁判 / GPT-4o+ReAct 基线);2) 顺带验证 reflection 在多 type、多复发样本下的归纳质量(现仅 airquality 2 条,Phase 4 bench 量化);3) 遗留:ingest contextual prefix + 真 PDF(等真 corpus)。
 
 ---
 

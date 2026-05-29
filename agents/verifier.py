@@ -4,7 +4,9 @@ Runs 15 (simulated) minutes after the action. Reads the target metric again and
 checks it against the specialist's declared ExpectedOutcome (Hard Constraint #13)
 — a pure numeric comparison, which is exactly why this can run on the LOCAL tier
 (Qwen3-8B in prod; dev override → deepseek-v4-flash). Closes the incident on
-"met", marks it failed on "missed" (Phase 2 will route "missed" to replan).
+"met", marks it failed on "missed" (Phase 2 will route "missed" to replan), and on
+either terminal verdict writes the finished trajectory to Episodic Memory (Phase 3,
+Hard Constraint #3 — through memory/episodic.py, never an inline upsert here).
 
 A deterministic Python comparison backs the LLM up; Phase 1 handles the CO2
 upper-bound case only.
@@ -28,6 +30,7 @@ from core.state import (
 from mcp_servers.client import call_tool
 from mcp_servers.sensor.server import mcp as sensor_server
 from mcp_servers.ticket.server import mcp as ticket_server
+from memory.episodic import save_trajectory
 
 log = get_logger("verifier")
 
@@ -55,6 +58,12 @@ class VerifierAgent:
             delta=verdict.delta,
         )
         log.info("verifier_verdict", verdict=verdict.verdict, delta=verdict.delta, current=current)
+        # Trajectory → Episodic Memory. Hard Constraint #3: the write goes through the
+        # memory module (with audit log), not an inline upsert here. Both terminal
+        # verdicts are stored — a "missed" attempt teaches the planner what not to
+        # repeat. verdict/new_status are passed in because they are not yet in `state`
+        # (LangGraph merges this node's return only after the node finishes).
+        save_trajectory(state, verdict=verdict, status=new_status)
         return {"verifier_verdict": verdict, "status": new_status}
 
     def _check(self, expected: ExpectedOutcome, current: float) -> VerifierVerdict:

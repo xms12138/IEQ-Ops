@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import os
 import uuid
+from enum import Enum
 from typing import Any
 
 from langfuse.decorators import langfuse_context
@@ -49,6 +50,46 @@ def _truncate(s: Any, n: int) -> str:
 
 def _line(label: str, value: Any) -> None:
     print(f"    {label}: {value}")
+
+
+# ── full-state snapshot (--state) ───────────────────────────────────────────────
+# Accumulates the per-node update deltas into a running copy of the parent state
+# so each step can print all 11 MainIncidentState fields, not just what changed.
+# Reducer fields (subtask_results merge / failed_subtasks append) are folded the
+# same way LangGraph does, so the snapshot matches the real checkpoint.
+
+
+def _fmt_value(v: Any) -> str:
+    if v is None:
+        return "None"
+    if isinstance(v, Enum):
+        return str(v.value)
+    if hasattr(v, "model_dump"):
+        return _fmt_value(v.model_dump())
+    if isinstance(v, dict):
+        return "{" + ", ".join(f"{k}={_fmt_value(x)}" for k, x in v.items()) + "}"
+    if isinstance(v, list):
+        return "[" + ", ".join(_fmt_value(x) for x in v) + "]"
+    return str(v)
+
+
+def _accumulate(acc: dict[str, Any], delta: dict[str, Any]) -> None:
+    """Fold one node's update into the running state, honouring the reducers."""
+    for key, value in delta.items():
+        if key == "subtask_results":
+            acc[key] = {**(acc.get(key) or {}), **value}
+        elif key == "failed_subtasks":
+            acc[key] = list(acc.get(key) or []) + list(value)
+        else:
+            acc[key] = value
+
+
+def _render_full_state(node: str, acc: dict[str, Any], changed: list[str]) -> None:
+    print(f"  ┌─ state @ {node}   changed: {', '.join(changed) or '—'}")
+    for key in MainIncidentState.model_fields:
+        mark = "●" if key in changed else " "
+        print(f"  │{mark} {key:<16}= {_truncate(_fmt_value(acc.get(key)), 280)}")
+    print("  └─")
 
 
 def _render_plan(node: str, plan: Any) -> None:
@@ -83,7 +124,7 @@ def _render_field(node: str, key: str, value: Any) -> None:
     elif key == "current_plan":
         _render_plan(node, value)
     elif key == "similar_cases":
-        _line("similar_cases", value or "(无 — Phase 3 接 episodic 记忆)")
+        _line("similar_cases", value or "(无相似旧案 — 冷启动或 episodic 为空)")
     elif key == "subtask_results":
         for sid, r in value.items():
             eo = r.expected_outcome
@@ -123,8 +164,15 @@ def _render_node(node: str, delta: dict[str, Any]) -> None:
         _render_field(node, key, value)
 
 
-def _stream(graph: Any, graph_input: MainIncidentState | None, config: dict[str, Any]) -> bool:
-    """Stream updates, pretty-print every node. Return True if a Tier-3 interrupt fired."""
+def _stream(
+    graph: Any,
+    graph_input: MainIncidentState | None,
+    config: dict[str, Any],
+    show_state: bool = False,
+    acc: dict[str, Any] | None = None,
+) -> bool:
+    """Stream updates, pretty-print every node. Return True if a Tier-3 interrupt fired.
+    When show_state, fold each delta into `acc` and print the full state snapshot."""
     interrupted = False
     for chunk in graph.stream(graph_input, config, stream_mode="updates"):
         if "__interrupt__" in chunk:
@@ -137,6 +185,9 @@ def _stream(graph: Any, graph_input: MainIncidentState | None, config: dict[str,
             continue
         for node, delta in chunk.items():
             _render_node(node, delta)
+            if show_state and acc is not None and delta:
+                _accumulate(acc, delta)
+                _render_full_state(node, acc, list(delta))
     return interrupted
 
 
@@ -151,7 +202,7 @@ def _target_minutes(values: dict[str, Any]) -> int:
 # ── scenario driver ───────────────────────────────────────────────────────────
 
 
-def run_scenario(name: str) -> None:
+def run_scenario(name: str, show_state: bool = False) -> None:
     sc = arm(name)
     print(BAR)
     print(f"场景: {sc.name}  —  {sc.description}")
@@ -159,11 +210,13 @@ def run_scenario(name: str) -> None:
     print(f"  闭环: {'完整(执行→验证→关单)' if sc.closes_loop else 'Tier3 挂起(执行层 Phase 5)'}")
     print(BAR)
 
+    acc: dict[str, Any] | None = MainIncidentState().model_dump() if show_state else None
+
     with open_checkpointer() as cp:
         graph = build_main_graph().compile(checkpointer=cp, interrupt_before=INTERRUPT_BEFORE)
         config = {"configurable": {"thread_id": f"demo-{name}-{uuid.uuid4().hex[:8]}"}}
 
-        interrupted = _stream(graph, MainIncidentState(), config)
+        interrupted = _stream(graph, MainIncidentState(), config, show_state, acc)
         snap = graph.get_state(config)
 
         print("\n" + BAR)
@@ -178,7 +231,7 @@ def run_scenario(name: str) -> None:
             print(f"动作已执行,挂起在 verifier 前。模拟推进 {mins} 分钟 →")
             print(f"  {sc.expected_sensor} 现读数 ≈ {room.read_all().get(sc.expected_sensor)}")
             print(BAR)
-            _stream(graph, None, config)  # resume from checkpoint → verifier → END
+            _stream(graph, None, config, show_state, acc)  # resume → verifier → END
             final = graph.get_state(config)
             verdict = final.values.get("verifier_verdict")
             print("\n" + BAR)
@@ -207,6 +260,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="展示导向的闭环 demo runner(Phase 2)")
     parser.add_argument("scenario", nargs="?", help="场景名(省略或 --list 查看全部)")
     parser.add_argument("--list", action="store_true", help="列出所有可注入场景")
+    parser.add_argument(
+        "--state", action="store_true", help="每个节点后打印完整 MainIncidentState 快照(11 字段)"
+    )
     args = parser.parse_args()
 
     if args.list or not args.scenario:
@@ -219,7 +275,7 @@ def main() -> None:
         raise SystemExit(1)
 
     try:
-        run_scenario(args.scenario)
+        run_scenario(args.scenario, show_state=args.state)
     finally:
         langfuse_context.flush()  # 确保 trace 在进程退出前上传
 
