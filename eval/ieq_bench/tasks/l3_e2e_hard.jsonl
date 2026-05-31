@@ -1,0 +1,13 @@
+# L3 e2e — NEGATIVE CONTROL (run via --compare with the other e2e).
+# Intent was a self-contradiction trap: at a HIGH starting CO2, would a naive ReAct parrot the
+# corpus ops-note magnitude ("lowers CO2 by 150-300 ppm") into a body that contradicts its own
+# target and get rejected by the CriticAgent? MEASURED (2026-05-31, --n5): it does NOT — the
+# deepseek-v4-flash baseline sets a coherent target (e.g. 800/30min) and a grounded diagnosis with
+# no drop-magnitude restatement, so BOTH arms tie at 1.00 (DEVLOG P-011). These tasks are kept as
+# a negative control: they document that a STRONG base model handles simple single-anomaly
+# incidents naively, which is exactly WHY architecture discrimination has to come from memory
+# (the +1.00 ablation) and from misleading-retrieval / multi-step tasks that need the real PDF
+# corpus + actuator-coupled simulator (Phase 5) — not from harder single-shot framing on a strong
+# base. arm_value() arms the simulator to each task's exact value so the baseline reads what it's told.
+{"task_id":"L3-e2e-co2-hard1600","layer":"L3","capability":"e2e","domain":"airquality","input":{"anomaly":{"anomaly":true,"sensor":"co2","value":1600.0,"rule_violated":"co2 must stay <= 1000 ppm (ASHRAE 62.1 indoor air-quality guideline)"}},"expected":{"gold_values":["ASHRAE"]},"judge_type":"llm","notes":"负控:1600→≤1000,实测两臂 1.00 打平——v4-flash 不复述降幅、target 自洽。强基座裸跑简单任务的证据"}
+{"task_id":"L3-e2e-co2-hardwell","layer":"L3","capability":"e2e","domain":"airquality","input":{"anomaly":{"anomaly":true,"sensor":"co2","value":1500.0,"rule_violated":"co2 must stay <= 800 ppm (WELL v2 demand-controlled ventilation target)"}},"expected":{"gold_values":["WELL"]},"judge_type":"llm","notes":"负控:1500→≤800,实测两臂 1.00 打平。同上,严 target 也没诱发 baseline 自相矛盾"}

@@ -96,12 +96,12 @@
 - **教训**:即使 prompt 已要求「自洽」(v3 规则 4),非零温度下 LLM 仍会「多嘴」引入矛盾数字;约束要**具体到禁止某类输出**(禁止预测降幅),而非泛泛说「保持一致」。另:修 prompt 必须 before/after **同环境同 `--n`** 量化——高方差指标尤甚,4 天前的数字不可直接当对照。
 - **关联**:bench `L2-generate-co2-flaky` · `ops/prompts/specialist/generate/v4.md` 规则 6 · `agents/specialists/builder.py` 指向 v4
 
-### P-009 · Phase 2 · verifier 取 subtask_result 与 action 选取逻辑不一致  ⏳
+### P-009 · Phase 2 · verifier 取 subtask_result 与 action 选取逻辑不一致  ✅
 - **现象**:(潜在,尚未触发)`verifier.py:44` 用 `next(iter(state.subtask_results.values()))` 取**第一个**子任务结果,而 `action`/`autonomy_gate` 用 `state.primary_result()`(domain 匹配异常 sensor 的那个)。
 - **根因**:单子任务 co2 场景两者恰好相同,所以一直没暴露;但多子任务 DAG 且 dict 里第一个不是 primary 时,verifier 会去核验一个 advisory 子任务的指标。
-- **状态**:⏳ 本 session(2026-05-31)读代码时发现,待把 verifier 对齐为 `primary_result()`。
+- **解决**:✅(2026-05-31)verifier 改用 `state.primary_result()`,与 `action`/`autonomy_gate` 同源;None 时返回 FAILED(与那两个节点一致),不再 `next(iter())`。
 - **教训**:同一个「主结果」的选取逻辑应集中一处(`primary_result()`),各节点共用,避免各取各的埋下不一致。
-- **关联**:`agents/verifier.py:44` vs `core/state.py` `primary_result()`
+- **关联**:`agents/verifier.py` `run()` · `core/state.py` `primary_result()` · commit `ffeeca0`
 
 ### P-010 · Phase 4 · e2e 对照表机制跑通,但 +10pp 全靠 acoustic 单域撑(简单任务封顶)  ⏳
 - **现象**:`--compare` 四域 e2e(同一 anomaly,系统 `planner`+AgenticRAG vs 朴素 ReAct,同一 `CriticAgent`+groundedness hit 裁判),`--n5`:系统 **1.00** / baseline **0.90**,macro **+10.0pp** 恰好达标。但 co2/thermal/lighting 两臂**全 1.00**,gap **全部来自 acoustic**(baseline 0.60,5 次里 2 次被 critic 正当否决,非 no_finish)。
@@ -110,3 +110,17 @@
 - **状态**:⏳ 机制 + 公平性已坐实(这部分 ✅),但 ≥10pp 的**稳健**证据未立。下一步:扩 200 任务时**刻意塞判别性难任务**(多步规划 / 跨域副作用 / 复发 pattern 靠 memory / 误导性检索),而非堆更多简单单跳变;再换 GPT-4o 跨模型 baseline + GPT-4o+Claude 双裁判,去掉「自家 critic 当裁判」的主场嫌疑。
 - **教训**:baseline 对照的**任务难度**决定信号强弱——基座够强时,简单任务上架构会趋同;要证架构价值,benchmark 必须含「基座单跑会栽、而规划/记忆/RAG 能救」的任务。看到「达标 ✓」先问**靠什么撑**:单域撑起的 macro 均值不能当结论。
 - **关联**:`eval/runner.py` `Runner.compare`/`_print_compare_table` · `eval/ieq_bench/tasks/l3_e2e.jsonl` · `eval/reports/compare-20260531T150318Z.json` · EXECUTION_PLAN Phase 4「扩到 200」
+
+### P-011 · Phase 4 · 自相矛盾陷阱实测不咬:强基座裸跑简单任务 ✅(负面结论)
+- **现象**:为做 P-010 要的判别性难题,设计「自相矛盾陷阱」——高值 CO2(1600→≤1000、1500→≤800),赌 naive ReAct 会把 corpus ops-note 的「降 150-300ppm」复述进诊断正文、与自己的 target 矛盾、被 critic 正当否决。`--compare --only hard --n5` 实测:**两臂全 1.00 打平**,gap 0。
+- **根因**:deepseek-v4-flash 基座**太强**。单跑 baseline 看输出:诊断「set ventilation to high... reduce CO2」、target=800/30min、**不复述任何降幅**,完全自洽。陷阱要 baseline「傻到复述」,但强基座不会。之前 generate flaky 是 SYSTEM 侧 temp>0 的随机现象(30%),不是 baseline 在 temp=0.2 下的稳定失败模式。
+- **解决**:接受负面结论,不硬凑。两个 hard 任务**重标为 negative control**(证据:强基座能裸跑高值 CO2)。≥10pp-vs-ReAct 这条线**诚实判定:当前强基座 + 当前可做的简单任务上立不住**。作者拍板:误导性检索难题留 Phase 5 真 PDF corpus 落地后做(那时 ReAct 一次检索会中招、系统 grade/rewrite 能救),现在不勉强。
+- **教训**:**对照实验里别把 baseline 想得太弱**。强基座会让「诱导 baseline 犯错」类陷阱失效——能拉开差距的是**结构性缺陷**(无记忆 / 无多步规划 / 无检索反思),不是「框得更难一点」。判别力来自 baseline **结构上做不到**的事(记忆消融 P-012),而非基座**偶尔会犯**的错。负面结论也是结论,如实记。
+- **关联**:`eval/ieq_bench/tasks/l3_e2e_hard.jsonl`(negative control) · `eval/reports/compare-20260531T225509Z.json` · 引出 P-012 记忆消融
+
+### P-012 · Phase 4 · 记忆消融:v3 prompt 对 resolved 案例「碰而不用」 ✅
+- **现象**:新增 `--ablate-memory`(同 planner,召回 ON/OFF,看建筑特定知识有没有进 plan goal)。v3 首跑 4 任务只 1 个命中(macro lift **+0.25**):co2-damper(FAILED 案例)命中,thermal-solar / acoustic-fan / co2-allhands(resolved 案例)全没进 goal。
+- **根因**:planner v3 的「用相似案例」段——对 **FAILED** 案例说「prefer a different angle」,逼 planner 点名坏路径(damper 因此进 goal);但对 **resolved** 案例只说「let it inform how you frame」,太弱,planner 把它当信心背书、goal 仍泛泛(solar/fan/all-hands 都没带出来)。记忆里的建筑特定原因没流进规划。
+- **解决**:bump `planner/v4` 加规则「CARRY THE BUILDING'S SPECIFICS FORWARD」——召回案例(resolved 或 failed)若点出 anomaly 本身推不出的建筑特定原因/修法(卡死风阀 / 西晒 / 风机不平衡 / 固定时段超员),**必须在主 goal 里点名**;同时保留冷启动「(none)→ 别编造」护栏。**delta:macro lift +0.25→+0.75**(同环境)。第 4 个 acoustic 实际也带出了「HVAC supply fan for imbalance」,只是 gold 词 `rebalanc/unbalanc` 太死没匹配到「imbalance」→ 修 gold 为 `fan/imbalanc/...`(离线核对 off 不含 on 含,非造假)→ **+1.00**。L2-planner 种子 4/4 无冷启动回归。
+- **教训**:① 记忆的价值是**消融轴**(同系统 on/off),不是 system-vs-ReAct——ReAct 无 planner 无记忆,拿它比会把架构和记忆混在一起。② prompt 里「参考一下」(advisory)和「点名写进输出」(imperative)效果天差地别;要某信息出现在产物里,必须**祈使**,不能「软建议」。③ gold 词要忠于模型**实际措辞**的变体,先看输出再定 gold(但只在确认 off 不含时放宽,不对着答案造假)。
+- **关联**:`ops/prompts/planner/v4.md` · `agents/planner.py` `plan_with_recall` · `eval/runner.py` `ablate_memory` · `eval/ieq_bench/tasks/l3_recurrence.jsonl` · `eval/reports/ablate-memory-20260531T223417Z.json` · commit `207f2e6`
