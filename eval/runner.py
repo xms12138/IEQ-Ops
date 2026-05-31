@@ -63,6 +63,55 @@ REPORTS = Path(__file__).parent / "reports"
 Outcome = tuple[bool, float, dict[str, Any], int]
 
 
+# ops/llm_routing.md "Ablate condition" column, operationalised against the bench so the
+# escalation triggers are quantitatively CHECKABLE (Phase 4 acceptance). Each rule: which
+# bench capability measures the node's trigger metric, the routing threshold, and the
+# direction that trips an upgrade. Only the capability-critical nodes the bench can probe
+# are here (monitor/decompose have no probe yet).
+_ABLATE_RULES: list[dict[str, Any]] = [
+    {
+        "node": "specialist.grade",
+        "cap": "grade",
+        "metric": "error_rate",
+        "thresh": 0.15,
+        "cmp": ">",
+        "action": "escalate→V3",
+    },
+    {
+        "node": "specialist.generate",
+        "cap": "generate",
+        "metric": "hit_only",
+        "thresh": 0.85,
+        "cmp": "<",
+        "action": "escalate→V3",
+    },
+    {
+        "node": "specialist.rewrite",
+        "cap": "rewrite",
+        "metric": "gold_mrr_after",
+        "thresh": 0.70,
+        "cmp": "<",
+        "action": "escalate→flash",
+    },
+    {
+        "node": "critic.validate",
+        "cap": "critic",
+        "metric": "error_rate",
+        "thresh": 0.15,
+        "cmp": ">",
+        "action": "escalate→flash",
+    },
+    {
+        "node": "planner.plan",
+        "cap": "planner",
+        "metric": "dag_validity",
+        "thresh": 0.90,
+        "cmp": "<",
+        "action": "keep V3 (downgrade only if well above)",
+    },
+]
+
+
 class Runner:
     """Holds the shared agent instances (built once) and dispatches each task to
     the real system entry for its capability."""
@@ -402,6 +451,48 @@ class Runner:
             )
         return rows
 
+    # ── ablate-condition check: measure each node's routing trigger vs its threshold ──
+
+    def _measure_ablate(self, cap: str, metric: str, results: list[TaskResult]) -> float | None:
+        """Reduce a capability's bench results to its llm_routing.md trigger metric."""
+        if not results:
+            return None
+        if metric == "error_rate":  # grade / critic: wrong-verdict fraction
+            return round(1 - sum(r.passed for r in results) / len(results), 3)
+        if metric == "dag_validity":  # planner: fraction of structurally valid DAGs
+            return round(sum(r.passed for r in results) / len(results), 3)
+        if metric == "hit_only":  # generate: mean groundedness hit (A4.5's 14pp axis)
+            hits = [r.detail["mean_hit"] for r in results if "mean_hit" in r.detail]
+            return round(sum(hits) / len(hits), 3) if hits else None
+        if metric == "gold_mrr_after":  # rewrite: post-rewrite gold rank quality
+            ms = [r.detail["mrr_after"] for r in results if "mrr_after" in r.detail]
+            return round(sum(ms) / len(ms), 3) if ms else None
+        return None
+
+    def ablate_check(self) -> list[dict[str, Any]]:
+        """For each capability-critical node, run its bench probe, measure the
+        llm_routing.md trigger metric, and report whether the routing WOULD escalate.
+        This is the Phase 4 acceptance 'ablate 条件可量化触发' — not that anything is
+        failing now (all nodes sit above their floor), but that the trigger is measurable."""
+        out: list[dict[str, Any]] = []
+        for rule in _ABLATE_RULES:
+            tasks = load_tasks(capability=rule["cap"])  # type: ignore[arg-type]
+            results = [self.run_task(t) for t in tasks]
+            val = self._measure_ablate(rule["cap"], rule["metric"], results)
+            if val is None:
+                escalate: bool | None = None
+            elif rule["cmp"] == ">":
+                escalate = val > rule["thresh"]
+            else:
+                escalate = val < rule["thresh"]
+            out.append({**rule, "n_tasks": len(results), "value": val, "escalate": escalate})
+            print(
+                f"  {rule['node']:<20} {rule['metric']:<15} "
+                f"value={val} thresh={rule['cmp']}{rule['thresh']} "
+                f"escalate={escalate}"
+            )
+        return out
+
 
 def _print_table(summary: dict[str, Any]) -> None:
     print("\n" + "=" * 60)
@@ -462,6 +553,34 @@ def _print_ablation_table(rows: list[AblationRow]) -> float:
     return lift
 
 
+def _print_ablate_table(rows: list[dict[str, Any]]) -> None:
+    """Per-node: measured routing-trigger metric vs its llm_routing.md threshold, and
+    whether the escalation would fire. 'escalate=False' across the board = every node
+    sits above its capability floor, so the current routing is justified by numbers."""
+    print("\n" + "=" * 86)
+    print(
+        f"{'node':<20} {'trigger metric':<16} {'value':>7} "
+        f"{'threshold':>11} {'escalate?':>10}  action"
+    )
+    print("-" * 86)
+    for r in rows:
+        v = "n/a" if r["value"] is None else f"{r['value']:.3f}"
+        esc = "n/a" if r["escalate"] is None else ("YES" if r["escalate"] else "no")
+        print(
+            f"{r['node']:<20} {r['metric']:<16} {v:>7} "
+            f"{r['cmp'] + str(r['thresh']):>11} {esc:>10}  {r['action']}"
+        )
+    print("-" * 86)
+    fired = [r["node"] for r in rows if r["escalate"]]
+    verdict = (
+        f"⚠ would escalate: {', '.join(fired)}"
+        if fired
+        else "✓ all nodes above floor — routing justified"
+    )
+    print(f"ablate triggers (llm_routing.md): {verdict}")
+    print("=" * 86)
+
+
 def main() -> None:
     settings = get_settings()
     os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.langfuse_public_key)
@@ -488,7 +607,24 @@ def main() -> None:
         default=None,
         help="filter tasks to those whose task_id contains this substring (compare/ablate)",
     )
+    p.add_argument(
+        "--ablate-check",
+        action="store_true",
+        help="measure each node's llm_routing.md ablate trigger vs its threshold",
+    )
     args = p.parse_args()
+
+    if args.ablate_check:
+        print("\nIEQ-Bench ablate-condition check — routing triggers vs llm_routing.md thresholds")
+        runner = Runner(n_samples=args.n)
+        rows = runner.ablate_check()
+        _print_ablate_table(rows)
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        out = REPORTS / f"ablate-check-{stamp}.json"
+        out.write_text(json.dumps({"rows": rows}, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"\nreport → {out}")
+        return
 
     if args.ablate_memory:
         rec = load_tasks(capability="recurrence")
