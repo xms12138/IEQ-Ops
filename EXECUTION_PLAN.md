@@ -8,6 +8,31 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 ---
 
+## 当前进度快照（截至 2026-05-30）
+
+> 一眼全局视图(给作者自学 / 答辩 / 求职)。每个 session 收尾更新本节;细节见下方各 Phase。
+
+**已完成 Phase 0–3,全部早于目标窗口:**
+
+| Phase | 核心成果(一句话) |
+|---|---|
+| 0 地基 ✅ | uv 工程化 + Docker 三件套(Postgres/Qdrant/LangFuse) + 节点级 `router` + 6GB 显存策略实测定稿 |
+| 1 垂直闭环 ✅ | `MainIncidentGraph` 端到端跑通(monitor→…→verifier);🔴 15 分钟挂起**跨重启恢复**实测通过 |
+| 2 Agentic RAG + DAG ✅ | 检索栈(BM25+BGE-M3+reranker,51ms) + `SpecialistSubgraph` 五节点 + 🔴**子图状态隔离**;Planner 完整 ReWOO DAG + 波次 fan-out;CriticAgent(方案 B) |
+| 3 三层记忆 + 反思 ✅ | episodic/semantic/procedural 三层 + `ReflectionGraph` 按 type fan-out;周反思产 fact + pending SOP(人工签核);planner 召回 episodic 影响规划 |
+
+**两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
+
+**🔜 下一步 = Phase 4「IEQ-Bench 评测体系 + baseline」:** 200 任务基准 / GPT-4o+ReAct 对比线 / 双裁判。"无数字不立论"的关口,也是量化前几个 Phase 质量(reflection 归纳、路由 ablate、generate hit-rate)的地方。
+
+**剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
+
+**距离 6 条成功标准的硬缺口**(全在 Phase 4–6 产出):尚无 IEQ-Bench 分数、无 baseline 对比、无真实硬件/InfluxDB 数据、无 ≥4 周自主运行、无 Week8 vs Week1 证据、无公开 HF 数据集。**当前定性:功能骨架就绪(0–3),论文实证待采(4–6)。**
+
+**🔍 Phase 0–3 回归验证(2026-05-30 完整跑通):** 7 项全绿——静态质量门 / 31 模块编译 / 基础设施连通(PG 4 表 + Qdrant 3 collection) / 检索栈 38ms / 🔴 跨重启恢复 / 🔴 子图隔离零泄漏 / 三层记忆+反思。期间修复 2 处 ruff format 漂移 + demo 注释滞后。唯一实质问题:**generate 自洽 flaky**(co2_spike 实测 33% critic 正当否决,根因 generate 正文降幅预测与 `target_value` 矛盾),经决策留 Phase 4 作首个 bench 量化目标(见下)。
+
+---
+
 ## 时间线倒推
 
 两条成功标准是时间硬约束:"自主运行 ≥ 4 周" + "Week 8 vs Week 1 记忆固化改善"(后者需在线连跑 ≥ 8 周)。倒推出开发窗口(Phase 0–5)= 现在到 ~9 月中,约 14–15 周。
@@ -16,7 +41,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 |---|---|---|---|
 | 0 | 地基 + 风险归档 | 05-26 → 06-06 (~1.5w) | 开发 · ✅ 2026-05-25 关闭 |
 | 1 | 首条垂直闭环(模拟器 + 单 domain 桩) | 06-08 → 06-21 (2w) | 开发 · ✅ 2026-05-26 关闭(超前) |
-| 2 | Agentic RAG 做实 + Planner 完整 DAG | 06-22 → 07-12 (3w) | 开发 |
+| 2 | Agentic RAG 做实 + Planner 完整 DAG | 06-22 → 07-12 (3w) | 开发 · ✅ 2026-05-29 关闭(超前) |
 | 3 | 三层记忆 + 周反思 | 07-13 → 07-31 (2.5w) | 开发 · ✅ 2026-05-29 关闭(超前) |
 | 4 | IEQ-Bench 评测体系 + baseline | 08-03 → 08-21 (3w) | 开发 |
 | 5 | 对话 + 前端 + 硬件落地 + 上线稳定化 | 08-24 → 09-11 (3w) | 开发 |
@@ -113,14 +138,27 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **目标:** 无数字不立论(成功标准:≥75% 任务成功、领先 GPT-4o+ReAct ≥10pp)。
 
-- [ ] `eval/ieq_bench/`:200 任务,覆盖各 agent / 各 domain / 各节点能力
-- [ ] `eval/judge.py`:GPT-4o + Claude Sonnet 4.6 双裁判;prompt **强制** "only compare to expected, do not use prior knowledge"
-- [ ] `eval/runner.py`:并行执行
-- [ ] baseline:GPT-4o + ReAct,跑出对比基线
-- [ ] 把"每次代码改动跑 IEQ-Bench"变成习惯(改 prompt/改节点模型必附 delta)
-- [ ] 用这套验证 `llm_routing.md` 的 ablate 条件(generate hit-only<85% 升 V3、rewrite 命中<70% 升 Flash 等)
+- [~] **🎯 首个量化目标**:**generate 自洽 flaky** — bump `generate/v4` 加自洽约束(正文降幅预测不得与 target_value 抵触),用 delta 验证。**✅ baseline 已量化**(co2 否决率 62–67% vs thermal 对照 12.5%,根因正文复述 `ops-note` 降幅 150–300ppm 与 target 800 矛盾);**⏳ 待**: bump generate/v4 + 重跑测 delta
+- [~] `eval/ieq_bench/`:200 任务,覆盖各 agent / domain / 节点能力。**✅ schema/loader + 16 种子**(retrieval/generate/critic/planner 四 capability,复用现有资产派生);**⏳ 待**: grade/rewrite/e2e 入 runner(需暴露 builder 单节点) + 扩到 200
+- [~] `eval/judge.py`:双裁判;prompt **强制** "only compare to expected, do not use prior knowledge"。**✅ deepseek-flash 单裁判可跑**(模型名参数化,确定性任务暂不依赖它);**⏳ 待**: 换 GPT-4o + Claude Sonnet 4.6 双裁判(需 OpenAI/Anthropic key)
+- [~] `eval/runner.py`。**✅ 可跑**(`--seed`/`--cap`/`--n`,确定性指标 + 出 reports 表,incident_id=None 免污染 ticket);**⏳ 待**: 并行化(现顺序执行)
+- [~] baseline:对比基线。**✅ deepseek-flash ReAct 端到端跑通**(手写 thought/action/observation,不用 langchain;同模型对照隔离架构贡献;实测 read→retrieve×3→set_ventilation→finish 6 步);**⏳ 待**: 接 runner 出对照表 + 加 GPT-4o 跨模型 baseline
+- [ ] 把"每次代码改动跑 IEQ-Bench"变成习惯(改 prompt/改节点模型必附 delta)——**机制就绪**(runner),习惯待养成
+- [ ] 用这套验证 `llm_routing.md` 的 ablate 条件(generate hit-only<85% 升 V3、rewrite 命中<70% 升 Flash 等)——**未开始**
 
 **验收:** IEQ-Bench v1 一键跑;系统得分 + baseline 得分出表;ablate 条件可量化触发。
+
+**📍 进度(2026-05-30 session):** Phase 4 **启动里程碑落地,`--seed` 实测出首张表**。`eval/` bench 骨架可运行——`ieq_bench/{schema,loader,tasks}` + `metrics`(确定性指标) + `judge`(deepseek-flash,模型名参数化) + `runner` + `baselines/react`(朴素 ReAct,不用 langchain)。16 种子任务复用现有资产派生,覆盖 4 capability;裁判 + baseline 起步全用 deepseek-v4-flash(作者拍板,后期换 GPT-4o+Claude 双裁判 / GPT-4o baseline)。
+
+| layer · capability | n | pass | score |
+|---|---|---|---|
+| L1 retrieval | 5 | 1.00 | 1.00 |
+| L2 critic | 5 | 1.00 | 1.00 |
+| L2 generate | 2 | 0.50 | 0.67 |
+| L2 planner | 4 | 1.00 | 1.00 |
+| **ALL** | **16** | **0.94** | **0.96** |
+
+retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/badmetric 三类 bad 全否决,判别力坐实);**唯一弱点 = generate co2 自洽 flaky**——co2(goal 明示 target 800)critic 否决率 **62–67%**(n=8→5/8、n=6→4/6) vs thermal 对照 12.5%,mean_hit 0.875(纯自洽矛盾:正文复述 corpus `ops-note`"降150–300ppm"与 target 800 抵触,非 groundedness)。**这是 generate/v4 的对照基准。** 修 bug:bench critic 探针用 `incident_id=None` 免写 ticket。baseline react demo 实测端到端跑通(6 步:read_sensors→retrieve×3→set_ventilation→finish,产 typed expected_outcome)。**待续**:grade/rewrite/e2e 入 runner · baseline 接 runner 出对照表 · 扩到 200 · 换真双裁判(需 key) · bump generate/v4 测 delta。
 
 ---
 

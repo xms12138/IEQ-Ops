@@ -54,7 +54,7 @@ def _line(label: str, value: Any) -> None:
 
 # ── full-state snapshot (--state) ───────────────────────────────────────────────
 # Accumulates the per-node update deltas into a running copy of the parent state
-# so each step can print all 11 MainIncidentState fields, not just what changed.
+# so each step can print all MainIncidentState fields, not just what changed.
 # Reducer fields (subtask_results merge / failed_subtasks append) are folded the
 # same way LangGraph does, so the snapshot matches the real checkpoint.
 
@@ -261,7 +261,7 @@ def main() -> None:
     parser.add_argument("scenario", nargs="?", help="场景名(省略或 --list 查看全部)")
     parser.add_argument("--list", action="store_true", help="列出所有可注入场景")
     parser.add_argument(
-        "--state", action="store_true", help="每个节点后打印完整 MainIncidentState 快照(11 字段)"
+        "--state", action="store_true", help="每个节点后打印完整 MainIncidentState 快照(全部字段)"
     )
     args = parser.parse_args()
 

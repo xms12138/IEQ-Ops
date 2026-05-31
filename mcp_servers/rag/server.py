@@ -33,9 +33,7 @@ def _get_stack() -> RetrievalStack:
     global _stack
     if _stack is None:
         device = os.getenv("IEQ_RAG_DEVICE", "cuda")
-        _stack = RetrievalStack(
-            get_settings().qdrant_url, device=device, fp16=(device == "cuda")
-        )
+        _stack = RetrievalStack(get_settings().qdrant_url, device=device, fp16=(device == "cuda"))
     return _stack
 
 

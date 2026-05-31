@@ -206,9 +206,7 @@ class RetrievalStack:
             return []
         from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-        domain_filter = Filter(
-            must=[FieldCondition(key="domain", match=MatchValue(value=domain))]
-        )
+        domain_filter = Filter(must=[FieldCondition(key="domain", match=MatchValue(value=domain))])
 
         # ── dense (Qdrant, domain-filtered) → fusion positions ──
         q_vec = self._embed(query)
