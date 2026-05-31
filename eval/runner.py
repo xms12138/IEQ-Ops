@@ -483,10 +483,17 @@ def main() -> None:
         action="store_true",
         help="L3 recurrence: same planner, recall ON vs OFF, report the memory lift",
     )
+    p.add_argument(
+        "--only",
+        default=None,
+        help="filter tasks to those whose task_id contains this substring (compare/ablate)",
+    )
     args = p.parse_args()
 
     if args.ablate_memory:
         rec = load_tasks(capability="recurrence")
+        if args.only:
+            rec = [t for t in rec if args.only in t.task_id]
         if not rec:
             print("no recurrence tasks found under eval/ieq_bench/tasks/*.jsonl")
             return
@@ -510,6 +517,8 @@ def main() -> None:
 
     if args.compare:
         e2e = load_tasks(capability="e2e")
+        if args.only:
+            e2e = [t for t in e2e if args.only in t.task_id]
         if not e2e:
             print("no e2e tasks found under eval/ieq_bench/tasks/*.jsonl")
             return
