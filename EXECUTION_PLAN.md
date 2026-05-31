@@ -8,11 +8,11 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 ---
 
-## 当前进度快照（截至 2026-05-30）
+## 当前进度快照（截至 2026-05-31）
 
 > 一眼全局视图(给作者自学 / 答辩 / 求职)。每个 session 收尾更新本节;细节见下方各 Phase。
 
-**已完成 Phase 0–3,全部早于目标窗口:**
+**Phase 0–3 全部完成(早于目标窗口);Phase 4 进行中:**
 
 | Phase | 核心成果(一句话) |
 |---|---|
@@ -20,14 +20,15 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 | 1 垂直闭环 ✅ | `MainIncidentGraph` 端到端跑通(monitor→…→verifier);🔴 15 分钟挂起**跨重启恢复**实测通过 |
 | 2 Agentic RAG + DAG ✅ | 检索栈(BM25+BGE-M3+reranker,51ms) + `SpecialistSubgraph` 五节点 + 🔴**子图状态隔离**;Planner 完整 ReWOO DAG + 波次 fan-out;CriticAgent(方案 B) |
 | 3 三层记忆 + 反思 ✅ | episodic/semantic/procedural 三层 + `ReflectionGraph` 按 type fan-out;周反思产 fact + pending SOP(人工签核);planner 召回 episodic 影响规划 |
+| 4 评测 🔧 进行中 | IEQ-Bench 骨架(runner/judge/16 种子/ReAct baseline,首张表 ALL 0.94/0.96)+ **首个量化目标 generate/v4 达成**(co2 自洽率 0.70→1.00,同 `--n20` 环境 before/after delta,groundedness 未伤);`DEVLOG.md` 复盘机制建立(回填 P-001..P-009) |
 
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
-**🔜 下一步 = Phase 4「IEQ-Bench 评测体系 + baseline」:** 200 任务基准 / GPT-4o+ReAct 对比线 / 双裁判。"无数字不立论"的关口,也是量化前几个 Phase 质量(reflection 归纳、路由 ablate、generate hit-rate)的地方。
+**🔜 下一步(Phase 4 续,优先级序):** ① 顺手清 **P-009**(verifier 取 `next(iter())` 与 action 的 `primary_result()` 选取不一致,已定位,见 DEVLOG)② **baseline 接 runner 出对照表**(系统 vs ReAct,成功标准领先 ≥10pp;ReAct 已跑通,离这最近)③ grade/rewrite/e2e 入 runner(需暴露 builder 单节点)④ 扩到 200 任务 ⑤ 换真双裁判 GPT-4o+Claude(需 key)。"无数字不立论"的关口。
 
 **剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
 
-**距离 6 条成功标准的硬缺口**(全在 Phase 4–6 产出):尚无 IEQ-Bench 分数、无 baseline 对比、无真实硬件/InfluxDB 数据、无 ≥4 周自主运行、无 Week8 vs Week1 证据、无公开 HF 数据集。**当前定性:功能骨架就绪(0–3),论文实证待采(4–6)。**
+**距离 6 条成功标准的硬缺口**(全在 Phase 4–6 产出):尚无 IEQ-Bench 分数、无 baseline 对比、无真实硬件/InfluxDB 数据、无 ≥4 周自主运行、无 Week8 vs Week1 证据、无公开 HF 数据集。**当前定性:功能骨架就绪(0–3);论文实证开采——Phase 4 首个 delta(generate/v4)已落地,baseline 对照 / Week8 证据 / HF 数据集待续(4–6)。**
 
 **🔍 Phase 0–3 回归验证(2026-05-30 完整跑通):** 7 项全绿——静态质量门 / 31 模块编译 / 基础设施连通(PG 4 表 + Qdrant 3 collection) / 检索栈 38ms / 🔴 跨重启恢复 / 🔴 子图隔离零泄漏 / 三层记忆+反思。期间修复 2 处 ruff format 漂移 + demo 注释滞后。唯一实质问题:**generate 自洽 flaky**(co2_spike 实测 33% critic 正当否决,根因 generate 正文降幅预测与 `target_value` 矛盾),经决策留 Phase 4 作首个 bench 量化目标(见下)。
 
