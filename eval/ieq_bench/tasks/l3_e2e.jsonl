@@ -1,0 +1,8 @@
+# L3 e2e — same anomaly into BOTH arms (system: planner+AgenticRAG / baseline: naive ReAct),
+# judged identically by the real CriticAgent + groundedness hit. Run via:  --compare
+# (skipped by --seed: dual-arm comparison, not a single-shot capability probe). gold_values
+# gate only the reported hit column, not success; success = critic approval rate over N.
+{"task_id":"L3-e2e-co2","layer":"L3","capability":"e2e","domain":"airquality","input":{"anomaly":{"anomaly":true,"sensor":"co2","value":1300.0,"rule_violated":"co2 must stay <= 1000 ppm (ASHRAE 62.1 indoor air-quality guideline)"}},"expected":{"gold_values":["ASHRAE"]},"judge_type":"llm","notes":"主展示域:CO2 闭环最成熟,系统经 generate/v4 调过应近满分;baseline 易栽在 target 与正文降幅矛盾被 critic 否决"}
+{"task_id":"L3-e2e-thermal","layer":"L3","capability":"e2e","domain":"thermal","input":{"anomaly":{"anomaly":true,"sensor":"temperature","value":29.0,"rule_violated":"temperature must stay within 19-26 degC (thermal comfort band)"}},"expected":{},"judge_type":"llm","notes":"过热:critic 查 19-26 物理带 + 内部一致性"}
+{"task_id":"L3-e2e-lighting","layer":"L3","capability":"e2e","domain":"lighting","input":{"anomaly":{"anomaly":true,"sensor":"lux","value":120.0,"rule_violated":"illuminance must stay >= 300 lux for occupied workspace (EN 12464-1)"}},"expected":{"gold_values":["EN 12464"]},"judge_type":"llm","notes":"低照度:corpus 仅 en-12464-1,grounded 诊断应引用之"}
+{"task_id":"L3-e2e-acoustic","layer":"L3","capability":"e2e","domain":"acoustic","input":{"anomaly":{"anomaly":true,"sensor":"noise_db","value":68.0,"rule_violated":"noise must stay <= 55 dBA in a working space"}},"expected":{},"judge_type":"llm","notes":"高噪声:critic 查 noise_db 物理带 + 一致性"}

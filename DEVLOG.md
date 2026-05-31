@@ -32,6 +32,7 @@
 | 编号 | 状态 | 标题 |
 |---|---|---|
 | P-009 | ⏳ 待处理 | verifier 取 subtask_result 与 action 选取逻辑不一致 |
+| P-010 | ⏳ 待处理 | e2e 对照 +10pp 全靠 acoustic 单域(简单任务封顶,≥10pp 未稳) |
 
 > P-008 已于 2026-05-31 解决(generate/v4),见下。
 
@@ -101,3 +102,11 @@
 - **状态**:⏳ 本 session(2026-05-31)读代码时发现,待把 verifier 对齐为 `primary_result()`。
 - **教训**:同一个「主结果」的选取逻辑应集中一处(`primary_result()`),各节点共用,避免各取各的埋下不一致。
 - **关联**:`agents/verifier.py:44` vs `core/state.py` `primary_result()`
+
+### P-010 · Phase 4 · e2e 对照表机制跑通,但 +10pp 全靠 acoustic 单域撑(简单任务封顶)  ⏳
+- **现象**:`--compare` 四域 e2e(同一 anomaly,系统 `planner`+AgenticRAG vs 朴素 ReAct,同一 `CriticAgent`+groundedness hit 裁判),`--n5`:系统 **1.00** / baseline **0.90**,macro **+10.0pp** 恰好达标。但 co2/thermal/lighting 两臂**全 1.00**,gap **全部来自 acoustic**(baseline 0.60,5 次里 2 次被 critic 正当否决,非 no_finish)。
+- **根因**:单点**突发跳变**任务对 deepseek-v4-flash 基座太简单,朴素 ReAct 也能做对 → 架构优势(规划 DAG / Agentic RAG / 记忆)被任务难度**封顶**,对照趋同;acoustic `n=5` 的置信区间又宽(0.6±~0.44),这个 +10pp **易碎**,不是稳健结论。
+- **(顺带)公平性修正**:baseline 跑前用 `arm(scenario)` 把模拟器读数对齐到 anomaly——否则 baseline `read_sensors` 读到 in-band 默认值、与自己 prompt 里声明的异常矛盾,会被**不公平地坑**(系统臂直接吃 anomaly、不读传感器)。那是噪声,不是架构差,必须消除才能归因干净。
+- **状态**:⏳ 机制 + 公平性已坐实(这部分 ✅),但 ≥10pp 的**稳健**证据未立。下一步:扩 200 任务时**刻意塞判别性难任务**(多步规划 / 跨域副作用 / 复发 pattern 靠 memory / 误导性检索),而非堆更多简单单跳变;再换 GPT-4o 跨模型 baseline + GPT-4o+Claude 双裁判,去掉「自家 critic 当裁判」的主场嫌疑。
+- **教训**:baseline 对照的**任务难度**决定信号强弱——基座够强时,简单任务上架构会趋同;要证架构价值,benchmark 必须含「基座单跑会栽、而规划/记忆/RAG 能救」的任务。看到「达标 ✓」先问**靠什么撑**:单域撑起的 macro 均值不能当结论。
+- **关联**:`eval/runner.py` `Runner.compare`/`_print_compare_table` · `eval/ieq_bench/tasks/l3_e2e.jsonl` · `eval/reports/compare-20260531T150318Z.json` · EXECUTION_PLAN Phase 4「扩到 200」

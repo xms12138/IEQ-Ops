@@ -8,11 +8,17 @@ Capability → system entry (all reused, never mocked):
 
 `generate` runs N times and feeds each diagnosis to the REAL critic; 1 − approval
 rate is the generate-flaky number (≈33% measured by hand) that motivates the
-Phase 4 generate/v4 fix. grade / rewrite / e2e are wired in a later milestone
-(they need a builder single-node export or a checkpointer-driven scenario run).
+Phase 4 generate/v4 fix.
 
-  uv run python -m eval.runner --seed               # all seed tasks
+`--compare` is the L3 e2e contrast (the ≥10pp success criterion): the SAME anomaly
+into both arms — system (planner + Agentic RAG) vs the naive ReAct baseline — judged
+identically by the real CriticAgent (trust gate) + groundedness hit. Same base model
+and tools on both, so the gap is attributable to architecture. grade / rewrite stay
+for a later milestone (they need a builder single-node export).
+
+  uv run python -m eval.runner --seed               # all seed capability tasks
   uv run python -m eval.runner --cap generate --n 10
+  uv run python -m eval.runner --compare --n 5      # system vs baseline e2e table
 """
 
 from __future__ import annotations
@@ -24,12 +30,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from agents.critic import CriticAgent
 from agents.planner import PlannerAgent
 from agents.specialists.builder import SPECIALIST_SUBGRAPH
 from core.config import get_settings
 from core.logging import configure_logging, get_logger
 from core.state import (
+    SENSOR_DOMAIN,
     AnomalyRecord,
     ExpectedOutcome,
     MainIncidentState,
@@ -38,11 +47,13 @@ from core.state import (
     Subtask,
 )
 from eval import metrics
+from eval.baselines.react import ReActBaseline
 from eval.ieq_bench.loader import load_tasks
-from eval.ieq_bench.schema import BenchTask, TaskResult
+from eval.ieq_bench.schema import BenchTask, ComparisonRow, TaskResult
 from mcp_servers.client import call_tool
 from mcp_servers.rag.server import mcp as rag_server
 from rag.retrieve import FINAL_TOP_K
+from sensing.simulator.scenarios import SCENARIOS, arm
 
 log = get_logger("bench")
 REPORTS = Path(__file__).parent / "reports"
@@ -59,6 +70,7 @@ class Runner:
         self.n = n_samples
         self._planner: PlannerAgent | None = None
         self._critic: CriticAgent | None = None
+        self._baseline: ReActBaseline | None = None
 
     @property
     def planner(self) -> PlannerAgent:
@@ -72,7 +84,18 @@ class Runner:
             self._critic = CriticAgent()
         return self._critic
 
+    @property
+    def baseline(self) -> ReActBaseline:
+        if self._baseline is None:
+            self._baseline = ReActBaseline()
+        return self._baseline
+
     def run_task(self, task: BenchTask) -> TaskResult:
+        if task.capability == "e2e":
+            raise NotImplementedError(
+                f"e2e runs via --compare (dual-arm system vs baseline), not the "
+                f"single-shot capability path (task {task.task_id})"
+            )
         handler = {
             "retrieval": self._run_retrieval,
             "generate": self._run_generate,
@@ -171,6 +194,110 @@ class Runner:
         passed, score, detail = metrics.score_plan(plan, anomaly.sensor, task.expected)
         return passed, score, detail, 1
 
+    # ── L3 e2e: dual-arm comparison (system vs baseline, identical judges) ────────
+
+    def _system_diagnose(self, anomaly: AnomalyRecord) -> SpecialistResult | None:
+        """System arm: planner (Plan-and-Execute DAG + episodic recall) → the primary
+        subtask (the one routing to the anomaly's domain) → SpecialistSubgraph (Agentic
+        RAG). Starts from the same anomaly the baseline gets; this whole path is the
+        architecture being credited against the naive loop."""
+        state = MainIncidentState(incident_id=None, anomaly=anomaly)
+        plan = self.planner.run(state)["current_plan"]
+        domain = SENSOR_DOMAIN.get(anomaly.sensor)
+        primary = next((s for s in plan.subtasks if s.domain == domain), plan.subtasks[0])
+        out = SPECIALIST_SUBGRAPH.invoke({"subtask": primary})
+        return out["final_diagnosis"] if isinstance(out, dict) else out.final_diagnosis
+
+    def _baseline_diagnose(self, anomaly: AnomalyRecord) -> SpecialistResult | None:
+        """Baseline arm: naive ReAct loop on the same anomaly. Its `finish` already
+        emits the typed {diagnosis, expected_outcome}, so we wrap it into the same
+        SpecialistResult shape and judge both arms identically. A run that never
+        finishes, or returns a malformed outcome, is a baseline failure → None."""
+        res = self.baseline.run(anomaly.model_dump())
+        final = res.get("final")
+        if not final:
+            return None
+        try:
+            eo = ExpectedOutcome.model_validate(final["expected_outcome"])
+            return SpecialistResult(
+                subtask_id="S1", diagnosis=str(final["diagnosis"]), expected_outcome=eo
+            )
+        except (ValidationError, KeyError, TypeError):
+            return None
+
+    def _judge(
+        self, diag: SpecialistResult | None, anomaly: AnomalyRecord, expected: dict[str, Any]
+    ) -> tuple[bool, float | None]:
+        """The shared, arm-blind judge: (1) the REAL CriticAgent's approve/reject — the
+        system's own trust gate, i.e. "would this diagnosis be allowed to act?" — and
+        (2) the groundedness hit proxy when the task declares gold_values. Returns
+        (critic_approved, hit_or_None). A None diagnosis fails the gate."""
+        if diag is None:
+            return False, (0.0 if expected.get("gold_values") else None)
+        domain = SENSOR_DOMAIN.get(anomaly.sensor, anomaly.sensor)
+        subtask = Subtask(subtask_id=diag.subtask_id, domain=domain, goal="(bench)")
+        state = MainIncidentState(
+            incident_id=None,  # bench probe: critic must not write a ticket (see _run_critic)
+            anomaly=anomaly,
+            current_plan=Plan(subtasks=[subtask]),
+            subtask_results={diag.subtask_id: diag},
+        )
+        approved = bool(self.critic.run(state)["critic_verdict"].approved)
+        hit: float | None = None
+        if expected.get("gold_values"):
+            _, hit, _ = metrics.score_generate_hit(diag.diagnosis, expected)
+        return approved, hit
+
+    def compare(self, tasks: list[BenchTask], n: int) -> list[ComparisonRow]:
+        """For each e2e task, run BOTH arms N times on the same anomaly and score them
+        with the same judge. Before each task the simulator room is armed to match the
+        anomaly so the baseline's read_sensors agrees with its own prompt (the system
+        arm takes the anomaly directly, so without this only the baseline would face a
+        contradicting in-band reading — an unfair handicap, not an architecture gap)."""
+        by_sensor = {sc.expected_sensor: name for name, sc in SCENARIOS.items()}
+        rows: list[ComparisonRow] = []
+        for task in tasks:
+            anomaly = AnomalyRecord.model_validate(task.input["anomaly"])
+            scn = by_sensor.get(anomaly.sensor)
+            if scn:
+                arm(scn)
+            sys_ok: list[bool] = []
+            base_ok: list[bool] = []
+            sys_hits: list[float] = []
+            base_hits: list[float] = []
+            base_no_finish = 0
+            for _ in range(n):
+                s_appr, s_hit = self._judge(self._system_diagnose(anomaly), anomaly, task.expected)
+                sys_ok.append(s_appr)
+                if s_hit is not None:
+                    sys_hits.append(s_hit)
+                bdiag = self._baseline_diagnose(anomaly)
+                if bdiag is None:
+                    base_no_finish += 1
+                b_appr, b_hit = self._judge(bdiag, anomaly, task.expected)
+                base_ok.append(b_appr)
+                if b_hit is not None:
+                    base_hits.append(b_hit)
+            ssr = round(sum(sys_ok) / len(sys_ok), 3)
+            bsr = round(sum(base_ok) / len(base_ok), 3)
+            row = ComparisonRow(
+                task_id=task.task_id,
+                domain=task.domain,
+                n=n,
+                system_success=ssr,
+                baseline_success=bsr,
+                gap_pp=round((ssr - bsr) * 100, 1),
+                system_hit=round(sum(sys_hits) / len(sys_hits), 3) if sys_hits else None,
+                baseline_hit=round(sum(base_hits) / len(base_hits), 3) if base_hits else None,
+                baseline_no_finish=base_no_finish,
+            )
+            rows.append(row)
+            extra = f" base_no_finish={base_no_finish}" if base_no_finish else ""
+            print(
+                f"  {row.task_id:<18} sys={ssr:.2f} base={bsr:.2f} gap={row.gap_pp:+.1f}pp{extra}"
+            )
+        return rows
+
 
 def _print_table(summary: dict[str, Any]) -> None:
     print("\n" + "=" * 60)
@@ -187,6 +314,28 @@ def _print_table(summary: dict[str, Any]) -> None:
     print("=" * 60)
 
 
+def _print_compare_table(rows: list[ComparisonRow]) -> float:
+    """Side-by-side system vs baseline success (critic-approval rate) + the gap.
+    Returns the macro-mean gap (pp) the ≥10pp success criterion is checked against."""
+    print("\n" + "=" * 74)
+    print(f"{'task':<18} {'domain':<11} {'n':>3} {'system':>7} {'baseline':>9} {'gap':>9}")
+    print("-" * 74)
+    for r in rows:
+        print(
+            f"{r.task_id:<18} {r.domain:<11} {r.n:>3} {r.system_success:>7.2f} "
+            f"{r.baseline_success:>9.2f} {r.gap_pp:>+7.1f}pp"
+        )
+    print("-" * 74)
+    sys_mean = round(sum(r.system_success for r in rows) / len(rows), 3)
+    base_mean = round(sum(r.baseline_success for r in rows) / len(rows), 3)
+    gap = round((sys_mean - base_mean) * 100, 1)
+    print(f"{'MEAN':<18} {'':<11} {'':>3} {sys_mean:>7.2f} {base_mean:>9.2f} {gap:>+7.1f}pp")
+    print("=" * 74)
+    ok = "✓ meets ≥10pp" if gap >= 10 else "✗ <10pp — needs more discriminating / 200-task set"
+    print(f"success criterion (system − baseline ≥ 10pp): {ok}")
+    return gap
+
+
 def main() -> None:
     settings = get_settings()
     os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.langfuse_public_key)
@@ -198,7 +347,35 @@ def main() -> None:
     p.add_argument("--seed", action="store_true", help="run all seed tasks")
     p.add_argument("--cap", default=None, help="run only this capability")
     p.add_argument("--n", type=int, default=10, help="samples for stochastic caps (generate)")
+    p.add_argument(
+        "--compare",
+        action="store_true",
+        help="L3 e2e: run system vs ReAct baseline on the same anomalies and report the gap",
+    )
     args = p.parse_args()
+
+    if args.compare:
+        e2e = load_tasks(capability="e2e")
+        if not e2e:
+            print("no e2e tasks found under eval/ieq_bench/tasks/*.jsonl")
+            return
+        print(f"\nIEQ-Bench e2e — system vs ReAct baseline (n={args.n}/task, same model + tools)")
+        runner = Runner(n_samples=args.n)
+        rows = runner.compare(e2e, args.n)
+        gap = _print_compare_table(rows)
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        out = REPORTS / f"compare-{stamp}.json"
+        out.write_text(
+            json.dumps(
+                {"n_per_task": args.n, "macro_gap_pp": gap, "rows": [r.model_dump() for r in rows]},
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        print(f"\nreport → {out}")
+        return
 
     tasks = load_tasks(capability=args.cap)
     if not tasks:

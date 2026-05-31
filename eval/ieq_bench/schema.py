@@ -58,3 +58,23 @@ class TaskResult(BaseModel):
     score: float
     samples: int = 1
     detail: dict[str, Any] = Field(default_factory=dict)  # metric internals / judge reason
+
+
+class ComparisonRow(BaseModel):
+    """One L3 e2e task scored on BOTH arms — IEQ-Ops (planner + Agentic RAG) vs the
+    naive ReAct baseline — under identical judges (the real CriticAgent's trust gate
+    + groundedness hit). `*_success` is the critic-approval rate over N stochastic
+    samples; `gap_pp` is the headline (system − baseline) in percentage points that
+    the ≥10pp success criterion is measured against. Same base model + same tools on
+    both arms, so the gap is attributable to architecture, not the model."""
+
+    task_id: str
+    domain: str
+    n: int
+    system_success: float
+    baseline_success: float
+    gap_pp: float
+    system_hit: float | None = None  # mean groundedness hit; None when no gold_values
+    baseline_hit: float | None = None
+    baseline_no_finish: int = 0  # baseline samples that never produced a finish
+    detail: dict[str, Any] = Field(default_factory=dict)
