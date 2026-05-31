@@ -1,0 +1,9 @@
+# L2 rewrite — a weak query that ranks the gold chunk poorly, plus the grade reason for
+# what's missing; rewrite must craft a query that ranks the gold HIGHER. On the placeholder
+# corpus top_k(=5) >= every domain's pool so recall is trivially 1.0 — the signal is the gold
+# chunk's RANK (gold-MRR), reported before-vs-after over N samples (rewrite is temp>0, LOCAL).
+# Only domains with >=2 DISTINCT sources qualify (lighting is en-12464-1 only → rank can't move).
+# acoustic is also excluded: 2 distinct chunks → MRR ∈ {0.5,1.0}, no room for rewrite to lift,
+# so a "pass" would be vacuous. Verified before/after: co2 0.2→1.0, thermal 0.333→1.0 (real lift).
+{"task_id":"L2-rewrite-co2-ops","layer":"L2","capability":"rewrite","domain":"airquality","input":{"query":"office indoor air quality general guidance","goal":"How many minutes until increased ventilation lowers CO2, and what stabilisation window to allow before verifying.","grade_reason":"missing the ventilation response lag and the verification stabilisation window in minutes"},"expected":{"gold_sources":["ops-note"],"min_mrr":0.5},"judge_type":"deterministic","notes":"弱query偏向标准条款,gold是运维经验ops-note(实测弱query排第5,MRR0.2);rewrite应顶到前列"}
+{"task_id":"L2-rewrite-thermal-comfort","layer":"L2","capability":"rewrite","domain":"thermal","input":{"query":"building energy efficiency measures","goal":"Operative temperature comfort range in degC for sedentary office work.","grade_reason":"missing the operative temperature comfort range in degC for sedentary office work"},"expected":{"gold_sources":["ashrae-55"],"min_mrr":0.5},"judge_type":"deterministic","notes":"弱query跑偏到能效,gold是ASHRAE55舒适区(实测弱query排第3,MRR0.333);rewrite应召回到前列"}

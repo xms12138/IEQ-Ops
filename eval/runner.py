@@ -34,7 +34,7 @@ from pydantic import ValidationError
 
 from agents.critic import CriticAgent
 from agents.planner import PlannerAgent
-from agents.specialists.builder import SPECIALIST_SUBGRAPH
+from agents.specialists.builder import SPECIALIST_NODES, SPECIALIST_SUBGRAPH, SpecialistState
 from core.config import get_settings
 from core.logging import configure_logging, get_logger
 from core.state import (
@@ -99,6 +99,8 @@ class Runner:
         handler = {
             "retrieval": self._run_retrieval,
             "generate": self._run_generate,
+            "grade": self._run_grade,
+            "rewrite": self._run_rewrite,
             "critic": self._run_critic,
             "planner": self._run_planner,
         }.get(task.capability)
@@ -167,6 +169,59 @@ class Runner:
         if hit_scores:
             detail["mean_hit"] = round(sum(hit_scores) / len(hit_scores), 3)
         return rate >= min_c, rate, detail, self.n
+
+    def _run_grade(self, task: BenchTask) -> Outcome:
+        """Isolate grade's self-reflective sufficiency judgement: feed it a CONTROLLED
+        chunk set (from the task, not live retrieval) + the diagnostic goal, and check
+        its sufficient verdict against gold. Fixed chunks strip retrieval noise, so a
+        miss is grade's judgement — this is the probe that would catch a local-8B
+        "confidently says enough" regression (Hard Constraint #11)."""
+        subtask = Subtask(subtask_id="S1", domain=task.domain, goal=task.input["goal"])
+        chunks = [dict(c) for c in task.input.get("chunks", [])]
+        state = SpecialistState(subtask=subtask, retrieved_chunks=chunks)
+        out = SPECIALIST_NODES["grade"](state)
+        passed, score, detail = metrics.score_grade(bool(out["sufficient"]), task.expected)
+        detail["grade_reason"] = out.get("grade_reason", "")
+        return passed, score, detail, 1
+
+    def _run_rewrite(self, task: BenchTask) -> Outcome:
+        """rewrite is a short-string transform (LOCAL tier): turn a weak query that
+        ranks the gold chunk poorly into one that ranks it well. On the placeholder
+        corpus top_k(=5) ≥ every domain's pool, so mere recall is trivially 1.0 — the
+        discriminating signal is the gold chunk's RANK (MRR), which the reranker still
+        varies by query. Run N times (rewrite is temp>0), report mean gold-MRR after
+        rewrite vs the weak query's MRR before; pass if after ≥ min_mrr."""
+        domain = task.domain
+        goal = task.input.get("goal", task.input["query"])
+        subtask = Subtask(subtask_id="S1", domain=domain, goal=goal)
+        k = int(task.expected.get("k", FINAL_TOP_K))
+
+        def gold_mrr(query: str) -> float:
+            chunks = call_tool(rag_server, "retrieve", query=query, domain=domain, top_k=k)
+            _, rr, _ = metrics.score_retrieval([c.source for c in chunks], task.expected)
+            return rr
+
+        mrr_before = gold_mrr(task.input["query"])
+        after: list[float] = []
+        for _ in range(self.n):
+            state = SpecialistState(
+                subtask=subtask,
+                current_query=task.input["query"],
+                grade_reason=task.input.get("grade_reason", ""),
+                rewrite_count=0,
+            )
+            new_q = SPECIALIST_NODES["rewrite"](state)["current_query"]
+            after.append(gold_mrr(new_q))
+        mrr_after = round(sum(after) / len(after), 3) if after else 0.0
+        min_mrr = float(task.expected.get("min_mrr", 0.5))
+        detail = {
+            "mrr_before": round(mrr_before, 3),
+            "mrr_after": mrr_after,
+            "improved": mrr_after >= mrr_before,
+            "min_mrr": min_mrr,
+            "n": self.n,
+        }
+        return mrr_after >= min_mrr, mrr_after, detail, self.n
 
     def _run_critic(self, task: BenchTask) -> Outcome:
         anomaly = AnomalyRecord.model_validate(task.input["anomaly"])

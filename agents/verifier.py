@@ -41,7 +41,14 @@ class VerifierAgent:
         self._template = load_prompt("verifier")
 
     def run(self, state: MainIncidentState) -> dict[str, Any]:
-        result = next(iter(state.subtask_results.values()))
+        # P-009: verify the SAME subtask the action acted on — the primary (its domain
+        # matches the anomaly's sensor), not whatever happens to be first in the dict.
+        # With a multi-subtask DAG `next(iter(...))` could pick an advisory subtask and
+        # verify the wrong metric. autonomy_gate / action already key off primary_result().
+        result = state.primary_result()
+        if result is None:
+            log.error("verifier_no_primary")
+            return {"status": IncidentStatus.FAILED}
         expected = result.expected_outcome
         readings = call_tool(sensor_server, "read_sensors")
         current = float(readings[expected.target_metric])

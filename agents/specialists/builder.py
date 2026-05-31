@@ -272,14 +272,28 @@ def _route_after_grade(state: SpecialistState) -> str:
     return "rewrite"
 
 
-def build_specialist_subgraph(router: Router) -> Any:
-    """Compile the shared 5-node subgraph. Call ONCE at module load."""
+def build_specialist_nodes(router: Router) -> dict[str, Any]:
+    """The five node callables, built once over the shared Router. Exposed so
+    eval/runner.py can drive ONE node in isolation (grade / rewrite probes, and the
+    ablate checks in ops/llm_routing.md) without invoking the whole subgraph — these
+    are the SAME instances the compiled graph registers, never a parallel copy."""
+    return {
+        "decompose": _make_decompose(router),
+        "retrieve": _make_retrieve(),
+        "grade": _make_grade(router),
+        "rewrite": _make_rewrite(router),
+        "generate": _make_generate(router),
+    }
+
+
+def build_specialist_subgraph(router: Router, nodes: dict[str, Any] | None = None) -> Any:
+    """Compile the shared 5-node subgraph. Call ONCE at module load. `nodes` lets the
+    caller pass a pre-built set (so the compiled graph and the exported single-node
+    handles share one instance); defaults to a fresh set."""
+    nodes = nodes if nodes is not None else build_specialist_nodes(router)
     g = StateGraph(SpecialistState)
-    g.add_node("decompose", _make_decompose(router))
-    g.add_node("retrieve", _make_retrieve())
-    g.add_node("grade", _make_grade(router))
-    g.add_node("rewrite", _make_rewrite(router))
-    g.add_node("generate", _make_generate(router))
+    for name, fn in nodes.items():
+        g.add_node(name, fn)
 
     g.add_edge(START, "decompose")
     g.add_edge("decompose", "retrieve")
@@ -293,7 +307,11 @@ def build_specialist_subgraph(router: Router) -> Any:
 
 
 # Compiled once at import (CLAUDE.md: subgraphs compile at module-load, not per-incident).
-SPECIALIST_SUBGRAPH = build_specialist_subgraph(Router())
+# SPECIALIST_NODES holds the same node callables the graph registers — exported for the
+# bench's single-node probes (grade / rewrite).
+_ROUTER = Router()
+SPECIALIST_NODES = build_specialist_nodes(_ROUTER)
+SPECIALIST_SUBGRAPH = build_specialist_subgraph(_ROUTER, SPECIALIST_NODES)
 
 
 def run_specialist(payload: dict[str, Any], domain: str) -> dict[str, Any]:
