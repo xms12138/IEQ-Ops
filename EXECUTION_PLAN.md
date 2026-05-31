@@ -148,9 +148,9 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 - [~] baseline:对比基线。**✅ deepseek-flash ReAct 端到端跑通**(手写 thought/action/observation,不用 langchain;同模型对照隔离架构贡献);**✅ 接 runner 出对照表**(`--compare`:同 anomaly→两臂→同一 critic+hit 裁判,`arm_value()` 按任务真值对齐模拟器,任意值都公平)。**❗诚实结论(P-011):≥10pp-vs-ReAct 在当前强基座 + 简单任务上立不住**——自相矛盾陷阱实测两臂全 1.00(v4-flash 不会傻到复述降幅),原 +10pp 的 acoustic 单域优势是 n5 噪声(lighting/acoustic baseline 在 0.6/1.0 间乱跳)。**架构价值改由记忆消融 +1.00 承载**(上一行);≥10pp 的稳健证据**作者拍板留 Phase 5 真 corpus 的误导性检索难题** + GPT-4o 跨模型 baseline(需 key)
 - [ ] **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(去"自家 critic 当裁判"主场嫌疑)——**未开始,卡 OpenAI/Anthropic key**
 - [~] 把"每次代码改动跑 IEQ-Bench"变成习惯(改 prompt/改节点模型必附 delta)——**机制就绪**(runner);**首次完整走通**(2026-05-31 generate v3→v4:同 `--n20` before/after delta 才算数)
-- [ ] 用这套验证 `llm_routing.md` 的 ablate 条件(generate hit-only<85% 升 V3、rewrite 命中<70% 升 Flash 等)——**未开始**
+- [x] 用这套验证 `llm_routing.md` 的 ablate 条件——**✅ `--ablate-check`(2026-06-01)**:5 节点(grade/generate/rewrite/critic/planner)逐个量出触发指标比阈值,当前全在 floor 之上 `escalate=False`(routing 有数字支撑)。generate 的 hit_only<0.85 与 llm_routing #4e 字面吻合;grade/rewrite/critic/planner 用绝对阈值代理(字面条件要 V3-vs-flash 跨模型比,留有 key 时做)
 
-**验收:** IEQ-Bench v1 一键跑;系统得分 + baseline 得分出表;ablate 条件可量化触发。
+**验收:** IEQ-Bench v1 一键跑 ✅(`--seed`/`--compare`/`--ablate-memory`/`--ablate-check`);系统得分 + baseline 得分出表 ✅(e2e `--compare`,诚实结论 ≥10pp 当前未稳留 Phase5);ablate 条件可量化触发 ✅(`--ablate-check` 全节点在 floor 之上)。**剩(卡 key):** GPT-4o 跨模型 baseline + 双裁判;扩 200 等 Phase5 真 corpus。
 
 **📍 进度(2026-05-30 session):** Phase 4 **启动里程碑落地,`--seed` 实测出首张表**。`eval/` bench 骨架可运行——`ieq_bench/{schema,loader,tasks}` + `metrics`(确定性指标) + `judge`(deepseek-flash,模型名参数化) + `runner` + `baselines/react`(朴素 ReAct,不用 langchain)。16 种子任务复用现有资产派生,覆盖 4 capability;裁判 + baseline 起步全用 deepseek-v4-flash(作者拍板,后期换 GPT-4o+Claude 双裁判 / GPT-4o baseline)。
 
