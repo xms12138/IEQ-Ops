@@ -3,7 +3,7 @@
 > Autonomous Building Operations Multi-Agent System
 > CASA0022 dissertation · MSc Connected Environments · UCL CASA
 
-**Status: 🚧 early development — Phase 0 complete (infra up, `core/` typed); Phase 1 next.** Not yet runnable end-to-end.
+**Status: 🚧 active development — Phases 0–3 complete; Phase 4 (IEQ-Bench eval + baseline) in progress.** The end-to-end incident loop runs on the simulator (monitor → … → verifier, with 15-min suspend/restart); three-tier memory + weekly reflection are in place.
 
 A 24/7 self-running multi-agent system that monitors indoor environmental quality
 (IEQ) sensors, autonomously diagnoses anomalies, executes graded interventions,
@@ -26,7 +26,7 @@ Plus a shared **SpecialistSubgraph** — the 5-node Agentic RAG loop (`decompose
 LLM routing is **per-node**, not per-agent: local Qwen3-8B for threshold/JSON/numeric
 nodes, cloud DeepSeek for reasoning-heavy nodes. See [`ops/llm_routing.md`](ops/llm_routing.md).
 
-Full design: [`CLAUDE.md`](CLAUDE.md) · roadmap: [`EXECUTION_PLAN.md`](EXECUTION_PLAN.md)
+Full design: [`CLAUDE.md`](CLAUDE.md) · roadmap: [`EXECUTION_PLAN.md`](EXECUTION_PLAN.md) · problems & retrospective: [`DEVLOG.md`](DEVLOG.md)
 
 ## Hardware
 
@@ -50,7 +50,7 @@ uv run ruff check .
 uv run mypy            # strict, on core/
 ```
 
-> ✅ Steps 1–4 pass as of Phase 0 (2026-05-25). The end-to-end incident loop lands in Phase 1.
+> ✅ Steps 1–4 pass. The end-to-end incident loop runs on the simulator as of Phase 1; see [`EXECUTION_PLAN.md`](EXECUTION_PLAN.md) for the current phase.
 
 ## License
 

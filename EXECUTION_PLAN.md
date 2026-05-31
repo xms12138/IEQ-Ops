@@ -138,12 +138,12 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **目标:** 无数字不立论(成功标准:≥75% 任务成功、领先 GPT-4o+ReAct ≥10pp)。
 
-- [~] **🎯 首个量化目标**:**generate 自洽 flaky** — bump `generate/v4` 加自洽约束(正文降幅预测不得与 target_value 抵触),用 delta 验证。**✅ baseline 已量化**(co2 否决率 62–67% vs thermal 对照 12.5%,根因正文复述 `ops-note` 降幅 150–300ppm 与 target 800 矛盾);**⏳ 待**: bump generate/v4 + 重跑测 delta
+- [x] **🎯 首个量化目标**:**generate 自洽 flaky** — bump `generate/v4` 加规则 6(禁止正文预测降幅/到达值,只承诺单一 target_value;明确保留引用标准阈值权利护住 groundedness)。**✅ delta 已量化**(2026-05-31,`--n20` 同环境 before/after):co2 自洽率 **0.70→1.00**(否决率 30%→0%) · mean_hit 1.0→1.0(groundedness 未伤) · thermal 对照 0.95→1.0(未误伤);+0.30 远超 `--n20` 噪声 ±0.07。builder 指向 v4(05-30 手测的 62–67% 系高方差单点,故重测取同环境对照)
 - [~] `eval/ieq_bench/`:200 任务,覆盖各 agent / domain / 节点能力。**✅ schema/loader + 16 种子**(retrieval/generate/critic/planner 四 capability,复用现有资产派生);**⏳ 待**: grade/rewrite/e2e 入 runner(需暴露 builder 单节点) + 扩到 200
 - [~] `eval/judge.py`:双裁判;prompt **强制** "only compare to expected, do not use prior knowledge"。**✅ deepseek-flash 单裁判可跑**(模型名参数化,确定性任务暂不依赖它);**⏳ 待**: 换 GPT-4o + Claude Sonnet 4.6 双裁判(需 OpenAI/Anthropic key)
 - [~] `eval/runner.py`。**✅ 可跑**(`--seed`/`--cap`/`--n`,确定性指标 + 出 reports 表,incident_id=None 免污染 ticket);**⏳ 待**: 并行化(现顺序执行)
 - [~] baseline:对比基线。**✅ deepseek-flash ReAct 端到端跑通**(手写 thought/action/observation,不用 langchain;同模型对照隔离架构贡献;实测 read→retrieve×3→set_ventilation→finish 6 步);**⏳ 待**: 接 runner 出对照表 + 加 GPT-4o 跨模型 baseline
-- [ ] 把"每次代码改动跑 IEQ-Bench"变成习惯(改 prompt/改节点模型必附 delta)——**机制就绪**(runner),习惯待养成
+- [~] 把"每次代码改动跑 IEQ-Bench"变成习惯(改 prompt/改节点模型必附 delta)——**机制就绪**(runner);**首次完整走通**(2026-05-31 generate v3→v4:同 `--n20` before/after delta 才算数)
 - [ ] 用这套验证 `llm_routing.md` 的 ablate 条件(generate hit-only<85% 升 V3、rewrite 命中<70% 升 Flash 等)——**未开始**
 
 **验收:** IEQ-Bench v1 一键跑;系统得分 + baseline 得分出表;ablate 条件可量化触发。
@@ -159,6 +159,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 | **ALL** | **16** | **0.94** | **0.96** |
 
 retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/badmetric 三类 bad 全否决,判别力坐实);**唯一弱点 = generate co2 自洽 flaky**——co2(goal 明示 target 800)critic 否决率 **62–67%**(n=8→5/8、n=6→4/6) vs thermal 对照 12.5%,mean_hit 0.875(纯自洽矛盾:正文复述 corpus `ops-note`"降150–300ppm"与 target 800 抵触,非 groundedness)。**这是 generate/v4 的对照基准。** 修 bug:bench critic 探针用 `incident_id=None` 免写 ticket。baseline react demo 实测端到端跑通(6 步:read_sensors→retrieve×3→set_ventilation→finish,产 typed expected_outcome)。**待续**:grade/rewrite/e2e 入 runner · baseline 接 runner 出对照表 · 扩到 200 · 换真双裁判(需 key) · bump generate/v4 测 delta。
+
+**📍 进度(2026-05-31 session):** Phase 4 **首个量化目标 generate/v4 落地并 delta 验证**。先 `--n20` 同环境跑 v3 baseline:co2 自洽率 **0.70**(否决 30%)、`mean_hit=1.0` → 坐实纯自洽矛盾(非 groundedness);thermal 对照 0.95。bump `generate/v4` 加规则 6(禁止正文预测降幅/到达值,明确保留引用标准阈值权利),`builder.py` 指向 v4,同条件重跑:**co2 0.70→1.00(否决 30%→0%) · mean_hit 1.0→1.0(未伤 groundedness) · thermal→1.0(未误伤对照)**,+0.30 远超 `--n20` 噪声 ±0.07。3 个 v4 样本人工核验:诊断完整(cause+action+ASHRAE/WELL 引用)、矛盾的降幅预测消失、target 一致。首次完整走通"改 prompt = bump v+1 + 同环境 before/after delta"纪律。顺带新建 `DEVLOG.md`(问题/踩坑复盘,回填 P-001..P-009)+ README 接入并修正其滞后状态。**下次接**:grade/rewrite/e2e 入 runner · baseline 接 runner 出对照表 · 扩到 200。
 
 ---
 
