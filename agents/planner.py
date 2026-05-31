@@ -10,8 +10,10 @@ JSON/short-string nodes, planner keeps thinking enabled).
 Phase 3: memory retrieval is now LIVE. retrieve_similar() (memory/episodic.py) is
 called INLINE here, not as a LangGraph node (CLAUDE.md: "MemoryAgent is not a
 LangGraph node"). The recalled trajectories — each carrying its diagnosis, action,
-and met/missed verdict — are folded into the planner prompt (v3) as advisory
-context; only the incident ids go to state.similar_cases (audit/trace).
+and met/missed verdict — are folded into the planner prompt (v4) as advisory
+context; only the incident ids go to state.similar_cases (audit/trace). v4 adds an
+explicit "carry building-specific causes/fixes from a recalled case into the primary
+goal" rule (v3 only steered AWAY from FAILED cases) — the memory-ablation lift.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ def _format_cases(cases: list[EpisodicCase]) -> str:
 class PlannerAgent:
     def __init__(self, router: Router | None = None) -> None:
         self.router = router or Router()
-        self._template = load_prompt("planner", 3)
+        self._template = load_prompt("planner", 4)
 
     def run(self, state: MainIncidentState) -> dict[str, Any]:
         cases = self._retrieve_similar(state)  # inline episodic recall (CLAUDE.md)
@@ -64,6 +66,14 @@ class PlannerAgent:
             "similar_cases": [c.incident_id for c in cases],  # ids only → state
             "status": IncidentStatus.DIAGNOSING,
         }
+
+    def plan_with_recall(self, state: MainIncidentState, cases: list[EpisodicCase]) -> Plan:
+        """Plan from an EXPLICIT recall set instead of querying episodic memory. The
+        memory-ablation harness (eval/runner.py --ablate-memory) calls this with cases=[]
+        (memory OFF) vs a seeded case (memory ON) to isolate the memory→planning channel
+        deterministically (planner is temperature 0). Production planning uses run(),
+        which queries memory inline; this seam never touches Qdrant."""
+        return self._plan(state, cases)
 
     def _retrieve_similar(self, state: MainIncidentState) -> list[EpisodicCase]:
         a = state.anomaly

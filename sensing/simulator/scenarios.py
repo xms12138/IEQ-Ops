@@ -87,3 +87,29 @@ def arm(name: str) -> Scenario:
     sc = SCENARIOS[name]
     set_active_room(RoomState(**sc.room))
     return sc
+
+
+# sensor name (AnomalyRecord / read_all key) → the RoomState field that holds it.
+_SENSOR_FIELD: dict[str, str] = {
+    "co2": "co2_ppm",
+    "temperature": "temperature",
+    "humidity": "humidity",
+    "lux": "lux",
+    "noise_db": "noise_db",
+}
+
+
+def arm_value(sensor: str, value: float) -> None:
+    """Install a room with `sensor` reading exactly `value` (every other sensor at its
+    in-band default). Used by the e2e bench so a baseline's read_sensors agrees with the
+    anomaly it was handed — fair for ANY task value, not only the fixed named scenarios
+    (which arm one hard-coded reading each). read_co2() returns the stored value without
+    advancing physics, so the reading does not drift before the baseline reads it."""
+    field = _SENSOR_FIELD.get(sensor)
+    if field is None:
+        return
+    overrides: dict[str, float] = {field: value}
+    if sensor == "co2":
+        # hold CO2 high across the read (low outdoor air) — matches the co2_spike scenario.
+        overrides["ventilation_m3h"] = 60.0
+    set_active_room(RoomState(**overrides))

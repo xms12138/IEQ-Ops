@@ -24,7 +24,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Layer = Literal["L1", "L2", "L3"]
-Capability = Literal["retrieval", "grade", "rewrite", "generate", "critic", "planner", "e2e"]
+Capability = Literal[
+    "retrieval", "grade", "rewrite", "generate", "critic", "planner", "e2e", "recurrence"
+]
 JudgeType = Literal["deterministic", "llm"]
 
 
@@ -77,4 +79,24 @@ class ComparisonRow(BaseModel):
     system_hit: float | None = None  # mean groundedness hit; None when no gold_values
     baseline_hit: float | None = None
     baseline_no_finish: int = 0  # baseline samples that never produced a finish
+    detail: dict[str, Any] = Field(default_factory=dict)
+
+
+class AblationRow(BaseModel):
+    """One memory-ablation task: the SAME planner on the SAME anomaly, run with the
+    recalled past case (memory ON) vs an empty recall (memory OFF). `recall_on`/`recall_off`
+    is whether the building-specific knowledge that ONLY memory carries (a cause/fix NOT in
+    the standards corpus) surfaced in the plan's subtask goals; `lift` = on − off is the
+    memory contribution this task isolates — the OFFLINE analogue of the dissertation's
+    Week 8 vs Week 1 claim. Planner runs at temperature 0, so each side is deterministic
+    (no sampling). This is an ablation, not a system-vs-ReAct contrast: ReAct has neither a
+    planner nor memory, so it cannot isolate the memory channel."""
+
+    task_id: str
+    domain: str
+    recall_off: bool
+    recall_on: bool
+    lift: int  # int(recall_on) − int(recall_off); +1 = memory added the knowledge
+    shape_off: list[str]  # subtask ids without recall
+    shape_on: list[str]  # subtask ids with recall
     detail: dict[str, Any] = Field(default_factory=dict)

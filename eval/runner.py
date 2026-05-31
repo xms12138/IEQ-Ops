@@ -49,11 +49,12 @@ from core.state import (
 from eval import metrics
 from eval.baselines.react import ReActBaseline
 from eval.ieq_bench.loader import load_tasks
-from eval.ieq_bench.schema import BenchTask, ComparisonRow, TaskResult
+from eval.ieq_bench.schema import AblationRow, BenchTask, ComparisonRow, TaskResult
 from mcp_servers.client import call_tool
 from mcp_servers.rag.server import mcp as rag_server
+from memory.episodic import EpisodicCase
 from rag.retrieve import FINAL_TOP_K
-from sensing.simulator.scenarios import SCENARIOS, arm
+from sensing.simulator.scenarios import arm_value
 
 log = get_logger("bench")
 REPORTS = Path(__file__).parent / "reports"
@@ -91,10 +92,11 @@ class Runner:
         return self._baseline
 
     def run_task(self, task: BenchTask) -> TaskResult:
-        if task.capability == "e2e":
+        if task.capability in ("e2e", "recurrence"):
             raise NotImplementedError(
-                f"e2e runs via --compare (dual-arm system vs baseline), not the "
-                f"single-shot capability path (task {task.task_id})"
+                f"{task.capability} runs via a dedicated mode (e2e → --compare, "
+                f"recurrence → --ablate-memory), not the single-shot capability path "
+                f"(task {task.task_id})"
             )
         handler = {
             "retrieval": self._run_retrieval,
@@ -305,17 +307,16 @@ class Runner:
 
     def compare(self, tasks: list[BenchTask], n: int) -> list[ComparisonRow]:
         """For each e2e task, run BOTH arms N times on the same anomaly and score them
-        with the same judge. Before each task the simulator room is armed to match the
-        anomaly so the baseline's read_sensors agrees with its own prompt (the system
+        with the same judge. Before each task the simulator room is armed to the anomaly's
+        exact value so the baseline's read_sensors agrees with its own prompt (the system
         arm takes the anomaly directly, so without this only the baseline would face a
-        contradicting in-band reading — an unfair handicap, not an architecture gap)."""
-        by_sensor = {sc.expected_sensor: name for name, sc in SCENARIOS.items()}
+        contradicting in-band reading — an unfair handicap, not an architecture gap).
+        arm_value handles ANY task value, so high-value discriminating tasks (e.g. the
+        self-contradiction traps) stay fair without a hand-built named scenario each."""
         rows: list[ComparisonRow] = []
         for task in tasks:
             anomaly = AnomalyRecord.model_validate(task.input["anomaly"])
-            scn = by_sensor.get(anomaly.sensor)
-            if scn:
-                arm(scn)
+            arm_value(anomaly.sensor, anomaly.value)
             sys_ok: list[bool] = []
             base_ok: list[bool] = []
             sys_hits: list[float] = []
@@ -350,6 +351,54 @@ class Runner:
             extra = f" base_no_finish={base_no_finish}" if base_no_finish else ""
             print(
                 f"  {row.task_id:<18} sys={ssr:.2f} base={bsr:.2f} gap={row.gap_pp:+.1f}pp{extra}"
+            )
+        return rows
+
+    # ── memory ablation: same planner, recall ON vs OFF (Week 8 vs Week 1, offline) ──
+
+    @staticmethod
+    def _plan_text(plan: Plan) -> str:
+        """All subtask goals joined + lowercased — where a recalled building-specific
+        cause/fix would surface if memory informed the plan."""
+        return " ".join(s.goal for s in plan.subtasks).lower()
+
+    def ablate_memory(self, tasks: list[BenchTask]) -> list[AblationRow]:
+        """For each recurrence task, run the SAME planner on the SAME anomaly twice: once
+        with an empty recall (memory OFF) and once with the task's seeded past case (memory
+        ON). The case carries building-specific knowledge (a cause/fix NOT in the standards
+        corpus); the metric is whether that knowledge surfaces in the plan's subtask goals.
+        lift = recall_on − recall_off is the isolated memory contribution. Planner is
+        temperature 0, so each side is deterministic — no sampling needed."""
+        rows: list[AblationRow] = []
+        for task in tasks:
+            anomaly = AnomalyRecord.model_validate(task.input["anomaly"])
+            case = EpisodicCase.model_validate(task.input["episode"])
+            state = MainIncidentState(incident_id=None, anomaly=anomaly)
+            plan_off = self.planner.plan_with_recall(state, [])
+            plan_on = self.planner.plan_with_recall(state, [case])
+            gold = [g.lower() for g in task.expected.get("recall_gold", [])]
+            text_off, text_on = self._plan_text(plan_off), self._plan_text(plan_on)
+            hit_off = any(g in text_off for g in gold)
+            hit_on = any(g in text_on for g in gold)
+            row = AblationRow(
+                task_id=task.task_id,
+                domain=task.domain,
+                recall_off=hit_off,
+                recall_on=hit_on,
+                lift=int(hit_on) - int(hit_off),
+                shape_off=[s.subtask_id for s in plan_off.subtasks],
+                shape_on=[s.subtask_id for s in plan_on.subtasks],
+                detail={
+                    "gold": gold,
+                    "verdict": case.verdict,
+                    "goals_off": [s.goal for s in plan_off.subtasks],
+                    "goals_on": [s.goal for s in plan_on.subtasks],
+                },
+            )
+            rows.append(row)
+            print(
+                f"  {row.task_id:<22} off={'Y' if hit_off else 'n'} "
+                f"on={'Y' if hit_on else 'n'} lift={row.lift:+d}"
             )
         return rows
 
@@ -391,6 +440,28 @@ def _print_compare_table(rows: list[ComparisonRow]) -> float:
     return gap
 
 
+def _print_ablation_table(rows: list[AblationRow]) -> float:
+    """Memory OFF vs ON: did the building-specific recalled knowledge surface in the plan?
+    Returns the macro recall-lift (fraction of tasks where memory added knowledge the
+    no-memory planner missed) — the offline Week 8 vs Week 1 signal."""
+    print("\n" + "=" * 64)
+    print(f"{'task':<24} {'domain':<11} {'mem off':>8} {'mem on':>7} {'lift':>6}")
+    print("-" * 64)
+    for r in rows:
+        print(
+            f"{r.task_id:<24} {r.domain:<11} {'hit' if r.recall_off else '—':>8} "
+            f"{'hit' if r.recall_on else '—':>7} {r.lift:>+6d}"
+        )
+    print("-" * 64)
+    lift = round(sum(r.lift for r in rows) / len(rows), 3) if rows else 0.0
+    on_rate = round(sum(r.recall_on for r in rows) / len(rows), 3) if rows else 0.0
+    off_rate = round(sum(r.recall_off for r in rows) / len(rows), 3) if rows else 0.0
+    print(f"{'MACRO':<24} {'':<11} {off_rate:>8.2f} {on_rate:>7.2f} {lift:>+6.2f}")
+    print("=" * 64)
+    print(f"memory recall-lift (on − off, building-specific knowledge in plan): {lift:+.2f}")
+    return lift
+
+
 def main() -> None:
     settings = get_settings()
     os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.langfuse_public_key)
@@ -407,7 +478,35 @@ def main() -> None:
         action="store_true",
         help="L3 e2e: run system vs ReAct baseline on the same anomalies and report the gap",
     )
+    p.add_argument(
+        "--ablate-memory",
+        action="store_true",
+        help="L3 recurrence: same planner, recall ON vs OFF, report the memory lift",
+    )
     args = p.parse_args()
+
+    if args.ablate_memory:
+        rec = load_tasks(capability="recurrence")
+        if not rec:
+            print("no recurrence tasks found under eval/ieq_bench/tasks/*.jsonl")
+            return
+        print(f"\nIEQ-Bench memory ablation — planner recall OFF vs ON ({len(rec)} tasks)")
+        runner = Runner()
+        rows = runner.ablate_memory(rec)
+        lift = _print_ablation_table(rows)
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        out = REPORTS / f"ablate-memory-{stamp}.json"
+        out.write_text(
+            json.dumps(
+                {"macro_lift": lift, "rows": [r.model_dump() for r in rows]},
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        print(f"\nreport → {out}")
+        return
 
     if args.compare:
         e2e = load_tasks(capability="e2e")
