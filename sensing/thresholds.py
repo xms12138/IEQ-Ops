@@ -22,8 +22,8 @@ THRESHOLDS: dict[str, Threshold] = {
     "co2": {
         "unit": "ppm",
         "low": None,
-        "high": 1000.0,
-        "rule": "co2 must stay <= 1000 ppm (ASHRAE 62.1 indoor air-quality guideline)",
+        "high": 900.0,
+        "rule": "co2 must stay <= 900 ppm (WELL v2 Air, 1-point threshold)",
     },
     "temperature": {
         "unit": "degC",

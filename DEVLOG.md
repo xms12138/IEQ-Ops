@@ -33,8 +33,9 @@
 |---|---|---|
 | P-009 | ⏳ 待处理 | verifier 取 subtask_result 与 action 选取逻辑不一致 |
 | P-010 | ⏳ 待处理 | e2e 对照 +10pp 全靠 acoustic 单域(简单任务封顶,≥10pp 未稳) |
+| P-014 | 🔧 部分延后 | airquality bench 种子按 WELL 重写(retrieval 0.60 + generate/e2e 硬编码 1000/ASHRAE),并入扩 200 |
 
-> P-008 已于 2026-05-31 解决(generate/v4),见下。
+> P-008 已于 2026-05-31 解决(generate/v4),P-014 阈值对齐已 ✅、bench 种子重写并入扩 200,均见下。
 
 ---
 
@@ -131,3 +132,10 @@
 - **解决**:① `ingest.py` 加 `--source auto|corpus|sample` + `corpus_manifest.json`(文件→source/domain/页范围映射,零原文可提交;PDF 本体 gitignored);**渐进替换**——真 PDF 覆盖的 domain 换真、未覆盖留 sample filler(airquality 换真,thermal/lighting/acoustic 仍占位,不破其他域);② `collapse_repeated_lines` 折叠相邻相同行(111021 chars → 257 chunks,正文行不受影响);③ contextual prefix 接 node #10——`make_contextual_prefix` 走 router `ingest.contextual_prefix`→FAST(**deepseek-v4-flash**),prompt 版本化 `ops/prompts/ingest/contextual_prefix/v1.md`(不内联,硬约束 #4),document 前置复用 DeepSeek prefix cache,并发 8,**只改 `embed_text` 不改返回 `text`**(prefix 是检索信号非答案材料,沿用 retrieve.py 既有设计),失败退化为 ""(249/250 applied,1 失败不中断)。**delta**:retrieve airquality 召回从占位假值改为命中真实条款——CO2 query → `500/750 ppm above outdoor`、PM2.5 query → `MERV 14/16` 过滤表(reranker score 4.35),`.text` 纯净无 prefix 泄漏。
 - **教训**:① **占位 corpus 不只是"内容少",是"知识被直觉污染了"**——真 corpus 一进来,下游 generate 引用的标准、critic 的物理范围、甚至 monitor 阈值都可能要跟着改(CO2 1000ppm 这种"常识"未必是标准原文)。这才是 Phase 4 ≥10pp 判别性的真正素材:真 corpus 的多来源/条件阈值会让 naive 一次检索中招、grade/rewrite 能救(P-011 留的那条线)。② build-time LLM(contextual prefix)放 ingest、不放 `mcp-rag-server`(硬约束 #9 约束的是 server,不是 ingest);失败必须退化不中断。③ PDF 抽取的工程噪声(双层重复)要在入库前清,否则污染 BM25/embedding。
 - **关联**:`rag/ingest.py`(`collapse_repeated_lines`/`make_contextual_prefix`/`apply_contextual_prefixes`/`select_passages`)· `rag/corpus_manifest.json` · `ops/prompts/ingest/contextual_prefix/v1.md` · `core/router.py` node #10 `ingest.contextual_prefix`→FAST · `rag/corpus/well-v2.pdf`(gitignored)· `ops/llm_routing.md` #10
+
+### P-014 · Phase 4 · 真 corpus 切换回归:monitor 的「ASHRAE 62.1 = 1000ppm」是占位误区,对齐到 WELL 900  ✅(bench 种子重写延后)
+- **现象**:P-013 真 WELL corpus 接入后做切换回归(demo `co2_spike` + airquality bench 复跑),三层打架浮出:① **检索 bench 1.00→0.60**——`L1-retrieval-co2-001`(gold=`ashrae-62.1`)、`L1-retrieval-co2-ops-001`(gold=`ops-note`)的 gold source 是旧 `sample_corpus` 的标签,真库里只有 `well-v2`,必失败;② **monitor**:`thresholds.py` co2 rule 写「co2 ≤1000 ppm(ASHRAE 62.1 indoor air-quality guideline)」;③ **generate**:诊断输出「exceeds the ASHRAE 62.1 limit of 1000 ppm (excerpt 1) … reduce below 800 ppm」。
+- **根因**:① **「ASHRAE 62.1 设 1000ppm CO2 上限」本身是广为流传的误区**——62.1 设的是通风换气率,从不设 1000ppm 的 CO2 健康上限(那条常被误传);真 WELL v2 A01 是 **900 ppm(1-point)/ 750 ppm(2-point)**,且「1000」在 WELL corpus 里 **0 命中**(`ASHRAE 62.1` 在 corpus 里 7 命中,但全是「通风率按 62.1 Natural Ventilation Procedure」,不是 CO2 上限)。② 这条假归因从 `thresholds.py` 的 `rule_violated` 串一路传进 monitor anomaly → planner subtask goal → generate,generate 就把 goal 的「1000/ASHRAE」当成「excerpt 1」引用了(典型的**占位知识污染下游归因**,正是 P-013 教训①预言的)。③ bench 种子在占位时代写死了 `ashrae-62.1`/`ops-note` 这些只存在于 `sample_corpus` 的 source 标签。
+- **解决**:**作者拍板「触发线降到 900 对齐 WELL」**——`thresholds.py` co2 `high 1000→900`、rule 改「co2 must stay <= 900 ppm (WELL v2 Air, 1-point threshold)」,去掉 ASHRAE 假归因。连带排查:`RoomState.co2_ppm` 默认 650(动态稳态 ~720)均 < 900,非 co2 场景不会被新阈值误触发;critic 物理范围 `(350,5000)` 含 900/750 无打架;co2_spike(1300)仍触发、降到 679 仍 met。**复跑 demo `co2_spike` 实证对齐**:anomaly→「≤900 ppm」、goal→「against the 900 ppm threshold」、诊断→「exceeds the **900 ppm threshold specified in the WELL v2 standard (excerpt 1)**」(excerpt 1 真含该阈值,误归因消失)、`target_value=900`、critic approve、verifier met/closed。**bench 种子重写延后**(作者拍板 Q2):两个失效检索种子(`ashrae-62.1`/`ops-note` gold)+ generate/e2e 种子里硬编码的「1000/ASHRAE」anomaly 输入,统一留到 Phase 4「扩 200 判别性难题」时按 WELL 重写;短期 retrieval bench 维持 0.60(known-fail,非检索能力退化,是 gold 标签陈旧)。
+- **教训**:① **占位阈值可能编码了一个「常识级误区」**——不是"数值不精确",是"把一个流行的错误说法当标准写进了系统真值";真 corpus 是照妖镜,一进来就把它逼出来。这比 P-013 的「知识形状不同」更尖锐:连 monitor 这种最底层的确定性规则都得跟着真标准改。② 切 corpus 不是只换 `rag/`,是一条 **corpus→monitor 阈值→planner goal→generate 引用→bench gold** 的纵向回归链,每一环都可能埋着旧占位的影子,必须端到端复跑才照得全。③ bench 的 gold 也是"占位资产",换真 corpus 后 gold 同样要迁移,否则绿表变红还以为是能力退化。
+- **关联**:`sensing/thresholds.py` co2 行 · `agents/monitor.py`(`rules_text` 渲染)· `eval/ieq_bench/tasks/l1_retrieval.jsonl`(co2-001/co2-ops-001 known-fail,待 200 重写)· `eval/ieq_bench/tasks/{l2_generate,l3_e2e}.jsonl`(硬编码 1000/ASHRAE,待 200 重写)· P-013（真 corpus 接入,本条是其下游回归）
