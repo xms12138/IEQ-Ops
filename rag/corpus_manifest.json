@@ -1,0 +1,12 @@
+{
+  "_comment": "Maps the gitignored copyright PDFs in rag/corpus/ to (source, domain). This file carries NO standard text, only filenames + tags, so it is safe to commit. Put the PDFs in rag/corpus/ yourself; ingest reads them with --source corpus|auto. 'pages' is an optional 1-based inclusive range ('30-70', '12', '1-5,10-12'); null/omitted means the whole document.",
+  "documents": [
+    {
+      "file": "well-v2.pdf",
+      "source": "well-v2",
+      "domain": "airquality",
+      "pages": "11-46",
+      "note": "WELL Building Standard v2 (Q4 2020, 366pp) — Air concept only: p11 overview + A01-A14 features (A01 Air Quality, A03 Ventilation Design, A05 Enhanced Air Quality, A12 Air Filtration...). p47 onward is Water etc., excluded so non-Air concepts aren't mis-tagged airquality. Official IWBI CDN (a.storyblok.com)."
+    }
+  ]
+}

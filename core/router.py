@@ -53,6 +53,7 @@ NODE_TIERS: dict[str, ModelTier] = {
     "reflector.semantic": ModelTier.REASONING,  # #7   mandatory pro — never local (#12)
     "reflector.procedural": ModelTier.REASONING,  # #8   mandatory pro — never local (#12)
     "conversational.respond": ModelTier.FAST,  # #9  escalate to pro on low conf (call site)
+    "ingest.contextual_prefix": ModelTier.FAST,  # #10 build-time contextual retrieval (v4-flash)
 }
 
 # Transient cloud failures that justify trying the fallback model.

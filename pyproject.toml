@@ -28,6 +28,7 @@ dependencies = [
     "qdrant-client",             # dense vectors + payload filter by domain
     "rank-bm25",                 # BM25 sparse path for dual recall
     "langchain-text-splitters",  # RecursiveCharacterTextSplitter only — NOT langchain Chain/Agent (Hard Constraint #6/#7)
+    "pypdf>=6.13.0",
 ]
 
 [dependency-groups]
