@@ -8,7 +8,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 ---
 
-## 当前进度快照（截至 2026-05-31）
+## 当前进度快照（截至 2026-06-06）
 
 > 一眼全局视图(给作者自学 / 答辩 / 求职)。每个 session 收尾更新本节;细节见下方各 Phase。
 
@@ -21,6 +21,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 | 2 Agentic RAG + DAG ✅ | 检索栈(BM25+BGE-M3+reranker,51ms) + `SpecialistSubgraph` 五节点 + 🔴**子图状态隔离**;Planner 完整 ReWOO DAG + 波次 fan-out;CriticAgent(方案 B) |
 | 3 三层记忆 + 反思 ✅ | episodic/semantic/procedural 三层 + `ReflectionGraph` 按 type fan-out;周反思产 fact + pending SOP(人工签核);planner 召回 episodic 影响规划 |
 | 4 评测 🔧 进行中 | IEQ-Bench 24 种子(六 capability 全绿)+ **generate/v4**(co2 自洽 0.70→1.00)+ **记忆消融 `--ablate-memory` +1.00**(planner/v4,Week8>Week1 离线铁证)+ e2e `--compare`(`arm_value` 公平)。**❗诚实结论:≥10pp-vs-ReAct 当前立不住**(强基座下简单任务两臂趋同、自相矛盾陷阱不咬 P-011,原 +10pp 系 n5 噪声);稳健 ≥10pp 留 Phase5 真 corpus 误导检索难题 + GPT-4o baseline;`DEVLOG` P-001..P-012 |
+
+> **🆕 2026-06-06:** airquality **真 PDF corpus 接入**(WELL v2 Air)+ **contextual prefix**(节点 #10,**v4-flash**)+ PDF 去重(commit `84feee0`)。真 corpus 改变 airquality 知识形状:召回命中 WELL 真实阈值(CO2 500/750ppm above outdoor、PM2.5 MERV),取代占位 1000ppm——为 Phase 4「扩 200 判别性难题 / ≥10pp」提供原料。详见 Phase 4 进度 + DEVLOG P-013。
 
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
@@ -94,7 +96,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **目标:** `SpecialistSubgraph` 五节点真跑(四 domain 共享一个编译实例);Planner 出真正的 ReWOO DAG。
 
-- [~] `rag/ingest.py`:chunk → BGE-M3 嵌入入 Qdrant — 管线 2026-05-27 实测通(mini-corpus 占位 `rag/sample_corpus.py`,12 chunks 入 `ieq_standards`)。**遗留**:contextual prefix(V4-Flash+KV cache,节点 #10)+ 真 PDF 读取待接(现 `embed_text`=text)
+- [~] `rag/ingest.py`:chunk → BGE-M3 嵌入入 Qdrant。**2026-06-06 真 PDF + contextual prefix 落地**:`--source auto|corpus|sample` + `corpus_manifest.json`(**渐进替换**:真 PDF 覆盖的 domain 换真、未覆盖留 sample filler);pypdf 读 WELL v2 Air(p11-46,`collapse_repeated_lines` 去 PDF 双层重复,257 chunks);contextual prefix 接节点 #10(`make_contextual_prefix`→FAST=**v4-flash**,prompt 版本化 `ops/prompts/ingest/contextual_prefix/v1.md`,只改 `embed_text`、返回 `text` 纯净,249/250)。召回命中真实阈值(CO2 500/750ppm above outdoor、PM2.5 MERV),不再占位 1000ppm(详见 DEVLOG P-013)。**仍 `[~]`**:只 airquality + 免费(WELL);thermal/lighting/acoustic 仍 sample,付费标准(ASHRAE/EN)卡获取
 - [x] `rag/retrieve.py`:BM25 + BGE-M3 双路召回 + bge-reranker-v2-m3 精排 — 2026-05-27 实测 GPU fp16 **51ms**(<500ms 预算),top1 命中正确条款,domain filter 生效。加载对齐 `vram_spike`(SentenceTransformer+safetensors / 手写 transformers reranker),非 douluo 的 CPU/CrossEncoder
 - [x] `mcp-rag-server`:FastMCP 包 `retrieve.py`,**绝不含 LLM**(硬约束 #9) — lazy singleton,MCP 协议实测返回结构化 chunks
 - [x] `agents/specialists/builder.py`:五节点 `decompose`(flash)/`retrieve`(无LLM,调 mcp-rag)/`grade`(flash 强制)/`rewrite`(LOCAL)/`generate`(flash 强制);domain 参数化;**module-load 时 compile 一次** — 2026-05-27 子图独立 + 接主图 `run_incident auto` 端到端实测跑通
@@ -169,6 +171,8 @@ retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/
 **📍 进度(2026-05-31 session 续):** **baseline 接 runner 出对照表落地**——`eval/runner.py` 加 `--compare`(L3 e2e 双臂):同一 anomaly 进**系统臂**(`planner`+episodic 召回 → 主子任务 → `SpecialistSubgraph` Agentic RAG)和 **baseline 臂**(朴素 ReAct),两边诊断喂**同一个真 `CriticAgent`**(信任门 = 能否执行)+ groundedness hit,success = critic 批准率;新增 `eval/ieq_bench/tasks/l3_e2e.jsonl`(4 域)+ `ComparisonRow` schema + `_print_compare_table`(打 gap、判 ≥10pp)。**公平性**:跑 baseline 前 `arm(scenario)` 对齐模拟器读数到 anomaly(否则 baseline `read_sensors` 读 in-band 默认值与 prompt 矛盾,不公平地坑它)。`--n5` 实测:**系统 1.00 / ReAct 0.90,macro +10.0pp**。**但这个达标易碎**——gap 全来自 acoustic(baseline 0.60,2/5 被 critic 正当否决),co2/thermal/lighting 两臂全 1.00:单跳变任务对 v4-flash 基座太简单,架构对照趋同。**方法论结论(P-010)**:扩 200 必须刻意塞「基座单跑会栽、规划/记忆/RAG 能救」的判别性难任务,否则 ≥10pp 立不住。ruff + mypy clean。**下次接**:grade/rewrite 入 runner · 扩判别性难任务到 200 · GPT-4o 跨模型 baseline + 双裁判。
 
 **📍 进度(2026-06-01 session):** Phase 4 推进一大步,且**坐实一个诚实的负面结论**。落地:① **P-009** verifier 对齐 `primary_result()`(commit `ffeeca0`);② **grade/rewrite 入 runner**——暴露 `SPECIALIST_NODES` 单节点,grade 6 任务(控制 chunk 集判 sufficiency,正反平衡 6/6)、rewrite 2 任务(gold-MRR before/after,co2 0.2→1.0、thermal 0.333→1.0;acoustic/lighting 池太小排名不动故排除),seed 表升至 **24 任务全绿**;③ **记忆消融 `--ablate-memory`**(commit `207f2e6`)——作者拍板:记忆是**消融轴**(同 planner 召回 ON/OFF)而非 system-vs-ReAct(ReAct 无 planner 无记忆,混在一起证不干净)。用 planner `temperature=0` 确定性接缝 `plan_with_recall`,看建筑特定知识有没有进 plan goal;**bump planner/v4**(resolved 案例也点名建筑特定原因/修法,v3 只规避 FAILED)→ macro recall-lift **+0.25→+0.75→+1.00**(gold 词修正,见 P-012),4/4 有记忆进规划、0/4 无记忆,**这是 bench 里架构价值的最强判别证据**;④ **自相矛盾陷阱**(作者从难题菜单选的)**实测失败**(P-011):高值 CO2 两臂全 1.00——v4-flash 基座太强不会复述降幅,陷阱不咬。两个 hard 任务**重标为 negative control**。**诚实定调:≥10pp-vs-ReAct 在当前强基座 + 简单任务上立不住**,作者拍板留 Phase 5 真 corpus 的误导性检索难题再冲;架构价值现由记忆消融 +1.00 承载。新增 `arm_value()`(按任务真值公平对齐)+ runner `--only` 过滤。回填 DEVLOG P-011/P-012、P-009 转 ✅。**下次接**:GPT-4o 跨模型 baseline + 双裁判(卡 key) · llm_routing ablate 条件验证 · runner 并行化 · 扩 200(等 Phase5 真 corpus)。
+
+**📍 进度(2026-06-06 session):** **真 PDF corpus 接入(airquality)+ contextual prefix(节点 #10)+ PDF 去重**(commit `84feee0`,详见上方 Phase 2 ingest 行 + DEVLOG P-013)。**完成**:① pypdf 读真 WELL v2 Air(IWBI 官方 CDN,366p 取 p11-46)替换占位,`--source auto|corpus|sample` + `corpus_manifest.json` **渐进替换**(真覆盖域换真、未覆盖留 sample filler,不破 thermal/lighting/acoustic);② `collapse_repeated_lines` 去 PDF 双层重复(257 chunks);③ contextual prefix 走 router→**deepseek-v4-flash**(作者指定),prompt 版本化不内联,并发,只改 `embed_text`、返回 `text` 纯净,249/250 applied(失败退化不中断)。**坐实一个 Phase 4 判别性素材**:真 corpus 改变 airquality 知识形状——召回从占位 1000ppm 变成 WELL 真实阈值(CO2 500/750ppm above outdoor、PM2.5 MERV 表),正是 P-010/P-011 缺的「基座单跑会栽、检索能救」原料。**新待办(优先级序)**:① **真 corpus 切换回归**——demo `co2_spike` + airquality bench 种子复跑,查 generate 引真阈值(750/500)与 critic 物理范围表 / scenario / monitor 的 1000ppm 旧假设是否打架并对齐;② 其他三 domain 真 corpus(WHO Noise=acoustic 免费可下,EN/ASHRAE 付费卡获取);③ 有真 corpus 后扩 200 的误导性检索难题(冲 ≥10pp);④ grade prompt 按真 corpus 重调。
 
 ---
 
