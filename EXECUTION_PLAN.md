@@ -23,6 +23,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 | 4 评测 🔧 进行中 | IEQ-Bench 24 种子(六 capability 全绿)+ **generate/v4**(co2 自洽 0.70→1.00)+ **记忆消融 `--ablate-memory` +1.00**(planner/v4,Week8>Week1 离线铁证)+ e2e `--compare`(`arm_value` 公平)。**❗诚实结论:≥10pp-vs-ReAct 当前立不住**(强基座下简单任务两臂趋同、自相矛盾陷阱不咬 P-011,原 +10pp 系 n5 噪声);稳健 ≥10pp 留 Phase5 真 corpus 误导检索难题 + GPT-4o baseline;`DEVLOG` P-001..P-012 |
 
 > **🆕 2026-06-06:** airquality **真 PDF corpus 接入**(WELL v2 Air)+ **contextual prefix**(节点 #10,**v4-flash**)+ PDF 去重(commit `84feee0`)。真 corpus 改变 airquality 知识形状:召回命中 WELL 真实阈值(CO2 500/750ppm above outdoor、PM2.5 MERV),取代占位 1000ppm——为 Phase 4「扩 200 判别性难题 / ≥10pp」提供原料。详见 Phase 4 进度 + DEVLOG P-013。
+>
+> **🆕 2026-06-06(续):** ① **真 corpus 切换回归**(commit `e5ca686`,P-014)——查出 monitor「CO2≤1000=ASHRAE 62.1」是占位**误区**,降到 **WELL 900** 对齐,demo 实证误归因消失;失效检索种子留扩 200 重写。② **runner 并行化**(commit `5ea0eb6`,P-015)——`--workers`+`_pmap`,generate `--n6` **162.7s→48.7s(3.3x)**、结果一致;并挖出并修 **transformers 5.9.0 reranker 并发不安全**(GPU forward 锁 + `_get_stack` 双检锁 + 预热,真实 mcp-rag-server 接并发也需要)。**下次接:** item 3 = acoustic 真 corpus(WHO Noise,作者已确认留下个 session,会复刻 P-014 对齐循环)。
 
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
