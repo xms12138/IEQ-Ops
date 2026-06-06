@@ -34,6 +34,7 @@ fp16 footprint (VRAM spike, 2026-05-25) is paid once, not per query.
 from __future__ import annotations
 
 import re
+import threading
 from typing import Any
 
 from pydantic import BaseModel
@@ -141,6 +142,14 @@ class RetrievalStack:
         self._client = QdrantClient(url=qdrant_url)
         self._BM25 = BM25Okapi
 
+        # Serialises the GPU forward passes (embedder + reranker). One shared stack can
+        # see concurrent retrieve() calls — the bench fans samples across threads, and a
+        # real mcp-rag-server will field concurrent MCP requests — and a concurrent
+        # forward on this transformers/torch build corrupts the reranker's dtype state
+        # ("expected Half, found Float"). The GPU work is ~50 ms, far under the cloud-LLM
+        # cost that actually parallelises, so serialising it costs effectively nothing.
+        self._gpu_lock = threading.Lock()
+
         # dense lives in Qdrant; BM25 is a derived index over the same points,
         # rebuilt in memory at startup.
         self._pos_by_id: dict[Any, int] = {}
@@ -184,12 +193,13 @@ class RetrievalStack:
         return docs
 
     def _embed(self, query: str) -> list[float]:
-        vec = self._embedder.encode([query], normalize_embeddings=True)
+        with self._gpu_lock:
+            vec = self._embedder.encode([query], normalize_embeddings=True)
         return [float(x) for x in vec[0]]
 
     def _rerank_scores(self, query: str, texts: list[str]) -> list[float]:
         torch = self._torch
-        with torch.no_grad():
+        with self._gpu_lock, torch.no_grad():
             inp = self._rr_tok(
                 [query] * len(texts),
                 texts,

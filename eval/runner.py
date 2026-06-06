@@ -19,6 +19,12 @@ for a later milestone (they need a builder single-node export).
   uv run python -m eval.runner --seed               # all seed capability tasks
   uv run python -m eval.runner --cap generate --n 10
   uv run python -m eval.runner --compare --n 5      # system vs baseline e2e table
+
+`--workers` parallelises the cloud-LLM calls (the slow part: V3 planner, flash
+generate/critic/baseline) inside the per-task sample loops and across the
+independent ablate-memory tasks. Tasks that arm the shared simulator room stay
+sequential (only their inner N samples fan out); `--workers 1` forces the old
+sequential path for debugging or to stay under an API rate limit.
 """
 
 from __future__ import annotations
@@ -26,9 +32,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import ValidationError
 
@@ -61,6 +69,9 @@ REPORTS = Path(__file__).parent / "reports"
 
 # capability-specific handler return: (passed, score, detail, samples)
 Outcome = tuple[bool, float, dict[str, Any], int]
+
+_T = TypeVar("_T")
+_R = TypeVar("_R")
 
 
 # ops/llm_routing.md "Ablate condition" column, operationalised against the bench so the
@@ -116,11 +127,37 @@ class Runner:
     """Holds the shared agent instances (built once) and dispatches each task to
     the real system entry for its capability."""
 
-    def __init__(self, n_samples: int = 10) -> None:
+    def __init__(self, n_samples: int = 10, workers: int = 4) -> None:
         self.n = n_samples
+        self.workers = max(1, workers)
         self._planner: PlannerAgent | None = None
         self._critic: CriticAgent | None = None
         self._baseline: ReActBaseline | None = None
+
+    @staticmethod
+    def _warm_rag() -> None:
+        """Force the GPU retrieval stack to load ONCE, before any thread fan-out. The
+        first retrieve pays a ~30 s model load; doing it here (single-threaded) means the
+        parallel samples find the stack already built instead of N threads colliding on
+        the one-time load. Safe to call repeatedly — `_get_stack` is an idempotent singleton."""
+        try:
+            call_tool(rag_server, "retrieve", query="warmup", domain="airquality", top_k=1)
+        except Exception as exc:  # noqa: BLE001 — warm-up is best-effort; real calls re-raise
+            log.warning("rag_warmup_failed", error=str(exc))
+
+    def _pmap(self, fn: Callable[[_T], _R], items: list[_T]) -> list[_R]:
+        """Run `fn` over `items` concurrently, results in input order. The work is
+        cloud-LLM calls (planner/critic/generate/baseline) — network-bound, so threads
+        give real speedup despite the GIL (the OpenAI SDK client, the compiled subgraph,
+        and the prebuilt RetrievalStack are all safe under concurrent read/invoke). Used
+        only for inner sample loops and the independent ablate-memory task loop, never to
+        nest a pool inside a pool. workers=1 → plain sequential (debug / rate-limit floor).
+        Pre-warm any lazy-singleton agent BEFORE calling this, so the first concurrent
+        access does not double-construct."""
+        if self.workers == 1 or len(items) <= 1:
+            return [fn(x) for x in items]
+        with ThreadPoolExecutor(max_workers=min(self.workers, len(items))) as ex:
+            return list(ex.map(fn, items))
 
     @property
     def planner(self) -> PlannerAgent:
@@ -185,16 +222,17 @@ class Runner:
         to the real critic, report the approval (self-consistency) rate."""
         subtask = Subtask.model_validate(task.input["subtask"])
         anomaly = AnomalyRecord.model_validate(task.input["anomaly"])
-        approvals: list[bool] = []
-        hit_scores: list[float] = []
-        n_none = 0
-        for _ in range(self.n):
+        want_hit = bool(task.expected.get("gold_values"))
+        _ = self.critic  # pre-warm before the threads race the lazy singleton
+        self._warm_rag()  # load the GPU retrieval stack once, before the sample fan-out
+
+        def one_sample(_: int) -> tuple[bool, float | None, bool]:
+            """One generate→critic round. Returns (approved, hit_or_None, diag_is_none);
+            a None diagnosis (subgraph gave up) counts as a disapproval with no hit."""
             out = SPECIALIST_SUBGRAPH.invoke({"subtask": subtask})
             diag = out["final_diagnosis"] if isinstance(out, dict) else out.final_diagnosis
             if diag is None:
-                approvals.append(False)
-                n_none += 1
-                continue
+                return False, None, True
             # incident_id=None: critic skips its ticket write on disapproval — a bench
             # probe has no Postgres incident row (otherwise update_incident raises).
             state = MainIncidentState(
@@ -203,11 +241,14 @@ class Runner:
                 current_plan=Plan(subtasks=[subtask]),
                 subtask_results={subtask.subtask_id: diag},
             )
-            verdict = self.critic.run(state)["critic_verdict"]
-            approvals.append(bool(verdict.approved))
-            if task.expected.get("gold_values"):
-                _, hs, _ = metrics.score_generate_hit(diag.diagnosis, task.expected)
-                hit_scores.append(hs)
+            approved = bool(self.critic.run(state)["critic_verdict"].approved)
+            hit = metrics.score_generate_hit(diag.diagnosis, task.expected)[1] if want_hit else None
+            return approved, hit, False
+
+        samples = self._pmap(one_sample, list(range(self.n)))
+        approvals = [appr for appr, _, _ in samples]
+        n_none = sum(1 for _, _, is_none in samples if is_none)
+        hit_scores = [hit for _, hit, _ in samples if hit is not None]
         rate = metrics.consistency_rate(approvals)
         min_c = float(task.expected.get("min_consistency", 0.8))
         detail: dict[str, Any] = {
@@ -362,27 +403,31 @@ class Runner:
         contradicting in-band reading — an unfair handicap, not an architecture gap).
         arm_value handles ANY task value, so high-value discriminating tasks (e.g. the
         self-contradiction traps) stay fair without a hand-built named scenario each."""
+        _ = (self.planner, self.critic, self.baseline)  # pre-warm before the threads race
+        self._warm_rag()  # load the GPU retrieval stack once, before the sample fan-out
         rows: list[ComparisonRow] = []
         for task in tasks:
             anomaly = AnomalyRecord.model_validate(task.input["anomaly"])
+            # arm_value mutates the shared simulator room, so tasks stay SEQUENTIAL; only the
+            # N samples WITHIN a task parallelise — the room is armed once and reads are pure
+            # (read_co2 never advances physics; the baseline's set_ventilation touches only
+            # ventilation_m3h, inert for co2 reads here), so concurrent samples don't race.
             arm_value(anomaly.sensor, anomaly.value)
-            sys_ok: list[bool] = []
-            base_ok: list[bool] = []
-            sys_hits: list[float] = []
-            base_hits: list[float] = []
-            base_no_finish = 0
-            for _ in range(n):
+
+            def one_sample(
+                _: int, anomaly: AnomalyRecord = anomaly, task: BenchTask = task
+            ) -> tuple[bool, float | None, bool, float | None, bool]:
                 s_appr, s_hit = self._judge(self._system_diagnose(anomaly), anomaly, task.expected)
-                sys_ok.append(s_appr)
-                if s_hit is not None:
-                    sys_hits.append(s_hit)
                 bdiag = self._baseline_diagnose(anomaly)
-                if bdiag is None:
-                    base_no_finish += 1
                 b_appr, b_hit = self._judge(bdiag, anomaly, task.expected)
-                base_ok.append(b_appr)
-                if b_hit is not None:
-                    base_hits.append(b_hit)
+                return s_appr, s_hit, b_appr, b_hit, (bdiag is None)
+
+            samples = self._pmap(one_sample, list(range(n)))
+            sys_ok = [s[0] for s in samples]
+            sys_hits = [s[1] for s in samples if s[1] is not None]
+            base_ok = [s[2] for s in samples]
+            base_hits = [s[3] for s in samples if s[3] is not None]
+            base_no_finish = sum(1 for s in samples if s[4])
             ssr = round(sum(sys_ok) / len(sys_ok), 3)
             bsr = round(sum(base_ok) / len(base_ok), 3)
             row = ComparisonRow(
@@ -418,8 +463,12 @@ class Runner:
         corpus); the metric is whether that knowledge surfaces in the plan's subtask goals.
         lift = recall_on − recall_off is the isolated memory contribution. Planner is
         temperature 0, so each side is deterministic — no sampling needed."""
-        rows: list[AblationRow] = []
-        for task in tasks:
+        _ = self.planner  # pre-warm before the threads race the lazy singleton
+
+        def one_task(task: BenchTask) -> AblationRow:
+            """Tasks are independent (no shared simulator state; planner is temperature 0
+            and takes the anomaly directly), so the whole task loop parallelises — no inner
+            pool to nest. Each task = two deterministic planner calls (recall OFF vs ON)."""
             anomaly = AnomalyRecord.model_validate(task.input["anomaly"])
             case = EpisodicCase.model_validate(task.input["episode"])
             state = MainIncidentState(incident_id=None, anomaly=anomaly)
@@ -429,7 +478,7 @@ class Runner:
             text_off, text_on = self._plan_text(plan_off), self._plan_text(plan_on)
             hit_off = any(g in text_off for g in gold)
             hit_on = any(g in text_on for g in gold)
-            row = AblationRow(
+            return AblationRow(
                 task_id=task.task_id,
                 domain=task.domain,
                 recall_off=hit_off,
@@ -444,10 +493,12 @@ class Runner:
                     "goals_on": [s.goal for s in plan_on.subtasks],
                 },
             )
-            rows.append(row)
+
+        rows = self._pmap(one_task, tasks)
+        for row in rows:  # print in task order, after the parallel section
             print(
-                f"  {row.task_id:<22} off={'Y' if hit_off else 'n'} "
-                f"on={'Y' if hit_on else 'n'} lift={row.lift:+d}"
+                f"  {row.task_id:<22} off={'Y' if row.recall_off else 'n'} "
+                f"on={'Y' if row.recall_on else 'n'} lift={row.lift:+d}"
             )
         return rows
 
@@ -593,6 +644,12 @@ def main() -> None:
     p.add_argument("--cap", default=None, help="run only this capability")
     p.add_argument("--n", type=int, default=10, help="samples for stochastic caps (generate)")
     p.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="concurrent LLM calls for inner sample loops + ablate-memory (1 = sequential)",
+    )
+    p.add_argument(
         "--compare",
         action="store_true",
         help="L3 e2e: run system vs ReAct baseline on the same anomalies and report the gap",
@@ -616,7 +673,7 @@ def main() -> None:
 
     if args.ablate_check:
         print("\nIEQ-Bench ablate-condition check — routing triggers vs llm_routing.md thresholds")
-        runner = Runner(n_samples=args.n)
+        runner = Runner(n_samples=args.n, workers=args.workers)
         rows = runner.ablate_check()
         _print_ablate_table(rows)
         REPORTS.mkdir(parents=True, exist_ok=True)
@@ -634,7 +691,7 @@ def main() -> None:
             print("no recurrence tasks found under eval/ieq_bench/tasks/*.jsonl")
             return
         print(f"\nIEQ-Bench memory ablation — planner recall OFF vs ON ({len(rec)} tasks)")
-        runner = Runner()
+        runner = Runner(workers=args.workers)
         rows = runner.ablate_memory(rec)
         lift = _print_ablation_table(rows)
         REPORTS.mkdir(parents=True, exist_ok=True)
@@ -659,7 +716,7 @@ def main() -> None:
             print("no e2e tasks found under eval/ieq_bench/tasks/*.jsonl")
             return
         print(f"\nIEQ-Bench e2e — system vs ReAct baseline (n={args.n}/task, same model + tools)")
-        runner = Runner(n_samples=args.n)
+        runner = Runner(n_samples=args.n, workers=args.workers)
         rows = runner.compare(e2e, args.n)
         gap = _print_compare_table(rows)
         REPORTS.mkdir(parents=True, exist_ok=True)
@@ -680,7 +737,7 @@ def main() -> None:
     if not tasks:
         print("no tasks found under eval/ieq_bench/tasks/*.jsonl")
         return
-    runner = Runner(n_samples=args.n)
+    runner = Runner(n_samples=args.n, workers=args.workers)
     results: list[TaskResult] = []
     for t in tasks:
         log.info("bench_task_start", task_id=t.task_id, cap=t.capability)

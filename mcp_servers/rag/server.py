@@ -15,6 +15,7 @@ touching this body — the tool contract (name + RetrievedChunk shape) stays fix
 from __future__ import annotations
 
 import os
+import threading
 
 from fastmcp import FastMCP
 
@@ -24,6 +25,12 @@ from rag.retrieve import FINAL_TOP_K, RetrievalStack, RetrievedChunk
 mcp = FastMCP("mcp-rag-server")
 
 _stack: RetrievalStack | None = None
+# Guards the one-time stack construction. Without it, concurrent first-callers (the
+# bench fanning samples across threads) each see `_stack is None` and build their own
+# RetrievalStack — several GPU loads at once, which on this transformers build races
+# the lazy `AutoModelForSequenceClassification` import ("cannot import name ...") and
+# leaves a half-built model. Double-checked locking → exactly one stack, loaded once.
+_stack_lock = threading.Lock()
 
 
 def _get_stack() -> RetrievalStack:
@@ -32,8 +39,12 @@ def _get_stack() -> RetrievalStack:
     seize the GPU. IEQ_RAG_DEVICE=cpu forces fp32/CPU for a machine without the card."""
     global _stack
     if _stack is None:
-        device = os.getenv("IEQ_RAG_DEVICE", "cuda")
-        _stack = RetrievalStack(get_settings().qdrant_url, device=device, fp16=(device == "cuda"))
+        with _stack_lock:
+            if _stack is None:  # re-check inside the lock — only the first thread builds
+                device = os.getenv("IEQ_RAG_DEVICE", "cuda")
+                _stack = RetrievalStack(
+                    get_settings().qdrant_url, device=device, fp16=(device == "cuda")
+                )
     return _stack
 
 

@@ -26,7 +26,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
-**🔜 下一步(Phase 4 续,优先级序):** ✅本 session 已清:P-009、grade/rewrite 入 runner、记忆消融 +1.00、自相矛盾陷阱(负面结论 P-011)。**剩:** ① **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(卡 key,去主场嫌疑)② 用 bench 验 `llm_routing.md` ablate 条件(未开始)③ runner 并行化 ④ 扩 200 + 判别性误导检索难题——**作者拍板等 Phase 5 真 PDF corpus**(强基座下简单任务无法判别,硬凑无意义,P-011)。"无数字不立论"的关口:架构价值现由**记忆消融 +1.00** 承载,≥10pp-vs-baseline 待真 corpus/GPT-4o。
+**🔜 下一步(Phase 4 续,优先级序):** ✅已清:P-009、grade/rewrite 入 runner、记忆消融 +1.00、自相矛盾陷阱(P-011)、ablate 条件验证(`--ablate-check`)、**真 corpus 切换回归(P-014,co2→WELL 900)**、**runner 并行化(P-015,3.3x + 修 reranker 并发不安全)**。**剩:** ① **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(卡 key,去主场嫌疑)② 其他三 domain 真 corpus(WHO Noise=acoustic 免费可下)③ 扩 200 + 判别性误导检索难题——**作者拍板等 Phase 5 真 PDF corpus**(强基座下简单任务无法判别,硬凑无意义,P-011)。"无数字不立论"的关口:架构价值现由**记忆消融 +1.00** 承载,≥10pp-vs-baseline 待真 corpus/GPT-4o。
 
 **剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
 
@@ -145,7 +145,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 - [~] `eval/ieq_bench/`:200 任务,覆盖各 agent / domain / 节点能力。**✅ schema/loader + 24 种子**(retrieval/critic/planner/generate + **grade 6 / rewrite 2**,六 capability,seed 表全绿)+ **6 个 L3 e2e**(4 原 + 2 negative-control)+ **4 个 L3 recurrence**(记忆消融);**⏳ 待**: 扩到 200——其中**判别性难题(误导性检索)留 Phase 5 真 corpus**(作者拍板,P-011:强基座下简单任务无法判别,硬凑无意义)
 - [x] **grade/rewrite 入 runner**(2026-05-31):暴露 `SPECIALIST_NODES` 单节点。grade=控制 chunk 集判 sufficiency(6 任务正反平衡,6/6);rewrite=gold-MRR before/after(co2 0.2→1.0、thermal 0.333→1.0 真抬升;acoustic/lighting 池太小排名不动,排除避免平凡通过)
 - [~] `eval/judge.py`:双裁判;prompt **强制** "only compare to expected, do not use prior knowledge"。**✅ deepseek-flash 单裁判可跑**(模型名参数化,确定性任务暂不依赖它);**⏳ 待**: 换 GPT-4o + Claude Sonnet 4.6 双裁判(需 OpenAI/Anthropic key)
-- [~] `eval/runner.py`。**✅ 可跑**(`--seed`/`--cap`/`--n`/`--compare`/`--ablate-memory`/`--only`,确定性指标 + 出 reports 表,incident_id=None 免污染 ticket);**⏳ 待**: 并行化(现顺序执行,V4-pro planner 慢,全量 `--compare` n5 约 12-15min)
+- [x] `eval/runner.py`。**✅ 可跑**(`--seed`/`--cap`/`--n`/`--compare`/`--ablate-memory`/`--only`,确定性指标 + 出 reports 表,incident_id=None 免污染 ticket);**✅ 并行化(2026-06-06)**:`--workers`(默认 4,`=1` 退顺序)+ `_pmap` 线程池并行 generate/compare 内层 sample + ablate-memory 跨 task;实测 generate `--n6` **162.7s→48.7s(3.3x)**、结果一致。途中**挖出并修一个真实并发 bug**:`_pmap` 首次引入并发 retrieve 触发 transformers 5.9.0 reranker 非线程安全(dtype Half/Float + import 竞态),加 `retrieve.py` GPU forward 锁 + `rag/server.py` `_get_stack` 双检锁 + 预热修复(真实 mcp-rag-server 上线接并发也需要);另修 seed 路径漏传 workers。详见 DEVLOG P-015
 - [x] **记忆消融 `--ablate-memory`**(2026-05-31,论文 Week8>Week1 离线证据):同 planner、召回 ON/OFF、温度 0 确定性,看建筑特定知识有没有进 plan goal。**bump planner/v4**(resolved 案例也点名建筑特定原因/修法,v3 只规避 FAILED)→ macro recall-lift **+0.25→+1.00**(4/4 有记忆进规划、0/4 无记忆)。**这是 bench 里架构价值的最强判别证据**(见 P-012)
 - [~] baseline:对比基线。**✅ deepseek-flash ReAct 端到端跑通**(手写 thought/action/observation,不用 langchain;同模型对照隔离架构贡献);**✅ 接 runner 出对照表**(`--compare`:同 anomaly→两臂→同一 critic+hit 裁判,`arm_value()` 按任务真值对齐模拟器,任意值都公平)。**❗诚实结论(P-011):≥10pp-vs-ReAct 在当前强基座 + 简单任务上立不住**——自相矛盾陷阱实测两臂全 1.00(v4-flash 不会傻到复述降幅),原 +10pp 的 acoustic 单域优势是 n5 噪声(lighting/acoustic baseline 在 0.6/1.0 间乱跳)。**架构价值改由记忆消融 +1.00 承载**(上一行);≥10pp 的稳健证据**作者拍板留 Phase 5 真 corpus 的误导性检索难题** + GPT-4o 跨模型 baseline(需 key)
 - [ ] **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(去"自家 critic 当裁判"主场嫌疑)——**未开始,卡 OpenAI/Anthropic key**
