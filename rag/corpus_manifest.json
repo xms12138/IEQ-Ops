@@ -6,7 +6,28 @@
       "source": "well-v2",
       "domain": "airquality",
       "pages": "11-46",
-      "note": "WELL Building Standard v2 (Q4 2020, 366pp) — Air concept only: p11 overview + A01-A14 features (A01 Air Quality, A03 Ventilation Design, A05 Enhanced Air Quality, A12 Air Filtration...). p47 onward is Water etc., excluded so non-Air concepts aren't mis-tagged airquality. Official IWBI CDN (a.storyblok.com)."
+      "note": "WELL Building Standard v2 (Q4 2020, 366pp) — Air concept: p11 overview + A01-A14 features (A01 Air Quality, A03 Ventilation Design, A05 Enhanced Air Quality, A12 Air Filtration...). One concept per entry, carved out by physical page range so the domain filter keeps each concept's chunks separate. Official IWBI CDN (a.storyblok.com)."
+    },
+    {
+      "file": "well-v2.pdf",
+      "source": "well-v2",
+      "domain": "lighting",
+      "pages": "103-129",
+      "note": "WELL v2 Light concept: p103 overview + L-series features. Free alternative to the paywalled EN 12464-1 for lighting."
+    },
+    {
+      "file": "well-v2.pdf",
+      "source": "well-v2",
+      "domain": "thermal",
+      "pages": "160-184",
+      "note": "WELL v2 Thermal Comfort concept: p160 overview + T-series features. Free alternative to the paywalled ASHRAE 55 / EN 16798 for thermal."
+    },
+    {
+      "file": "well-v2.pdf",
+      "source": "well-v2",
+      "domain": "acoustic",
+      "pages": "185-213",
+      "note": "WELL v2 Sound concept: p185 overview + S-series features (S01 Sound Mapping, S02 Maximum Noise Levels...). Free alternative to the paywalled WHO Noise / EN for acoustic."
     }
   ]
 }

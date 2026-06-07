@@ -34,6 +34,7 @@
 | P-009 | ⏳ 待处理 | verifier 取 subtask_result 与 action 选取逻辑不一致 |
 | P-010 | ⏳ 待处理 | e2e 对照 +10pp 全靠 acoustic 单域(简单任务封顶,≥10pp 未稳) |
 | P-014 | 🔧 部分延后 | airquality bench 种子按 WELL 重写(retrieval 0.60 + generate/e2e 硬编码 1000/ASHRAE),并入扩 200 |
+| P-016 | 🔧 待对齐 | thermal/lighting/acoustic 真 corpus 已接入(WELL v2 三 concept,824 chunks);thresholds 占位 + 三域 bench 种子 + contextual 待下次对齐 |
 
 > P-008 已于 2026-05-31 解决(generate/v4),P-014 阈值对齐已 ✅、bench 种子重写并入扩 200,均见下。
 
@@ -146,3 +147,18 @@
 - **解决**:① `rag/retrieve.py` 加 `self._gpu_lock`,串行化 `_embed`+`_rerank_scores` 的 GPU forward(~50ms,远低于真正并行的 cloud-LLM 成本,代价可忽略);② `mcp_servers/rag/server.py` 的 `_get_stack` **双检锁**,并发首访只构造一次栈(import 单线程化);③ runner 加 `_warm_rag` 预热,线程 fan-out 前单线程把栈加载好;④ 补 seed 路径的 `workers=args.workers`。**验证**(同环境 `--n6` 同任务):workers=1 → decompose 间隔 ~17s 真顺序 / `WALL=162.7s`;workers=6 → decompose 0.24s 内并发 / `WALL=48.7s`,**3.3x 提速**,两者 consistency 全 1.00、零 dtype/import 错。
 - **教训**:① **共享 GPU 模型单例不是自动线程安全的**——并行化调用方必须显式串行化 forward(锁)或每线程独立实例;这不只是 bench 的事,真实 `mcp-rag-server` 上线接并发 MCP 请求同样需要,属前瞻修复而非临时补丁。② transformers 5.x 把 `torch_dtype` 废弃为 `dtype`,并发下旧参数 dtype 处理更脆;锁顺带规避(顺序路径仍工作,故未强改加载参数,留最小改动面)。③ `replace_all` 会漏发散调用点(`Runner()` vs `Runner(n_samples=...)` vs 末尾那个无参版),改完务必 `grep "Runner("` 核对全部构造点。④ **工具坑自记**:`pkill -f "eval.runner"` 会连带杀掉命令行里含该串的当前 shell 自身;前台 `sleep` 被 harness 禁——排查期间两者各坑掉若干次 run,误判为代码问题。
 - **关联**:`eval/runner.py`(`_pmap`/`_warm_rag`/`--workers`/seed 路径 `workers`)· `rag/retrieve.py`(`_gpu_lock`)· `mcp_servers/rag/server.py`(`_stack_lock` 双检)· transformers 5.9.0 · P-002(bge-m3 HF 在线检查拖慢加载,排查期每次 run 多付 ~25s)
+
+### P-016 · Phase 4 · thermal/lighting/acoustic 真 corpus 一次性接入(WELL v2 同一 PDF 三 concept)+ 占位阈值待对齐  🔧(接入完成,下游对齐留下次)
+- **现象/动作**:原计划 acoustic 用 WHO Noise、thermal/lighting 卡在付费 ASHRAE 55 / EN 12464。复盘发现**手上那份 airquality 用的 WELL v2 PDF(366pp)本就是 10-concept 全集**——Light / Thermal Comfort / Sound 三个 concept 都在同一份里,免费、零额外获取。作者据此拍板弃付费标准。pypdf 扫描定位全 10 concept overview 物理页(Air11 / Water47 / Nourishment72 / **Light103** / Movement130 / **Thermal160** / **Sound185** / Materials214 / Mind247 / Community274),`corpus_manifest.json` 加三条(同一 `well-v2.pdf`,靠 `pages`+domain filter 切片:lighting 103-129 / thermal 160-184 / acoustic 185-213),`ingest --source corpus`(**按作者指定三新域先不做 contextual**)→ **824 chunks**,四 domain 全真、sample 占位全退场。三域检索 sanity-check 各命中 WELL 真值。
+- **根因(为何之前以为要找付费源)**:把"airquality corpus = WELL Air"记成了"WELL 只有 Air",忽略同一 PDF 已覆盖另三域;manifest 当初注释还特意写"p47 onward excluded 以免误标 airquality",强化了"其他域没资料"的错觉。其实只是当时按 domain 渐进接入、没回头看整本覆盖面。
+- **检索证实的占位 vs WELL 真值差异(下次对齐素材)**:
+
+  | domain | `thresholds.py` 占位 | WELL v2 真值(检索命中) |
+  |---|---|---|
+  | thermal | 19-26 °C | dry-bulb **21-25 °C**(≥90% 占用时段)+ 风速 ≤0.2 m/s + 上限 33.5 °C,引 **ASHRAE 55-2013** |
+  | lighting | lux ≥300,来源标 **EN 12464-1** | 引的是 **CIBSE SLL Code for Lighting**(非 EN!);循环/储藏/餐饮区 **110 lux(10 fc)**;work area 按 task+age 分级(Option 2 predetermined) |
+  | acoustic | ≤55 dBA(单值) | **分级 50/55/60 dBA**(Cat 1/2/3)+ dBC 70/75/80;**卧室 ≤35 dBA**(Leq 夜间 12h);5 min 均值 |
+
+- **教训**:① **找新数据源前先把手上资料的覆盖面查全**——一份 WELL v2 省掉三处付费墙,差点白找 WHO/ASHRAE/EN。② **再次印证 P-013/P-014**:lighting 占位把来源标成 `EN 12464-1`,但真库里引的是 **CIBSE SLL** —— 又一个"占位引用了不在 corpus 里的标准"的雷(generate 会引 EN 但库里只有 WELL/CIBSE,同 P-014 的 ASHRAE-1000 同型),三域 thresholds 都得走 P-014 的 corpus→monitor→planner→generate→bench 纵向对齐链。③ 三新域**先不做 contextual**(embed_text=text),与 airquality(已接 #10)暂不对称;补做需 `--contextual` 全量重 embed 四域,留下次连同 thresholds 对齐一起。
+- **下次接(清单)**:1) `thermal` 19-26→**21-25 °C**(WELL T01),去 ASHRAE 误标;2) `lighting` 来源 `EN 12464-1`→**CIBSE SLL/WELL**,用更精确 query 复核 work area 具体 lux 值;3) `acoustic` 单值 55→选 **WELL 档位(Cat)** 或加 dBA 分级;4) 三域 thresholds 改完跑 P-014 纵向链端到端复跑(demo + monitor rule + generate 引用);5) 三域各加 bench 种子(retrieval/generate/e2e);6) (可选)三域补 contextual 全量重 embed。
+- **关联**:`rag/corpus_manifest.json`(+3 条)· `rag/ingest.py`(`--source corpus`,824 chunks)· `sensing/thresholds.py`(thermal/lux/noise_db 三行待对齐)· `rag/retrieve.py`(验证)· P-013/P-014(同型纵向对齐)· memory `project_corpus_source`
