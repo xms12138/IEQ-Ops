@@ -1,0 +1,19 @@
+# IEQ-Ops Q&A butler — history sampler (systemd template).
+# Adjust WorkingDirectory and the uv path to the deployment host (e.g. on a Raspberry
+# Pi: `which uv`). Install: copy to /etc/systemd/system/, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ieq-sampler
+[Unit]
+Description=IEQ-Ops Q&A butler - history sampler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/xms/projects/dissertation
+EnvironmentFile=/home/xms/projects/dissertation/.env
+ExecStart=/home/xms/.local/bin/uv run python -m ops.sampler
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

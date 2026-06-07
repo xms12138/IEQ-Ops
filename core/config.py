@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
 
+    # ── Sampling (lightweight history sampler — ops/sampler.py) ──
+    sample_interval_seconds: int = 300  # demo: lower (e.g. 10) to grow a trend fast
+
+    # ── Voice (cascade STT→LLM→TTS; mock in MVP, real API later) ──
+    voice_provider: str = "mock"  # mock | openai | ...
+    voice_api_key: str = ""  # reserved for the real STT/TTS provider
+
     # ── Runtime ──
     env: str = "dev"  # dev | prod
     log_level: str = "INFO"

@@ -226,7 +226,7 @@ ieq-ops/
 These are explicitly NOT in scope and Claude Code should push back if asked to add them:
 
 - Multimodal / vision (no camera analysis)
-- Voice interface / TTS
+- Voice interface / TTS — **exception:** the Q&A butler's cloud-API CASCADE voice (STT → text LLM → TTS) is deliberately in scope; what stays out is end-to-end speech models and any device-side voice UI beyond the browser Web Speech demo.
 - Browser agent / computer use
 - Knowledge graph / Neo4j / GraphRAG
 - AutoGen / CrewAI / MetaGPT (LangGraph only)

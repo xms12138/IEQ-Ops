@@ -36,6 +36,22 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 """
 
+# sensor_readings: a flat time series for the Q&A butler's statistical questions
+# (sensing/history.py writes via the sampler, reads via query_stats). A different
+# concern from incidents, but co-located here so init_schema stays the single
+# create-tables entry point. Phase 5 can move it to InfluxDB.
+_READINGS_DDL = """
+CREATE TABLE IF NOT EXISTS sensor_readings (
+    ts          timestamptz NOT NULL DEFAULT now(),
+    co2         double precision,
+    temperature double precision,
+    humidity    double precision,
+    lux         double precision,
+    noise_db    double precision
+);
+"""
+_READINGS_INDEX = "CREATE INDEX IF NOT EXISTS sensor_readings_ts_idx ON sensor_readings (ts)"
+
 # sensor → incident-type code used in the incident id (CLAUDE.md I-{date}-{room}-{type})
 _SENSOR_TYPE = {"co2": "AQ", "temperature": "TH", "humidity": "TH", "lux": "LT", "noise_db": "AC"}
 
@@ -45,9 +61,11 @@ def _conn() -> psycopg.Connection[dict[str, Any]]:
 
 
 def init_schema() -> None:
-    """Create the incidents table if absent. Run once at startup."""
+    """Create the incidents + sensor_readings tables if absent. Run once at startup."""
     with _conn() as conn, conn.cursor() as cur:
         cur.execute(_DDL)
+        cur.execute(_READINGS_DDL)
+        cur.execute(_READINGS_INDEX)
     log.info("ticket_schema_ready")
 
 
@@ -107,3 +125,33 @@ def get_incident(incident_id: str) -> dict[str, Any]:
         if row.get(k) is not None:
             row[k] = row[k].isoformat()
     return row
+
+
+@mcp.tool
+def list_incidents(
+    limit: int = 50, status: str | None = None, sensor: str | None = None
+) -> list[dict[str, Any]]:
+    """List incidents newest-first (timestamps ISO-formatted), optionally filtered
+    by status and/or sensor. Read side for the Q&A butler's 'recent anomalies'
+    questions — no LLM here."""
+    query = "SELECT * FROM incidents"
+    conds: list[str] = []
+    params: list[Any] = []
+    if status is not None:
+        conds.append("status = %s")
+        params.append(status)
+    if sensor is not None:
+        conds.append("sensor = %s")
+        params.append(sensor)
+    if conds:
+        query += " WHERE " + " AND ".join(conds)
+    query += " ORDER BY created_at DESC LIMIT %s"
+    params.append(limit)
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(query, tuple(params))
+        rows = cur.fetchall()
+    for row in rows:
+        for k in ("created_at", "updated_at"):
+            if row.get(k) is not None:
+                row[k] = row[k].isoformat()
+    return rows

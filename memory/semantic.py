@@ -173,3 +173,43 @@ def retrieve_facts(
         )
     log.info("semantic_recall", query=query[:40], n_hits=len(facts))  # audit
     return facts
+
+
+def list_facts(incident_type: str | None = None, limit: int = 100) -> list[SemanticFact]:
+    """All stored facts (optionally scoped to one incident type) via Qdrant scroll —
+    NO vector search, so no embedding model/key is needed. The Q&A butler dumps the
+    full (small) fact set into the LLM context; `score` is 0.0 (not a similarity
+    result). Empty/cold store → []."""
+    client = _client()
+    if not client.collection_exists(COLLECTION):
+        log.info("semantic_list_empty", reason="no collection yet")
+        return []
+    from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+    flt = (
+        Filter(must=[FieldCondition(key="incident_type", match=MatchValue(value=incident_type))])
+        if incident_type
+        else None
+    )
+    points, _ = client.scroll(
+        collection_name=COLLECTION,
+        scroll_filter=flt,
+        limit=limit,
+        with_payload=True,
+        with_vectors=False,
+    )
+    facts: list[SemanticFact] = []
+    for p in points:
+        pl = p.payload or {}
+        facts.append(
+            SemanticFact(
+                fact_id=pl["fact_id"],
+                fact=pl["fact"],
+                incident_type=pl.get("incident_type", "?"),
+                evidence_ids=pl.get("evidence_ids", []),
+                week=pl.get("week", "?"),
+                score=0.0,
+            )
+        )
+    log.info("semantic_list", n=len(facts), incident_type=incident_type or "all")  # audit
+    return facts

@@ -28,6 +28,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 >
 > **🆕 2026-06-07:** **thermal/lighting/acoustic 三域真 corpus 一次性接入(P-016,本 session)** —— 作者拍板**弃付费 ASHRAE 55 / EN 12464 / WHO Noise**,改用**已在手的同一份 WELL v2 PDF** 的另外三个 concept(原来只取了 Air):pypdf 扫描定位全 10 concept 物理页范围,`corpus_manifest.json` 加三条(Light p103-129 / Thermal Comfort p160-184 / Sound p185-213,同一 file 靠 `pages`+domain filter 切片),`ingest --source corpus` 出 **824 chunks**(四 domain 全真,sample 占位退场;**按作者指定三新域先不做 contextual**)。三域检索各命中 WELL 真值,并**暴露 `thresholds.py` 占位待对齐**:thermal 19-26 → WELL **21-25 °C**(引 ASHRAE 55-2013);lighting 占位标 **EN 12464-1** 但真 corpus 引的是 **CIBSE SLL**(又一个"占位引了不在库的标准",同 P-014 的 ASHRAE-1000 雷)+ 循环区 110 lux;acoustic 单一 ≤55 → WELL **分级 50/55/60 dBA + 卧室 35 dBA**。**下次接:** 三域走 P-014 纵向对齐链(thresholds→monitor rule→planner goal→generate 引用→bench gold)+ 三域 bench 种子 + 可选 contextual 全量重 embed。详见 DEVLOG P-016。
 
+> **🆕 2026-06-08(Phase 5 抢先启动·问答优先 MVP):** 作者拍板**暂搁论文证据线,先交付可部署成品**——落地**问答管家**(语音/文字):`ConversationalAgent` 两步式(意图分类 flash→**按需取数**→合成 flash,免 RAG/免 embedding key);范围判定("温度正常吗")复用 `thresholds.py`(monitor 同款真值);新增轻量采样器 `ops/sampler.py`+`sensor_readings` 表、ticket `list_incidents`、semantic `list_facts`(scroll 全量)、级联语音 mock(浏览器 Web Speech,零 key)、FastAPI+HTMX 对话前端。端到端实测 5 类问题全通,**按需取数核验通过**(A/A+ 不拉大源、B 拉 stats、C 拉 incidents、E 拒答)。详见 Phase 5 进度 + DEVLOG P-017。
+
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
 **🔜 下一步(Phase 4 续,优先级序):** ✅已清:P-009、grade/rewrite 入 runner、记忆消融 +1.00、自相矛盾陷阱(P-011)、ablate 条件验证(`--ablate-check`)、**真 corpus 切换回归(P-014,co2→WELL 900)**、**runner 并行化(P-015,3.3x + 修 reranker 并发不安全)**。**剩:** ① **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(卡 key,去主场嫌疑)② ✅ **三 domain 真 corpus 已接入**(WELL v2 同一 PDF 的 Light/Thermal/Sound concept,824 chunks,弃付费 ASHRAE/EN/WHO,P-016)→ 新剩:三域 thresholds/bench 走 P-014 纵向对齐 + 可选 contextual ③ 扩 200 + 判别性误导检索难题——**作者拍板等 Phase 5 真 PDF corpus**(强基座下简单任务无法判别,硬凑无意义,P-011)。"无数字不立论"的关口:架构价值现由**记忆消融 +1.00** 承载,≥10pp-vs-baseline 待真 corpus/GPT-4o。
@@ -186,14 +188,16 @@ retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/
 
 **目标:** 补齐人机入口和真实硬件,进入可上线状态。
 
-- [ ] `ConversationalGraph`:memory-first dispatch;V4-Flash 流式;自评信心<0.7 升 V3
-- [ ] `frontend/`:极简运维面板(Next.js 或 HTMX)+ FastAPI 网关(看 incident、审批 Tier3)
+- [~] `ConversationalGraph`:**问答管家 MVP 落地(2026-06-08)**——`ConversationalAgent` 两步式(意图分类→按需取数→合成),收 thresholds/读数/stats/incident/facts/SOP;**免 RAG/embedding**(范围判定靠 thresholds=corpus 蒸馏值,与 monitor 同款真值,自洽)。**遗留**:非完整 LangGraph(单轮函数,遵 memory.py 先例)、非流式、不升 V3(作者拍板对话全 deepseek-v4-flash)
+- [~] `frontend/`:**对话页落地(2026-06-08)**——FastAPI 网关 + Jinja2/HTMX 单页(聊天 + 录音 Web Speech STT + 浏览器 TTS)+ 级联语音 mock(`voice/provider.py`,STT→文本 LLM→TTS,零 key)。**遗留**:运维面板(看 incident、审批 Tier3)
 - [ ] `sensing/hardware/`:RPi 传感器读取 + MQTT 发布
 - [ ] `sensing/ingest/`:MQTT→InfluxDB;`mcp-sensor-server` 从直读模拟器切到 InfluxDB(真实/模拟可切换)
-- [ ] `ops/deployment/`:systemd units + cron(5 分钟监控、周日反思)
+- [~] `ops/deployment/`:**问答管家两 systemd 模板落地**(`ieq-web`/`ieq-sampler`,2026-06-08)。**遗留**:incident 5 分钟监控 cron + 周日反思 cron
 - [ ] 稳定化:72 小时无人值守 dry-run,修崩溃/泄漏
 
 **验收:** 真实传感器数据驱动一个真实 incident 端到端关单;面板能审批 Tier3;systemd 重启后自恢复。
+
+**📍 进度(2026-06-08 session):** **问答优先 MVP 落地并端到端实测**(作者拍板暂搁论文、先做可部署成品)。新增:`sensing/history.py`+`sensor_readings` 表(采样器写、统计读)、`ops/sampler.py`(APScheduler 轻量采样,**不跑 incident graph**)、ticket `list_incidents`、semantic `list_facts`(Qdrant scroll 全量、**免 embedding key**)、`agents/conversational.py`(两步式:`conversational.dispatch` flash 出 `RetrievalPlan`→按需取数→`conversational.respond` flash 合成;router 加 `conversational.dispatch`=FAST;失败退化拉核心源)、`voice/provider.py`(级联 mock)、`frontend/`(FastAPI+HTMX+Web Speech)。两 prompt 版本化(`conversational/{dispatch,respond}/v1`)。**实测**:ruff+mypy clean;数据层采样+`query_stats` 正确;5 类问题端到端真 LLM 通过,**按需取数核验通过**(A/A+ sources=[]、B=['stats']、C=['incidents']、E 拒答);web `/` 200 + `/api/sensors/current` JSON。**范围/取舍**:免 RAG(范围判定靠 thresholds)、对话全 flash、语音 mock(浏览器 Web Speech)、**RPi 友好**(零本地模型/无 torch)。**本期不做**(留后):incident 5min 常驻调度 + 进度面板、embedding 远端化、真语音 API、真硬件、72h dry-run。详见 DEVLOG P-017。
 
 ---
 
