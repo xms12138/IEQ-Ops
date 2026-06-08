@@ -42,6 +42,15 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **🔜 Phase 5 对话线(2026-06-08 起当前重心):** 问答管家 MVP ✅ → 多轮 ✅ + 流式 ✅(本 session,commit `1ebadd8`)。**下一缺口:** ① **真语音 API + RPi kiosk Web Speech 验证**(语音卖点 + 部署风险,现仍浏览器 mock)② RAG 标准条款问答(要标准原文/出处时)③ 运维面板(看 incident / 审批 Tier3)④ incident 5min 常驻调度。**硬件:** 按定稿方案落码(Arduino MKR 1010 固件 + `sensing/ingest` writer + `read_sensors` 的 sim/hardware 切换,两空目录待写)。
 
+**📌 下次接力(2026-06-08 session 收尾 — 下次从这接):**
+本 session 落地并提交三件:① **三域 thresholds 纵向对齐**(P-019,commit `41b098f`:thermal 21-25 / lighting 320 / acoustic 50 dBA 对齐真 WELL,bench 迁移,实跑三域 generate 全 grounded)② **critic 否决在人工域升级请人**(P-020,commit `8b04e47`:Tier3 无 actuator 域被否→escalate Tier3 interrupt 带 critic 顾虑,不再 FAILED;Tier1/2 仍 FAILED;critic 判断标准未动)③ **commit 全英文化**(11 个中文 commit 重写 + force push,「commit 纯英文」入 memory)。**期间发现并回滚 v5 generate prompt**(让 specialist 提「窗内可见效手段」反而引导 masking/风扇这类「改善感知不改数值」型手段,thermal 自洽退化,负 delta 不 merge)。**下次按优先级接:**
+> 1. **[Phase 3 缺口·健壮性核心] 接 replan** —— critic 否决(Tier1/2)/ verifier missed 当前都是终态(END/FAILED),无「重新规划」。P-020 的 Tier3 escalate 是「无自主解→交人」,replan 是「方案被否→换思路重试」,两者互补。需配 `subtask_results` 重置。
+> 2. **[Phase 5] acoustic 真闭环** —— 外部噪声只能 escalate 请人(已实现)。真降 dBA 需「关室内噪声源」:换室内源 demo 场景 + 记忆驱动诊断(无记忆泛泛 masking 被否、有记忆关室内风机通过 = 顺带展示 Week8>Week1 记忆价值)+ acoustic actuator。
+> 3. **[Phase 4·可选] 三域 contextual** —— thermal/lighting/acoustic 的 574 chunks 是裸 chunk(无 contextual prefix),与 airquality 不对称;补做需 `--contextual` 全量重 embed 四域。
+> 4. **[Phase 4] GPT-4o baseline + 双裁判**(卡 key)+ **扩 200 判别性误导检索难题**(真 corpus 已就位,P-011 等的就是它)。
+> 5. **[dissertation discussion] 度量范式 limitation** —— 「数值度量 vs 感知型干预」:masking 不降 dBA、风扇不降干球温,系统闭环只认数值→认不了「改善感知」型正当手段(v5 实证,已回滚)。是真实约束,写进论文 discussion。
+> 6. **[Phase 5] 其余** —— 真语音 API / 运维面板(看 incident + 审批 Tier3) / incident 5min 常驻调度 / 硬件落码。
+
 **剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
 
 **距离 6 条成功标准的硬缺口**(全在 Phase 4–6 产出):尚无 IEQ-Bench 分数、无 baseline 对比、无真实硬件数据、无 ≥4 周自主运行、无 Week8 vs Week1 证据、无公开 HF 数据集。**当前定性:功能骨架就绪(0–3);论文实证开采——Phase 4 首个 delta(generate/v4)已落地,baseline 对照 / Week8 证据 / HF 数据集待续(4–6)。**
