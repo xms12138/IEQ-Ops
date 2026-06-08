@@ -8,7 +8,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 ---
 
-## 当前进度快照（截至 2026-06-06）
+## 当前进度快照（截至 2026-06-08）
 
 > 一眼全局视图(给作者自学 / 答辩 / 求职)。每个 session 收尾更新本节;细节见下方各 Phase。
 
@@ -30,9 +30,13 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 > **🆕 2026-06-08(Phase 5 抢先启动·问答优先 MVP):** 作者拍板**暂搁论文证据线,先交付可部署成品**——落地**问答管家**(语音/文字):`ConversationalAgent` 两步式(意图分类 flash→**按需取数**→合成 flash,免 RAG/免 embedding key);范围判定("温度正常吗")复用 `thresholds.py`(monitor 同款真值);新增轻量采样器 `ops/sampler.py`+`sensor_readings` 表、ticket `list_incidents`、semantic `list_facts`(scroll 全量)、级联语音 mock(浏览器 Web Speech,零 key)、FastAPI+HTMX 对话前端。端到端实测 5 类问题全通,**按需取数核验通过**(A/A+ 不拉大源、B 拉 stats、C 拉 incidents、E 拒答)。详见 Phase 5 进度 + DEVLOG P-017。
 
+> **🆕 2026-06-08(续·对话多轮+流式 + 硬件方案定稿):** ① **对话多轮 + 流式落地并提交**(commit `1ebadd8`)——history 由**前端持有**、后端无状态(免 session、滑窗 6),dispatch+respond 都吃历史(裸追问 "what about humidity?" 实测接住上轮、答湿度);`core/router.py::stream()` 流式吐 token(fallback 仅未吐字前切换;语音保留非流式),prompt bump **v2** + 对话**全英文**;真 LLM 实测流式 33 块 / 首 token 1.9s,ruff+mypy(core 严格)全绿(DEVLOG **P-018**)。② **真实硬件接入方案定稿**(未写码)——demo 只摆 **RPi+触摸屏**,**Arduino MKR WiFi 1010** 传感器节点经 WiFi/MQTT → RPi Mosquitto → **Postgres `sensor_readings`**(**弃 InfluxDB**,当前量级过度工程);切入点是换 `read_sensors` body(`SENSOR_SOURCE=sim|hardware` 并存),上层 multi-agent 零改;麦克风留 RPi。详见 Phase 5「硬件接入方案」+ memory `project_hardware_deployment`。
+
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
 **🔜 下一步(Phase 4 续,优先级序):** ✅已清:P-009、grade/rewrite 入 runner、记忆消融 +1.00、自相矛盾陷阱(P-011)、ablate 条件验证(`--ablate-check`)、**真 corpus 切换回归(P-014,co2→WELL 900)**、**runner 并行化(P-015,3.3x + 修 reranker 并发不安全)**。**剩:** ① **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(卡 key,去主场嫌疑)② ✅ **三 domain 真 corpus 已接入**(WELL v2 同一 PDF 的 Light/Thermal/Sound concept,824 chunks,弃付费 ASHRAE/EN/WHO,P-016)→ 新剩:三域 thresholds/bench 走 P-014 纵向对齐 + 可选 contextual ③ 扩 200 + 判别性误导检索难题——**作者拍板等 Phase 5 真 PDF corpus**(强基座下简单任务无法判别,硬凑无意义,P-011)。"无数字不立论"的关口:架构价值现由**记忆消融 +1.00** 承载,≥10pp-vs-baseline 待真 corpus/GPT-4o。
+
+**🔜 Phase 5 对话线(2026-06-08 起当前重心):** 问答管家 MVP ✅ → 多轮 ✅ + 流式 ✅(本 session,commit `1ebadd8`)。**下一缺口:** ① **真语音 API + RPi kiosk Web Speech 验证**(语音卖点 + 部署风险,现仍浏览器 mock)② RAG 标准条款问答(要标准原文/出处时)③ 运维面板(看 incident / 审批 Tier3)④ incident 5min 常驻调度。**硬件:** 按定稿方案落码(Arduino MKR 1010 固件 + `sensing/ingest` writer + `read_sensors` 的 sim/hardware 切换,两空目录待写)。
 
 **剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
 
