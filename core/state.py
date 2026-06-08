@@ -67,6 +67,23 @@ class AutonomyTier(IntEnum):
     APPROVE = 3  # block on interrupt() until human approves
 
 
+# Reversibility + occupant impact set the action tier per domain. Only airquality
+# has an actuator (ventilation: reversible, low-impact → Tier 1); the other domains
+# have no autonomous action branch yet (Phase 5) and fall to the safest tier — they
+# are resolved by a human at the Tier 3 interrupt. Lives here (not core/graph.py) so
+# CriticAgent can read it without importing the graph module (circular import).
+_TIER_BY_DOMAIN: dict[str, AutonomyTier] = {
+    "airquality": AutonomyTier.AUTO,
+}
+
+
+def tier_for_sensor(sensor: str | None) -> AutonomyTier:
+    """Action tier for the incident whose primary anomaly is on `sensor`. A domain
+    with no actuator defaults to APPROVE (Tier 3 — human-only resolution)."""
+    domain = SENSOR_DOMAIN.get(sensor or "", "airquality")
+    return _TIER_BY_DOMAIN.get(domain, AutonomyTier.APPROVE)
+
+
 # ── Locked schemas (hard constraints — extra fields are forbidden) ────────────
 
 

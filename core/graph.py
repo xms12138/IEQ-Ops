@@ -60,6 +60,7 @@ from core.state import (
     Plan,
     SpecialistResult,
     Subtask,
+    tier_for_sensor,
 )
 from mcp_servers.actuator.server import mcp as actuator_server
 from mcp_servers.client import call_tool
@@ -75,12 +76,9 @@ INTERRUPT_BEFORE = ["verifier"]
 # non-existent node.
 _SPECIALIST_DOMAINS = ("airquality", "thermal", "lighting", "acoustic")
 
-# Reversibility + occupant impact set the tier. Only airquality has an actuator
-# in Phase 2 (ventilation: reversible, low-impact → Tier 1). Other domains have
-# no action branch yet (Phase 5) and fall to the safest tier.
-_TIER_BY_DOMAIN: dict[str, AutonomyTier] = {
-    "airquality": AutonomyTier.AUTO,
-}
+# _TIER_BY_DOMAIN + tier_for_sensor() live in core.state so CriticAgent can read the
+# tier without importing this module: a Tier 3 (human-only) disapproval is escalated
+# to the autonomy gate rather than failing the incident.
 
 # ReWOO placeholder: #{subtask_id}.{field} e.g. #S1.diagnosis (CLAUDE.md naming).
 # Optional braces tolerate the #{S1}.diagnosis variant too: the planner LLM
@@ -181,10 +179,20 @@ def autonomy_gate(state: MainIncidentState) -> dict[str, Any]:
     domain = (
         SENSOR_DOMAIN.get(state.anomaly.sensor, "airquality") if state.anomaly else "airquality"
     )
-    tier = _TIER_BY_DOMAIN.get(domain, AutonomyTier.APPROVE)
+    tier = tier_for_sensor(state.anomaly.sensor if state.anomaly else None)
     log.info("autonomy_gate", domain=domain, tier=int(tier))
     if tier is AutonomyTier.APPROVE:
-        decision = interrupt({"reason": "Tier 3 action requires human approval", "domain": domain})
+        # Human-only domain. If the critic disapproved upstream, no autonomous fix
+        # exists (e.g. external-noise acoustic) — escalate WITH the critic's concern
+        # so the human acts on a real, reported incident rather than a silent fail.
+        verdict = state.critic_verdict
+        if verdict is not None and not verdict.approved:
+            reason = "No autonomous fix available — human review required"
+            concerns = list(verdict.unsupported_claims)
+        else:
+            reason = "Tier 3 action requires human approval"
+            concerns = []
+        decision = interrupt({"reason": reason, "domain": domain, "concerns": concerns})
         if not (isinstance(decision, dict) and decision.get("approved") is True):
             log.info("autonomy_gate_rejected", domain=domain)
             return {"autonomy_tier": tier, "status": IncidentStatus.FAILED}
@@ -243,12 +251,19 @@ def route_dispatch(state: MainIncidentState) -> list[Send] | str:
 
 
 def _route_after_critic(state: MainIncidentState) -> str:
-    """Gate the action on the critic's verdict. Disapproval (incoherent or
-    physically implausible primary diagnosis) ends the incident WITHOUT acting —
-    CriticAgent has already marked it FAILED on the ticket. Phase 3 will route a
-    disapproval to replan instead of END."""
+    """Gate the action on the critic's verdict. An approved diagnosis proceeds to the
+    autonomy gate. A disapproval means "do not auto-actuate this": for a domain the
+    system WOULD action automatically (Tier 1/2) that ends the incident WITHOUT acting
+    (CriticAgent marked it FAILED). But a human-only domain (Tier 3, no actuator) has
+    no autonomous action to suppress — a disapproval there is precisely the signal to
+    escalate, so it routes to the gate to block on interrupt() with the critic's
+    concern. (Phase 3 will route a Tier 1/2 disapproval to replan instead of END.)"""
     verdict = state.critic_verdict
-    return "autonomy_gate" if verdict is not None and verdict.approved else END
+    if verdict is not None and verdict.approved:
+        return "autonomy_gate"
+    if tier_for_sensor(state.anomaly.sensor if state.anomaly else None) is AutonomyTier.APPROVE:
+        return "autonomy_gate"
+    return END
 
 
 # ── graph assembly ────────────────────────────────────────────────────────────

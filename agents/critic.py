@@ -18,11 +18,14 @@ here by design. Instead it validates two things it CAN see:
      plausibility-only verdict backs it up so an LLM outage never deadlocks the
      loop.
 
-On disapproval the incident is failed (status FAILED, ticket patched) and the
-graph routes to END WITHOUT acting: the safe move is to not actuate on an
-incoherent or physically implausible diagnosis. Routing a failed critic to
-*replan* (instead of END) is deferred to Phase 3, where it pairs with episodic
-memory and the subtask_results reset a clean replan needs.
+On disapproval the routing depends on the primary domain's action tier. A domain the
+system would auto-actuate (Tier 1/2) is failed (status FAILED, ticket patched) and the
+graph routes to END WITHOUT acting — never actuate on an incoherent or implausible
+diagnosis. A human-only domain (Tier 3, no actuator) instead ESCALATES to the human at
+the autonomy gate (status AWAITING_APPROVAL): there is no autonomous action to suppress,
+so the incident is reported for human resolution, not failed. Routing a Tier 1/2
+disapproval to *replan* is deferred to Phase 3 (it pairs with episodic memory and the
+subtask_results reset a clean replan needs).
 """
 
 from __future__ import annotations
@@ -35,10 +38,12 @@ from agents.prompt_loader import load_prompt
 from core.logging import get_logger
 from core.router import Router, RouterExhausted
 from core.state import (
+    AutonomyTier,
     CriticVerdict,
     IncidentStatus,
     MainIncidentState,
     SpecialistResult,
+    tier_for_sensor,
 )
 from mcp_servers.client import call_tool
 from mcp_servers.ticket.server import mcp as ticket_server
@@ -78,7 +83,7 @@ class CriticAgent:
         verdict = self._validate(primary, state)
         if not verdict.approved:
             log.warning("critic_disapproved", claims=verdict.unsupported_claims)
-            return self._fail(state, verdict)
+            return self._disapprove(state, verdict)
         log.info("critic_approved", subtask_id=primary.subtask_id)
         return {"critic_verdict": verdict, "status": IncidentStatus.ACTING}
 
@@ -93,6 +98,25 @@ class CriticAgent:
                 status=IncidentStatus.FAILED.value,
             )
         return {"critic_verdict": verdict, "status": IncidentStatus.FAILED}
+
+    def _disapprove(self, state: MainIncidentState, verdict: CriticVerdict) -> dict[str, Any]:
+        """Route a disapproved diagnosis by the primary domain's action tier. A
+        human-only domain (Tier 3, no actuator) has no autonomous action to suppress,
+        so the rejection ESCALATES to the human at the autonomy gate (status
+        AWAITING_APPROVAL) — the incident is reported, not failed. A domain the system
+        would auto-actuate (Tier 1/2) is failed: never act on a rejected diagnosis."""
+        sensor = state.anomaly.sensor if state.anomaly else None
+        if tier_for_sensor(sensor) is AutonomyTier.APPROVE:
+            log.info("critic_escalate_human", sensor=sensor)
+            if state.incident_id is not None:
+                call_tool(
+                    ticket_server,
+                    "update_incident",
+                    incident_id=state.incident_id,
+                    status=IncidentStatus.AWAITING_APPROVAL.value,
+                )
+            return {"critic_verdict": verdict, "status": IncidentStatus.AWAITING_APPROVAL}
+        return self._fail(state, verdict)
 
     def _validate(self, result: SpecialistResult, state: MainIncidentState) -> CriticVerdict:
         # 1. Deterministic numeric floor — a hard reject the LLM cannot override.
