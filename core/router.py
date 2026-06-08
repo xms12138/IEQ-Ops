@@ -17,8 +17,9 @@ ACTIVE OVERRIDES (ops/llm_routing.md header):
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 # TracedOpenAI is langfuse.openai's drop-in client: it traces every completion
 # (model, tokens_in/out, latency) to LangFuse — the single point all LLM calls pass,
@@ -27,6 +28,7 @@ from typing import Any
 # type-checked (langfuse.* is ignore_missing_imports in pyproject).
 from langfuse.openai import OpenAI as TracedOpenAI
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
+from openai.types.chat import ChatCompletionChunk
 
 from core.config import Settings, get_settings
 from core.logging import get_logger
@@ -111,6 +113,48 @@ class Router:
             except APIStatusError as exc:
                 if exc.status_code < 500:
                     raise  # client error (bad request / auth) — don't burn the fallback
+                log.warning(
+                    "route_retry", node=node, model=model, attempt=attempt, status=exc.status_code
+                )
+        raise RouterExhausted(f"both models failed for node {node!r} ({primary} -> {fallback})")
+
+    def stream(self, node: str, messages: list[dict[str, str]], **kwargs: Any) -> Iterator[str]:
+        """Stream a chat completion for a node, yielding content deltas as they arrive.
+
+        Falls back to the secondary model ONLY if the primary fails before emitting any
+        token — a mid-stream failure can't be retried without double-emitting, so it
+        propagates. Raises RouterExhausted if both fail before producing output.
+        """
+        primary, fallback = self.resolve(node)
+        for attempt, model in enumerate((primary, fallback)):
+            produced = False
+            try:
+                # stream=True + **kwargs:Any collapses the create() overload, so cast the
+                # result back to the chunk iterator the streaming overload actually returns.
+                resp_stream = cast(
+                    "Iterator[ChatCompletionChunk]",
+                    self._client.chat.completions.create(
+                        model=model,
+                        messages=messages,  # type: ignore[arg-type]
+                        stream=True,
+                        **kwargs,
+                    ),
+                )
+                for chunk in resp_stream:
+                    if not chunk.choices:
+                        continue  # e.g. the trailing usage-only chunk
+                    delta = chunk.choices[0].delta.content
+                    if delta:
+                        produced = True
+                        yield delta
+                return
+            except _RETRYABLE as exc:
+                if produced:
+                    raise  # already streamed partial output; retrying would duplicate
+                log.warning("route_retry", node=node, model=model, attempt=attempt, error=str(exc))
+            except APIStatusError as exc:
+                if produced or exc.status_code < 500:
+                    raise
                 log.warning(
                     "route_retry", node=node, model=model, attempt=attempt, status=exc.status_code
                 )

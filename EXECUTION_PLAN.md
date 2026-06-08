@@ -36,7 +36,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 **剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
 
-**距离 6 条成功标准的硬缺口**(全在 Phase 4–6 产出):尚无 IEQ-Bench 分数、无 baseline 对比、无真实硬件/InfluxDB 数据、无 ≥4 周自主运行、无 Week8 vs Week1 证据、无公开 HF 数据集。**当前定性:功能骨架就绪(0–3);论文实证开采——Phase 4 首个 delta(generate/v4)已落地,baseline 对照 / Week8 证据 / HF 数据集待续(4–6)。**
+**距离 6 条成功标准的硬缺口**(全在 Phase 4–6 产出):尚无 IEQ-Bench 分数、无 baseline 对比、无真实硬件数据、无 ≥4 周自主运行、无 Week8 vs Week1 证据、无公开 HF 数据集。**当前定性:功能骨架就绪(0–3);论文实证开采——Phase 4 首个 delta(generate/v4)已落地,baseline 对照 / Week8 证据 / HF 数据集待续(4–6)。**
 
 **🔍 Phase 0–3 回归验证(2026-05-30 完整跑通):** 7 项全绿——静态质量门 / 31 模块编译 / 基础设施连通(PG 4 表 + Qdrant 3 collection) / 检索栈 38ms / 🔴 跨重启恢复 / 🔴 子图隔离零泄漏 / 三层记忆+反思。期间修复 2 处 ruff format 漂移 + demo 注释滞后。唯一实质问题:**generate 自洽 flaky**(co2_spike 实测 33% critic 正当否决,根因 generate 正文降幅预测与 `target_value` 矛盾),经决策留 Phase 4 作首个 bench 量化目标(见下)。
 
@@ -188,16 +188,28 @@ retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/
 
 **目标:** 补齐人机入口和真实硬件,进入可上线状态。
 
-- [~] `ConversationalGraph`:**问答管家 MVP 落地(2026-06-08)**——`ConversationalAgent` 两步式(意图分类→按需取数→合成),收 thresholds/读数/stats/incident/facts/SOP;**免 RAG/embedding**(范围判定靠 thresholds=corpus 蒸馏值,与 monitor 同款真值,自洽)。**遗留**:非完整 LangGraph(单轮函数,遵 memory.py 先例)、非流式、不升 V3(作者拍板对话全 deepseek-v4-flash)
-- [~] `frontend/`:**对话页落地(2026-06-08)**——FastAPI 网关 + Jinja2/HTMX 单页(聊天 + 录音 Web Speech STT + 浏览器 TTS)+ 级联语音 mock(`voice/provider.py`,STT→文本 LLM→TTS,零 key)。**遗留**:运维面板(看 incident、审批 Tier3)
-- [ ] `sensing/hardware/`:RPi 传感器读取 + MQTT 发布
-- [ ] `sensing/ingest/`:MQTT→InfluxDB;`mcp-sensor-server` 从直读模拟器切到 InfluxDB(真实/模拟可切换)
+- [~] `ConversationalGraph`:**问答管家 MVP 落地(2026-06-08)**——`ConversationalAgent` 两步式(意图分类→按需取数→合成),收 thresholds/读数/stats/incident/facts/SOP;**免 RAG/embedding**(范围判定靠 thresholds=corpus 蒸馏值,与 monitor 同款真值,自洽)。**多轮 + 流式已落地(2026-06-08 续)**:history 由前端维护、每轮带上(后端无状态、滑窗最近 6 条),dispatch+respond 均吃历史(追问 "what about humidity?" 实测接住上轮、答湿度);`respond_stream` 流式吐 token(实测首 token ~2s、33 块),`respond` 保留非流式供语音级联;对话全英文。**遗留**:非完整 LangGraph(函数式,遵 memory.py 先例)、不升 V3(作者拍板对话全 deepseek-v4-flash)、RAG 标准条款问答留后
+- [~] `frontend/`:**对话页落地(2026-06-08)**——FastAPI 网关 + Jinja2/HTMX 单页(聊天 + 录音 Web Speech STT + 浏览器 TTS)+ 级联语音 mock(`voice/provider.py`,STT→文本 LLM→TTS,零 key)。**多轮+流式(2026-06-08 续)**:`/api/chat` 改 `StreamingResponse`、前端 `ReadableStream` 边收边渲染;客户端持有 history、每轮带最近 6 条;STT/TTS + 界面改 en-US;加 "New conversation" 清空历史。**遗留**:运维面板(看 incident、审批 Tier3)、真语音 API + RPi kiosk Web Speech 验证
+- [ ] **真实硬件接入(方案 2026-06-08 定稿,见下「硬件接入方案」)**:
+  - [ ] **Arduino 固件**(MKR WiFi 1010,C++):SCD40(CO2,I2C `0x62`)+ BH1750(光照,I2C `0x23`)挂同一 I2C 总线 + DHT22(温湿,单总线)→ WiFiNINA + ArduinoMqttClient 发 JSON 到 MQTT topic(板为 3.3V 逻辑,三传感器天然匹配)
+  - [ ] **RPi 网关**:装 Mosquitto broker;`sensing/ingest/` 新写 MQTT 订阅 writer(paho)→ `sensing.history.record_reading()` 写**现有 Postgres `sensor_readings` 表**(**弃 InfluxDB**,理由见下)
+  - [ ] **`read_sensors` 切换**:`mcp-sensor-server.read_sensors` 加 `SENSOR_SOURCE=sim|hardware` env 开关——hardware 读 `sensor_readings` 最新行、sim 仍读模拟器(**两者并存**:demo 既展示真实感知、又靠注入场景演 incident 闭环);**工具名+输出形状不变 → 上层 multi-agent 零改动**(这是接入最干净的切入点)
+  - [ ] **麦克风留 RPi**:USB mic + Python 端算响度(dB)并入同一帧(Arduino 算力不适合持续声学采样;acoustic thresholds 本就待 P-016 对齐,噪声这块暂粗)
 - [~] `ops/deployment/`:**问答管家两 systemd 模板落地**(`ieq-web`/`ieq-sampler`,2026-06-08)。**遗留**:incident 5 分钟监控 cron + 周日反思 cron
 - [ ] 稳定化:72 小时无人值守 dry-run,修崩溃/泄漏
 
 **验收:** 真实传感器数据驱动一个真实 incident 端到端关单;面板能审批 Tier3;systemd 重启后自恢复。
 
 **📍 进度(2026-06-08 session):** **问答优先 MVP 落地并端到端实测**(作者拍板暂搁论文、先做可部署成品)。新增:`sensing/history.py`+`sensor_readings` 表(采样器写、统计读)、`ops/sampler.py`(APScheduler 轻量采样,**不跑 incident graph**)、ticket `list_incidents`、semantic `list_facts`(Qdrant scroll 全量、**免 embedding key**)、`agents/conversational.py`(两步式:`conversational.dispatch` flash 出 `RetrievalPlan`→按需取数→`conversational.respond` flash 合成;router 加 `conversational.dispatch`=FAST;失败退化拉核心源)、`voice/provider.py`(级联 mock)、`frontend/`(FastAPI+HTMX+Web Speech)。两 prompt 版本化(`conversational/{dispatch,respond}/v1`)。**实测**:ruff+mypy clean;数据层采样+`query_stats` 正确;5 类问题端到端真 LLM 通过,**按需取数核验通过**(A/A+ sources=[]、B=['stats']、C=['incidents']、E 拒答);web `/` 200 + `/api/sensors/current` JSON。**范围/取舍**:免 RAG(范围判定靠 thresholds)、对话全 flash、语音 mock(浏览器 Web Speech)、**RPi 友好**(零本地模型/无 torch)。**本期不做**(留后):incident 5min 常驻调度 + 进度面板、embedding 远端化、真语音 API、真硬件、72h dry-run。详见 DEVLOG P-017。
+
+**🔧 硬件接入方案(2026-06-08 定稿,作者拍板):**
+
+- **目标场景**:答辩/demo 桌面只摆 **RPi 4 + 触摸屏**,传感器不直插 RPi GPIO,改用 **Arduino MKR WiFi 1010 当独立传感器节点**(板载 WiFi、3.3V,适配 I2C 传感器)经 WiFi/MQTT 上报——正是 `sensing/` 的设计本意(传感器节点 + 网关,而非 RPi 直插一堆线)。
+- **数据流**:`Arduino(SCD40/BH1750/DHT22) ─WiFi/MQTT─▶ RPi Mosquitto ─▶ sensing/ingest writer ─▶ Postgres sensor_readings 表 ─▶ read_sensors(hardware 模式)`;麦克风走 USB 接 RPi、本地 Python 算 dB 并入同一帧。
+- **切入点(最干净处)**:全系统读传感器只经 `mcp-sensor-server.read_sensors`(返回 `dict[str,float]`),换它的 body 即可,monitor/verifier/sampler/问答管家**全部零改**;`SENSOR_SOURCE=sim|hardware` 切换,两源并存(真实感知 + 注入场景演闭环,缺一不可)。
+- **决策:弃 InfluxDB,复用 Postgres `sensor_readings`**(推翻 CLAUDE.md 原 InfluxDB 计划——属「具体工具选型」,TECH_STACK 优先;`read_sensors`/`sensor_readings` 注释本就留 "Phase 5 *can* move to InfluxDB" 余地,未锁死)。**理由**:采样 5min/次(demo 10s)→ 跑满 8 周也就几十万行,对 Postgres 是毛毛雨,InfluxDB 的高频压缩/降采样/retention 优势**这个量级用不上**;RPi 资源紧、Postgres 已在跑、问答管家已读该表 → Arduino 真数据一进表当场被问答管家用上。InfluxDB 留作「真到大数据量再说」(或上 TimescaleDB 给 Postgres 加时序,不另起库)。
+
+**📍 进度(2026-06-08 续·对话多轮+流式):** 把问答管家从单轮无状态升级为**多轮 + 流式**(作者拍板英文对话)。① **多轮**:history 由**前端持有**、每轮随请求带上(后端无状态、免 session 管理、多 worker 不怕),后端滑窗截最近 6 条;**dispatch 与 respond 都吃历史**(指代/追问才解析得了)。prompt bump v2(system 指令风格 + 多轮说明 + 全英文)。② **流式**:`core/router.py` 加 `stream()`(fallback 只在**未吐字前**切换,中途失败不重试以免重复输出);`/api/chat` 改 `StreamingResponse` 吐纯文本 token,前端 `ReadableStream` 边收边渲染;语音路径保留**非流式**(浏览器 TTS 要完整文本)。③ **实测**(真 LLM,Postgres/Qdrant 起):"is the temperature ok?"→sources=[]、流式 33 块、首 token 1.9s、答 22.5℃∈19-26;裸追问 "what about humidity?"→turns=1、接住上轮、答 45%RH∈30-60。ruff + mypy(core 严格)全绿。详见 DEVLOG P-018。
 
 ---
 

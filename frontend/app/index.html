@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IEQ-Ops 问答管家</title>
+<title>IEQ-Ops Room Butler</title>
 <style>
 * { box-sizing: border-box; }
-body { margin:0; font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+body { margin:0; font-family: system-ui, "Segoe UI", sans-serif;
   background:#f4f6f8; color:#1c2733; display:flex; flex-direction:column; height:100vh; }
 header { background:#0f766e; color:#fff; padding:12px 16px; }
 header h1 { margin:0 0 6px; font-size:18px; }
@@ -27,28 +27,34 @@ header h1 { margin:0 0 6px; font-size:18px; }
 .inputbar button#mic.on { background:#dc2626; color:#fff; }
 .tts { font-size:13px; color:#475569; display:flex; align-items:center; gap:4px; }
 .hint { padding:8px 16px 14px; font-size:12px; color:#64748b; background:#fff; }
+.actions { padding:0 16px 10px; background:#fff; }
+.actions button { font-size:12px; color:#64748b; background:none; border:0; cursor:pointer;
+  padding:0; text-decoration:underline; }
 </style>
 </head>
 <body>
 <header>
-  <h1>🏠 IEQ-Ops 问答管家</h1>
-  <div id="readings" class="readings">读数加载中…</div>
+  <h1>🏠 IEQ-Ops Room Butler</h1>
+  <div id="readings" class="readings">Loading readings…</div>
 </header>
 <main id="chat" class="chat"></main>
+<div class="actions"><button type="button" id="newchat">New conversation</button></div>
 <form id="form" class="inputbar">
-  <input id="q" autocomplete="off" placeholder="问我房间的环境…(如:现在 CO2 多少)">
-  <button type="submit">发送</button>
-  <button type="button" id="mic" title="语音提问">🎤</button>
-  <label class="tts"><input type="checkbox" id="ttsToggle" checked> 朗读</label>
+  <input id="q" autocomplete="off" placeholder="Ask about the room… (e.g. what's the CO2 now?)">
+  <button type="submit">Send</button>
+  <button type="button" id="mic" title="Ask by voice">🎤</button>
+  <label class="tts"><input type="checkbox" id="ttsToggle" checked> Read aloud</label>
 </form>
-<div class="hint">示例:现在 CO2 和温度多少 · 现在温度在正常范围内吗 · 过去 24 小时 CO2 平均和最高 · 最近有没有异常 · 帮我把空调打开</div>
+<div class="hint">Try: what's the CO₂ and temperature now? · is the temperature in range? · what about humidity? · average and peak CO₂ over the past 24h · any recent anomalies?</div>
 
 <script>
+const MAX_TURNS = 6;  // keep only the last N messages of history when sending
 const chat = document.getElementById('chat');
 const form = document.getElementById('form');
 const qInput = document.getElementById('q');
 const micBtn = document.getElementById('mic');
 const ttsToggle = document.getElementById('ttsToggle');
+let history = [];  // [{role, content}] — client-owned conversation memory (multi-turn)
 
 function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -65,38 +71,56 @@ function speak(text){
   if (!ttsToggle.checked) return;
   if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN';
+  u.lang = 'en-US';
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(u);
 }
 
+// Text chat: stream the answer token-by-token from /api/chat (plain-text chunks).
 async function askText(query){
   addBubble('user', query);
-  const thinking = addBubble('bot', '…');
+  const bot = addBubble('bot', '…');
+  let full = '';
   try {
     const r = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ query })
+      body: new URLSearchParams({ query, history: JSON.stringify(history.slice(-MAX_TURNS)) })
     });
-    const data = await r.json();
-    thinking.innerHTML = esc(data.text);
-    speak(data.text);
-  } catch (e) { thinking.innerHTML = '请求失败:' + esc(String(e)); }
+    if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      full += dec.decode(value, { stream: true });
+      bot.innerHTML = esc(full);
+      chat.scrollTop = chat.scrollHeight;
+    }
+    full = (full + dec.decode()).trim();
+    bot.innerHTML = esc(full);
+    if (full) {
+      speak(full);
+      history.push({ role: 'user', content: query }, { role: 'assistant', content: full });
+    }
+  } catch (e) { bot.innerHTML = 'Request failed: ' + esc(String(e)); }
   chat.scrollTop = chat.scrollHeight;
 }
 
+// Voice: non-streaming (TTS needs the whole answer at once).
 async function askVoice(transcript){
   addBubble('user', '🎤 ' + transcript);
-  const thinking = addBubble('bot', '…');
+  const bot = addBubble('bot', '…');
   try {
     const fd = new FormData();
     fd.append('debug_text', transcript);
+    fd.append('history', JSON.stringify(history.slice(-MAX_TURNS)));
     const r = await fetch('/api/voice/chat', { method: 'POST', body: fd });
     const data = await r.json();
-    thinking.innerHTML = esc(data.text);
+    bot.innerHTML = esc(data.text);
     speak(data.text);
-  } catch (e) { thinking.innerHTML = '请求失败:' + esc(String(e)); }
+    history.push({ role: 'user', content: transcript }, { role: 'assistant', content: data.text });
+  } catch (e) { bot.innerHTML = 'Request failed: ' + esc(String(e)); }
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -108,20 +132,26 @@ form.addEventListener('submit', (e) => {
   askText(q);
 });
 
+document.getElementById('newchat').addEventListener('click', () => {
+  history = [];
+  chat.innerHTML = '';
+  addBubble('bot', 'Started a new conversation.');
+});
+
 // Voice input via the browser Web Speech API (no key). Real backend STT later.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (SR) {
   const rec = new SR();
-  rec.lang = 'zh-CN'; rec.interimResults = false; rec.maxAlternatives = 1;
+  rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
   let listening = false;
   micBtn.addEventListener('click', () => { if (listening) rec.stop(); else rec.start(); });
   rec.onstart = () => { listening = true; micBtn.classList.add('on'); micBtn.textContent = '⏺'; };
   rec.onend = () => { listening = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤'; };
   rec.onresult = (ev) => { const t = ev.results[0][0].transcript.trim(); if (t) askVoice(t); };
-  rec.onerror = (ev) => { addBubble('bot', '语音识别出错:' + esc(ev.error)); };
+  rec.onerror = (ev) => { addBubble('bot', 'Speech recognition error: ' + esc(ev.error)); };
 } else {
   micBtn.disabled = true;
-  micBtn.title = '此浏览器不支持语音识别(请用 Chrome)';
+  micBtn.title = 'This browser does not support speech recognition (try Chrome)';
 }
 
 async function loadReadings(){
@@ -130,9 +160,9 @@ async function loadReadings(){
     const d = await r.json();
     const co2 = (typeof d.co2 === 'number') ? d.co2.toFixed(0) : d.co2;
     document.getElementById('readings').textContent =
-      'CO₂ ' + co2 + ' ppm · 温度 ' + d.temperature + ' ℃ · 湿度 ' + d.humidity +
-      '% · 光照 ' + d.lux + ' lux · 噪声 ' + d.noise_db + ' dBA';
-  } catch (e) { document.getElementById('readings').textContent = '读数获取失败'; }
+      'CO₂ ' + co2 + ' ppm · Temp ' + d.temperature + ' °C · Humidity ' + d.humidity +
+      '% · Light ' + d.lux + ' lux · Noise ' + d.noise_db + ' dBA';
+  } catch (e) { document.getElementById('readings').textContent = 'Failed to load readings'; }
 }
 loadReadings();
 setInterval(loadReadings, 15000);

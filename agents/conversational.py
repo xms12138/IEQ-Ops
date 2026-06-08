@@ -1,6 +1,6 @@
 """ConversationalAgent — the Q&A butler (ConversationalGraph, MVP slice).
 
-NOT a LangGraph: a single-shot retrieve+synthesise; graphing it would be theater
+NOT a LangGraph: a multi-turn retrieve+synthesise loop; graphing it would be theater
 (same call as memory/episodic being a function, not a node). Two flash calls:
 
   1. dispatch  — one cheap flash classifies the query into a RetrievalPlan (which
@@ -8,6 +8,13 @@ NOT a LangGraph: a single-shot retrieve+synthesise; graphing it would be theater
   2. synthesis — pull the baseline (current readings + thresholds, ALWAYS) plus
                  only the planned big sources, then one flash grounds an answer in
                  that context and refuses out-of-scope asks.
+
+Multi-turn: the frontend owns the conversation history and passes the last turns in;
+BOTH dispatch and synthesis see them, so follow-ups like "what about humidity?"
+resolve against earlier turns. Streaming: respond_stream() yields synthesis tokens
+for the text chat; respond() returns the full text for the voice cascade (TTS needs
+it whole). Each turn refetches its own <context>, so answers stay grounded in fresh
+data, not stale numbers from earlier turns.
 
 No RAG / no embedding: range checks ("is the temperature normal?") ride on
 sensing.thresholds — the SAME truth the Monitor judges anomalies against — so the
@@ -18,6 +25,7 @@ FAST tier); no V3 escalation in the MVP.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import timedelta
 from typing import Any
 
@@ -72,28 +80,67 @@ class RetrievalPlan(BaseModel):
 class ConversationalAgent:
     def __init__(self, router: Router | None = None) -> None:
         self.router = router or Router()
-        self._dispatch_tmpl = load_prompt("conversational/dispatch")
-        self._respond_tmpl = load_prompt("conversational/respond")
+        self._dispatch_tmpl = load_prompt("conversational/dispatch", version=2)
+        self._respond_tmpl = load_prompt("conversational/respond", version=2)
 
-    def respond(self, query: str) -> str:
-        """Answer one question: classify → fetch only what's needed → synthesise."""
-        plan = self._dispatch(query)
+    def respond(self, query: str, history: list[dict[str, str]] | None = None) -> str:
+        """Non-streaming answer (used by the voice cascade, which needs the full text
+        before it can run TTS). Same pipeline as respond_stream."""
+        messages = self._prepare(query, history or [])
+        try:
+            answer = self.router.complete(
+                "conversational.respond", messages, temperature=0.3, **_NO_THINK
+            )
+            return answer.strip()
+        except RouterExhausted as exc:
+            log.warning("synthesize_failed", error=str(exc))
+            return "Sorry, I can't reach the reasoning service right now. Please try again."
+
+    def respond_stream(
+        self, query: str, history: list[dict[str, str]] | None = None
+    ) -> Iterator[str]:
+        """Streaming answer (text chat): classify → fetch only what's needed → stream the
+        synthesis tokens as they arrive. The pipeline runs lazily on first iteration."""
+        messages = self._prepare(query, history or [])
+        try:
+            yield from self.router.stream(
+                "conversational.respond", messages, temperature=0.3, **_NO_THINK
+            )
+        except RouterExhausted as exc:
+            log.warning("synthesize_failed", error=str(exc))
+            yield "Sorry, I can't reach the reasoning service right now. Please try again."
+
+    def _prepare(self, query: str, history: list[dict[str, str]]) -> list[dict[str, str]]:
+        """Shared front half: history-aware dispatch → gather → build the respond messages
+        (system instructions + prior turns + this turn's <context> + question)."""
+        plan = self._dispatch(query, history)
         context = self._gather(plan)
         log.info(
             "conversational_dispatch",
             query=query[:60],
+            turns=len(history) // 2,
             sources=[
                 k for k in ("stats", "incidents", "facts", "sops") if context.get(k) is not None
             ],
         )
-        return self._synthesize(query, context)
+        ctx_json = json.dumps(context, ensure_ascii=False, default=str, indent=2)
+        user = f"<context>\n{ctx_json}\n</context>\n\n{query}"
+        return [
+            {"role": "system", "content": self._respond_tmpl.safe_substitute()},
+            *history,
+            {"role": "user", "content": user},
+        ]
 
-    def _dispatch(self, query: str) -> RetrievalPlan:
-        prompt = self._dispatch_tmpl.safe_substitute(query=query)
+    def _dispatch(self, query: str, history: list[dict[str, str]]) -> RetrievalPlan:
+        messages = [
+            {"role": "system", "content": self._dispatch_tmpl.safe_substitute()},
+            *history,
+            {"role": "user", "content": query},
+        ]
         try:
             raw = self.router.complete(
                 "conversational.dispatch",
-                [{"role": "user", "content": prompt}],
+                messages,
                 response_format={"type": "json_object"},
                 temperature=0,
                 **_NO_THINK,
@@ -123,20 +170,3 @@ class ConversationalAgent:
         if plan.need_sops:
             ctx["sops"] = [s.model_dump() for s in active_sops(incident_type=domain)]
         return ctx
-
-    def _synthesize(self, query: str, context: dict[str, Any]) -> str:
-        prompt = self._respond_tmpl.safe_substitute(
-            query=query,
-            context=json.dumps(context, ensure_ascii=False, default=str, indent=2),
-        )
-        try:
-            answer = self.router.complete(
-                "conversational.respond",
-                [{"role": "user", "content": prompt}],
-                temperature=0.3,
-                **_NO_THINK,
-            )
-            return answer.strip()
-        except RouterExhausted as exc:
-            log.warning("synthesize_failed", error=str(exc))
-            return "抱歉,我现在无法连接到推理服务,请稍后再试。"
