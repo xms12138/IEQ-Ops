@@ -27,9 +27,12 @@ THRESHOLDS: dict[str, Threshold] = {
     },
     "temperature": {
         "unit": "degC",
-        "low": 19.0,
-        "high": 26.0,
-        "rule": "temperature must stay within 19-26 degC (thermal comfort band)",
+        "low": 21.0,
+        "high": 25.0,
+        "rule": (
+            "temperature must stay within 21-25 degC "
+            "(WELL v2 Thermal Comfort T01 dry-bulb range; per ASHRAE 55-2013)"
+        ),
     },
     "humidity": {
         "unit": "%RH",
@@ -39,15 +42,21 @@ THRESHOLDS: dict[str, Threshold] = {
     },
     "lux": {
         "unit": "lux",
-        "low": 300.0,
+        "low": 320.0,
         "high": None,
-        "rule": "illuminance must stay >= 300 lux for occupied workspace (EN 12464-1)",
+        "rule": (
+            "illuminance must stay >= 320 lux at the task surface for "
+            "offices/classrooms (WELL v2 Light, Predetermined light levels)"
+        ),
     },
     "noise_db": {
         "unit": "dBA",
         "low": None,
-        "high": 55.0,
-        "rule": "noise must stay <= 55 dBA in a working space",
+        "high": 50.0,
+        "rule": (
+            "noise must stay <= 50 dBA average background "
+            "(WELL v2 Sound S02 Maximum Noise Levels, Leq)"
+        ),
     },
 }
 

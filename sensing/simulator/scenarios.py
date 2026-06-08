@@ -52,7 +52,7 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "overheating": Scenario(
         name="overheating",
-        description="午后西晒 + HVAC 不足,室温升到 29°C(超 26°C 热舒适上限)",
+        description="午后西晒 + HVAC 不足,室温升到 29°C(超 25°C 热舒适上限)",
         expected_sensor="temperature",
         expected_domain="thermal",
         closes_loop=False,
@@ -60,7 +60,7 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "dim_workspace": Scenario(
         name="dim_workspace",
-        description="阴天 + 部分灯具故障,照度跌到 120lux(低于 300lux 工作面要求)",
+        description="阴天 + 部分灯具故障,照度跌到 120lux(低于 320lux 工作面要求)",
         expected_sensor="lux",
         expected_domain="lighting",
         closes_loop=False,
@@ -68,7 +68,7 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "noisy_room": Scenario(
         name="noisy_room",
-        description="隔壁施工噪声穿透,室内 68dBA(超 55dBA 办公上限)",
+        description="隔壁施工噪声穿透,室内 68dBA(超 50dBA 办公背景噪声上限)",
         expected_sensor="noise_db",
         expected_domain="acoustic",
         closes_loop=False,

@@ -54,10 +54,10 @@ class RoomState:
     ventilation_m3h: float = 300.0  # default high → steady state ~720 ppm (in band)
     co2_ppm: float = 650.0  # default in band; reset_room() arms the anomaly
     # Static readings for the other three domains — defaults sit safely in band.
-    temperature: float = 22.5  # degC — band 19-26
+    temperature: float = 22.5  # degC — band 21-25
     humidity: float = 45.0  # %RH — band 30-60
-    lux: float = 420.0  # lux — must stay >= 300
-    noise_db: float = 41.0  # dBA — must stay <= 55
+    lux: float = 420.0  # lux — must stay >= 320
+    noise_db: float = 41.0  # dBA — must stay <= 50
 
     def advance_minutes(self, minutes: float) -> None:
         """Integrate the CO2 balance ODE forward by `minutes`. Only CO2 evolves;
