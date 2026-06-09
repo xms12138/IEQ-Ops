@@ -9,8 +9,11 @@ synthesize), with the browser's Web Speech API doing STT/TTS in the MVP (zero ke
 
 from __future__ import annotations
 
+import base64
 import json
-from collections.abc import AsyncIterator
+import queue
+import threading
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -98,6 +101,70 @@ async def voice_chat(
     answer = _agent.respond(query, turns)
     audio_out = _voice.synthesize(answer)
     return JSONResponse({"text": answer, "query": query, "spoken": audio_out is not None})
+
+
+@app.post("/api/voice/stream")
+async def voice_stream(
+    audio: UploadFile | None = None, debug_text: str = Form(""), history: str = Form("[]")
+) -> StreamingResponse:
+    """Lowest-latency voice cascade: transcribe → respond_stream → CosyVoice streaming
+    TTS, all pipelined. Emits newline-delimited JSON events so the page shows the answer
+    text as it streams while PCM audio frames arrive and play incrementally:
+
+        {"type":"query","text":..}  {"type":"token","text":..}
+        {"type":"audio","pcm_b64":..}  (base64 PCM 24 kHz mono 16-bit)
+        {"type":"done","first_package_ms":N,"text":..}
+
+    With the mock provider no audio events are sent — the browser speaks the text. The
+    first audio frame arrives before the LLM finishes, so the first sentence is spoken
+    while the rest is still being generated."""
+    turns = _parse_history(history)
+    raw = await audio.read() if audio is not None else b""
+    query = _voice.transcribe(raw, debug_text=debug_text)
+
+    def _events() -> Iterator[str]:
+        if not query:
+            yield json.dumps({"type": "error", "text": "Sorry, I didn't catch that."}) + "\n"
+            return
+        yield json.dumps({"type": "query", "text": query}) + "\n"
+        bus: queue.Queue[tuple[str, Any]] = queue.Queue()
+
+        def _tee() -> Iterator[str]:
+            # Pull the LLM token stream; mirror each token to the page AND feed it to TTS.
+            for tok in _agent.respond_stream(query, turns):
+                bus.put(("token", tok))
+                yield tok
+
+        def _drive() -> None:
+            try:
+                for frame in _voice.synthesize_stream(_tee()):
+                    bus.put(("audio", frame))
+            except Exception as exc:  # noqa: BLE001 — surface as an event, never 500
+                bus.put(("error", str(exc)))
+            finally:
+                bus.put(("end", None))
+
+        threading.Thread(target=_drive, name="voice-stream", daemon=True).start()
+        answer: list[str] = []
+        while True:
+            kind, payload = bus.get()
+            if kind == "end":
+                break
+            if kind == "token":
+                answer.append(payload)
+                yield json.dumps({"type": "token", "text": payload}) + "\n"
+            elif kind == "audio":
+                b64 = base64.b64encode(payload).decode("ascii")
+                yield json.dumps({"type": "audio", "pcm_b64": b64}) + "\n"
+            elif kind == "error":
+                yield json.dumps({"type": "error", "text": payload}) + "\n"
+        fpm = getattr(_voice, "last_first_package_ms", None)
+        yield (
+            json.dumps({"type": "done", "first_package_ms": fpm, "text": "".join(answer).strip()})
+            + "\n"
+        )
+
+    return StreamingResponse(_events(), media_type="application/x-ndjson")
 
 
 @app.get("/api/sensors/current")

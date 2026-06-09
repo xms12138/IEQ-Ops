@@ -67,13 +67,100 @@ function addBubble(role, text){
   return b;
 }
 
+// Strip markdown markers so TTS doesn't read "asterisk asterisk" etc. The cloud TTS
+// path stays clean via the respond prompt; this guards the browser-speech path.
+function stripMarkdown(s){
+  return s
+    .replace(/[*_`#]+/g, '')        // bold / italic / code / heading markers
+    .replace(/^\s*[-•]\s+/gm, '')   // bullet markers at line start
+    .replace(/\s{2,}/g, ' ')        // collapse the whitespace they leave behind
+    .trim();
+}
+
+// Browser TTS — fallback only, for the mock provider (no server audio). The agent
+// speaks English, so force en-US regardless of the browser default voice.
 function speak(text){
   if (!ttsToggle.checked) return;
   if (!('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(stripMarkdown(text));
   u.lang = 'en-US';
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(u);
+}
+
+// Gapless player for streamed CosyVoice audio (PCM 24 kHz mono 16-bit). Each frame is
+// scheduled back-to-back on a Web Audio cursor so the answer is spoken as it arrives.
+class PcmPlayer {
+  constructor(sampleRate = 24000){ this.sampleRate = sampleRate; this.ctx = null; this.next = 0; this.frames = 0; }
+  _ensure(){
+    if (!this.ctx){
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.next = this.ctx.currentTime;
+    }
+  }
+  push(int16){
+    this._ensure();
+    const f32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
+    const buf = this.ctx.createBuffer(1, f32.length, this.sampleRate);
+    buf.copyToChannel(f32, 0);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf; src.connect(this.ctx.destination);
+    const t = Math.max(this.next, this.ctx.currentTime);
+    src.start(t);
+    this.next = t + buf.duration;
+    this.frames++;
+  }
+}
+
+function b64ToInt16(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Int16Array(bytes.buffer, 0, Math.floor(bin.length / 2));
+}
+
+// Captures mic audio and encodes a 16 kHz mono WAV blob for server-side English STT.
+// (MediaRecorder yields webm/opus; Paraformer wants wav/pcm, so we encode WAV ourselves.)
+class WavRecorder {
+  constructor(targetRate = 16000){ this.targetRate = targetRate; this.chunks = []; this.ctx = null; this.stream = null; this.proc = null; this.srcRate = 0; }
+  async start(){
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.srcRate = this.ctx.sampleRate;
+    this.chunks = [];
+    const source = this.ctx.createMediaStreamSource(this.stream);
+    this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
+    this.proc.onaudioprocess = (e) => { this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    source.connect(this.proc); this.proc.connect(this.ctx.destination);
+  }
+  stop(){
+    if (this.proc) this.proc.disconnect();
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    const merged = this._merge(this.chunks);
+    const down = this._downsample(merged, this.srcRate, this.targetRate);
+    const blob = this._encodeWav(down, this.targetRate);
+    if (this.ctx) this.ctx.close();
+    return blob;
+  }
+  _merge(chunks){ let n = 0; chunks.forEach(c => n += c.length); const out = new Float32Array(n); let o = 0; chunks.forEach(c => { out.set(c, o); o += c.length; }); return out; }
+  _downsample(buf, from, to){
+    if (!from || to >= from) return buf;
+    const ratio = from / to, newLen = Math.round(buf.length / ratio), out = new Float32Array(newLen);
+    let oi = 0, ii = 0;
+    while (oi < newLen){ const next = Math.round((oi + 1) * ratio); let s = 0, c = 0; for (let i = ii; i < next && i < buf.length; i++){ s += buf[i]; c++; } out[oi++] = c ? s / c : 0; ii = next; }
+    return out;
+  }
+  _encodeWav(samples, rate){
+    const buf = new ArrayBuffer(44 + samples.length * 2), view = new DataView(buf);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    w(36, 'data'); view.setUint32(40, samples.length * 2, true);
+    let o = 44; for (let i = 0; i < samples.length; i++){ const x = Math.max(-1, Math.min(1, samples[i])); view.setInt16(o, x < 0 ? x * 32768 : x * 32767, true); o += 2; }
+    return new Blob([view], { type: 'audio/wav' });
+  }
 }
 
 // Text chat: stream the answer token-by-token from /api/chat (plain-text chunks).
@@ -107,20 +194,45 @@ async function askText(query){
   chat.scrollTop = chat.scrollHeight;
 }
 
-// Voice: non-streaming (TTS needs the whole answer at once).
-async function askVoice(transcript){
-  addBubble('user', '🎤 ' + transcript);
-  const bot = addBubble('bot', '…');
+// Voice: streamed cascade. POST audio (+ web-speech transcript as a fallback for the
+// mock provider) to /api/voice/stream and consume the NDJSON event stream — render the
+// answer text as it streams and play PCM frames the instant they arrive.
+async function askVoiceStream(transcript, wavBlob){
+  const player = new PcmPlayer(24000);
+  let bot = null, full = '', queryText = transcript || '', gotAudio = false;
   try {
     const fd = new FormData();
-    fd.append('debug_text', transcript);
+    if (wavBlob) fd.append('audio', wavBlob, 'speech.wav');
+    fd.append('debug_text', transcript || '');
     fd.append('history', JSON.stringify(history.slice(-MAX_TURNS)));
-    const r = await fetch('/api/voice/chat', { method: 'POST', body: fd });
-    const data = await r.json();
-    bot.innerHTML = esc(data.text);
-    speak(data.text);
-    history.push({ role: 'user', content: transcript }, { role: 'assistant', content: data.text });
-  } catch (e) { bot.innerHTML = 'Request failed: ' + esc(String(e)); }
+    const r = await fetch('/api/voice/stream', { method: 'POST', body: fd });
+    if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === 'query') { queryText = ev.text; addBubble('user', '🎤 ' + ev.text); bot = addBubble('bot', '…'); full = ''; }
+        else if (ev.type === 'token') { if (!bot) bot = addBubble('bot', ''); full += ev.text; bot.innerHTML = esc(full); chat.scrollTop = chat.scrollHeight; }
+        else if (ev.type === 'audio') { gotAudio = true; player.push(b64ToInt16(ev.pcm_b64)); }
+        else if (ev.type === 'error') { if (!bot) bot = addBubble('bot', ''); bot.innerHTML = esc(ev.text); }
+        else if (ev.type === 'done') {
+          full = (ev.text || full).trim();
+          if (bot) bot.innerHTML = esc(full);
+          if (!gotAudio && full) speak(full);  // mock path: let the browser voice it
+          if (full) history.push({ role: 'user', content: queryText }, { role: 'assistant', content: full });
+          if (ev.first_package_ms != null) console.log('TTS first-package latency:', ev.first_package_ms, 'ms');
+        }
+      }
+    }
+  } catch (e) { (bot || addBubble('bot', '')).innerHTML = 'Request failed: ' + esc(String(e)); }
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -138,20 +250,34 @@ document.getElementById('newchat').addEventListener('click', () => {
   addBubble('bot', 'Started a new conversation.');
 });
 
-// Voice input via the browser Web Speech API (no key). Real backend STT later.
+// Mic: record real audio (for server STT) while Web Speech grabs a transcript (fallback
+// for the keyless mock). Click to start, click again to stop and send.
+const recorder = new WavRecorder(16000);
+let recording = false, sttTranscript = '';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let sr = null;
 if (SR) {
-  const rec = new SR();
-  rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
-  let listening = false;
-  micBtn.addEventListener('click', () => { if (listening) rec.stop(); else rec.start(); });
-  rec.onstart = () => { listening = true; micBtn.classList.add('on'); micBtn.textContent = '⏺'; };
-  rec.onend = () => { listening = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤'; };
-  rec.onresult = (ev) => { const t = ev.results[0][0].transcript.trim(); if (t) askVoice(t); };
-  rec.onerror = (ev) => { addBubble('bot', 'Speech recognition error: ' + esc(ev.error)); };
+  sr = new SR(); sr.lang = 'en-US'; sr.interimResults = false; sr.maxAlternatives = 1;
+  sr.onresult = (ev) => { const t = ev.results[0][0].transcript.trim(); if (t) sttTranscript = t; };
+  sr.onerror = () => {};
+}
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  micBtn.addEventListener('click', async () => {
+    if (!recording) {
+      sttTranscript = '';
+      try { await recorder.start(); } catch (e) { addBubble('bot', 'Mic error: ' + esc(String(e))); return; }
+      if (sr) { try { sr.start(); } catch (e) {} }
+      recording = true; micBtn.classList.add('on'); micBtn.textContent = '⏺';
+    } else {
+      recording = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤';
+      if (sr) { try { sr.stop(); } catch (e) {} }
+      let wav = null; try { wav = recorder.stop(); } catch (e) {}
+      setTimeout(() => askVoiceStream(sttTranscript, wav), 250);  // let Web Speech deliver its final result
+    }
+  });
 } else {
   micBtn.disabled = true;
-  micBtn.title = 'This browser does not support speech recognition (try Chrome)';
+  micBtn.title = 'This browser does not support microphone capture (try Chrome)';
 }
 
 async function loadReadings(){
