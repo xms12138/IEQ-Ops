@@ -42,6 +42,17 @@ class MonitorAgent:
         if not record.anomaly:
             log.info("monitor_no_anomaly", **readings)
             return {"anomaly": record, "status": IncidentStatus.CLOSED}
+        existing = call_tool(ticket_server, "active_incident_for_sensor", sensor=record.sensor)
+        if existing:
+            # Dedup: this sensor already has an unresolved incident, so a persistent
+            # anomaly does not spawn a new one each scan. No incident_id set → END.
+            log.info(
+                "monitor_anomaly_suppressed",
+                sensor=record.sensor,
+                value=record.value,
+                existing=existing,
+            )
+            return {"anomaly": record}
         incident_id = call_tool(
             ticket_server,
             "create_incident",

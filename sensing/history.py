@@ -14,14 +14,15 @@ No LLM here.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
-from psycopg.rows import dict_row
 from pydantic import BaseModel
 
-from core.config import get_settings
+from core.db import get_pool
 from core.logging import get_logger
 
 log = get_logger("history")
@@ -47,8 +48,10 @@ class ReadingStats(BaseModel):
     latest: float | None = None
 
 
-def _conn() -> psycopg.Connection[dict[str, Any]]:
-    return psycopg.connect(get_settings().database_url, row_factory=dict_row)
+@contextmanager
+def _conn() -> Iterator[psycopg.Connection[dict[str, Any]]]:
+    with get_pool().connection() as conn:
+        yield conn
 
 
 def _f(x: Any) -> float | None:

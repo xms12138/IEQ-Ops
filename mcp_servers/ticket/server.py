@@ -8,14 +8,15 @@ side effects. No LLM here.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
 from fastmcp import FastMCP
-from psycopg.rows import dict_row
 
-from core.config import get_settings
+from core.db import get_pool
 from core.logging import get_logger
 
 log = get_logger("mcp-ticket")
@@ -52,20 +53,37 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
 """
 _READINGS_INDEX = "CREATE INDEX IF NOT EXISTS sensor_readings_ts_idx ON sensor_readings (ts)"
 
+# suspended_threads: scheduler's registry of MainIncidentGraph threads paused before
+# verify (core/suspend.py reads/writes it). Co-located here so init_schema stays the
+# single create-tables entry point; the registry links thread_id ↔ incident_id, which
+# the graph itself does not persist.
+_SUSPENDED_DDL = """
+CREATE TABLE IF NOT EXISTS suspended_threads (
+    thread_id   text PRIMARY KEY,
+    incident_id text NOT NULL,
+    resume_at   timestamptz NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+"""
+
 # sensor → incident-type code used in the incident id (CLAUDE.md I-{date}-{room}-{type})
 _SENSOR_TYPE = {"co2": "AQ", "temperature": "TH", "humidity": "TH", "lux": "LT", "noise_db": "AC"}
 
 
-def _conn() -> psycopg.Connection[dict[str, Any]]:
-    return psycopg.connect(get_settings().database_url, row_factory=dict_row)
+@contextmanager
+def _conn() -> Iterator[psycopg.Connection[dict[str, Any]]]:
+    with get_pool().connection() as conn:
+        yield conn
 
 
 def init_schema() -> None:
-    """Create the incidents + sensor_readings tables if absent. Run once at startup."""
+    """Create the incidents + sensor_readings + suspended_threads tables if absent.
+    Run once at startup."""
     with _conn() as conn, conn.cursor() as cur:
         cur.execute(_DDL)
         cur.execute(_READINGS_DDL)
         cur.execute(_READINGS_INDEX)
+        cur.execute(_SUSPENDED_DDL)
     log.info("ticket_schema_ready")
 
 
@@ -83,6 +101,22 @@ def create_incident(sensor: str, value: float, rule_violated: str, room: str = "
         )
     log.info("incident_created", incident_id=incident_id, sensor=sensor, value=value)
     return incident_id
+
+
+@mcp.tool
+def active_incident_for_sensor(sensor: str) -> str | None:
+    """Most recent UNRESOLVED incident id for this sensor (status not closed/failed),
+    or None. Lets the Monitor skip opening a duplicate for an anomaly that is already
+    being handled — a persistent anomaly must not spawn a new incident every 5-min scan."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT incident_id FROM incidents "
+            "WHERE sensor = %s AND status NOT IN ('closed', 'failed') "
+            "ORDER BY created_at DESC LIMIT 1",
+            (sensor,),
+        )
+        row = cur.fetchone()
+    return str(row["incident_id"]) if row else None
 
 
 @mcp.tool

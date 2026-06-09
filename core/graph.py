@@ -230,8 +230,9 @@ def action(state: MainIncidentState) -> dict[str, Any]:
 
 
 def _route_after_monitor(state: MainIncidentState) -> str:
-    """No anomaly → nothing to do; otherwise start planning."""
-    return "planner" if (state.anomaly is not None and state.anomaly.anomaly) else END
+    """No anomaly, or an anomaly the Monitor deduplicated to an existing open incident
+    (it set no incident_id) → END. Only a newly opened incident proceeds to planning."""
+    return "planner" if state.incident_id else END
 
 
 def route_dispatch(state: MainIncidentState) -> list[Send] | str:
