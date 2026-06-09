@@ -39,6 +39,9 @@ log = get_logger("semantic")
 
 COLLECTION = "ieq_semantic_facts"
 DEFAULT_TOP_K = 5
+# Defensive upper bound on how many points list_facts scrolls before sorting; facts
+# grow slowly, so this is never reached in practice — it just caps an unbounded scroll.
+_LIST_SCAN_CAP = 1000
 
 # Distinct namespace from episodic — a fact id and an incident id must never map to
 # the same Qdrant point uuid.
@@ -175,11 +178,12 @@ def retrieve_facts(
     return facts
 
 
-def list_facts(incident_type: str | None = None, limit: int = 100) -> list[SemanticFact]:
-    """All stored facts (optionally scoped to one incident type) via Qdrant scroll —
-    NO vector search, so no embedding model/key is needed. The Q&A butler dumps the
-    full (small) fact set into the LLM context; `score` is 0.0 (not a similarity
-    result). Empty/cold store → []."""
+def list_facts(incident_type: str | None = None, limit: int = 5) -> list[SemanticFact]:
+    """The most RECENT `limit` facts (newest first by created_at), optionally scoped
+    to one incident type, via Qdrant scroll — NO vector search, so no embedding
+    model/key is needed (RPi-friendly). The Q&A butler puts only this small recent
+    slice into the LLM context, so context size stays bounded as facts accrue over a
+    long deployment; `score` is 0.0 (not a similarity result). Empty/cold store → []."""
     client = _client()
     if not client.collection_exists(COLLECTION):
         log.info("semantic_list_empty", reason="no collection yet")
@@ -191,15 +195,19 @@ def list_facts(incident_type: str | None = None, limit: int = 100) -> list[Seman
         if incident_type
         else None
     )
+    # Pull up to a defensive cap, then sort newest-first and keep `limit`. Facts accrue
+    # slowly (a few per weekly reflection), so the cap is never hit in practice — it just
+    # bounds the scroll if the store ever grows large. ISO timestamps sort chronologically.
     points, _ = client.scroll(
         collection_name=COLLECTION,
         scroll_filter=flt,
-        limit=limit,
+        limit=_LIST_SCAN_CAP,
         with_payload=True,
         with_vectors=False,
     )
+    points.sort(key=lambda p: str((p.payload or {}).get("created_at", "")), reverse=True)
     facts: list[SemanticFact] = []
-    for p in points:
+    for p in points[:limit]:
         pl = p.payload or {}
         facts.append(
             SemanticFact(

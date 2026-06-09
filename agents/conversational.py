@@ -81,7 +81,7 @@ class ConversationalAgent:
     def __init__(self, router: Router | None = None) -> None:
         self.router = router or Router()
         self._dispatch_tmpl = load_prompt("conversational/dispatch", version=2)
-        self._respond_tmpl = load_prompt("conversational/respond", version=2)
+        self._respond_tmpl = load_prompt("conversational/respond", version=3)
 
     def respond(self, query: str, history: list[dict[str, str]] | None = None) -> str:
         """Non-streaming answer (used by the voice cascade, which needs the full text
@@ -166,7 +166,7 @@ class ConversationalAgent:
                 ticket_server, "list_incidents", limit=20, sensor=plan.sensor
             )
         if plan.need_facts:
-            ctx["facts"] = [f.model_dump() for f in list_facts(incident_type=domain)]
+            ctx["facts"] = [f.model_dump() for f in list_facts(incident_type=domain, limit=5)]
         if plan.need_sops:
             ctx["sops"] = [s.model_dump() for s in active_sops(incident_type=domain)]
         return ctx
