@@ -1,0 +1,18 @@
+# IEQ-Ops weekly reflection — Episodic → Semantic + Procedural consolidation (oneshot).
+# Driven by ieq-reflection.timer (Sunday 03:00), NOT enabled on its own. One pass over
+# the past 7 days of closed trajectories mints semantic facts + PENDING SOP drafts; this
+# is the Week-8-vs-Week-1 memory-improvement engine (CLAUDE.md Principle #4). Both
+# Reflector calls are cloud DeepSeek (Hard Constraint #12) — never local.
+# Install (alongside the timer):
+#   sudo cp ieq-reflection.service ieq-reflection.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ieq-reflection.timer
+[Unit]
+Description=IEQ-Ops weekly reflection - episodic to semantic/procedural memory
+After=network-online.target postgresql.service qdrant.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/xms/projects/dissertation
+EnvironmentFile=/home/xms/projects/dissertation/.env
+ExecStart=/home/xms/.local/bin/uv run python -m ops.scripts.run_reflection

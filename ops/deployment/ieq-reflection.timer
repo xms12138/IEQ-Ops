@@ -1,0 +1,14 @@
+# IEQ-Ops weekly reflection schedule — Sunday 03:00 (CLAUDE.md: Reflection Loop).
+# Triggers ieq-reflection.service once a week. Persistent=true runs a missed slot on the
+# next boot (the exhibit Pi may be powered down overnight), so a week is never skipped.
+# Enable with: sudo systemctl enable --now ieq-reflection.timer  (check: systemctl list-timers)
+[Unit]
+Description=IEQ-Ops weekly reflection schedule (Sun 03:00)
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+Persistent=true
+Unit=ieq-reflection.service
+
+[Install]
+WantedBy=timers.target
