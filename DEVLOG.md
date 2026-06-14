@@ -261,3 +261,12 @@
 - **落地**(最小面):① `sensing/simulator/scenarios.py` 的 `Scenario` 加 `exhibit_safe: bool = True`,仅 `co2_overcrowded=False` ② `frontend/api/ops.py`:`/api/scenarios` 列表 `if s.exhibit_safe` 过滤、`/api/inject` 对非 exhibit-safe 场景返 **403**(防直接 POST 绕过面板)③ `demo.py` CLI **不变**——`--list` 仍列、`demo co2_overcrowded` 仍能跑,留给论文/作者复现 replan。
 - **验证**(Pi 实跑):面板 `/api/scenarios` 只剩 `['co2_spike','overheating','dim_workspace','noisy_room']`、`co2_overcrowded hidden:True`;`POST /api/inject co2_overcrowded` → `403 "paper/CLI-only (not exhibit-safe)"`。ruff 过、`exhibit_safe` map 正确。
 - **关联**:`sensing/simulator/scenarios.py`(exhibit_safe)· `frontend/api/ops.py`(/api/scenarios 过滤 + /api/inject 403)· demo.py CLI 保留 · memory `project-exhibit-remaining-abc`。**下一步**:排查 grade 总判"不充分"跑满 3 轮 rewrite 的主因(WELL chunk 质量 / grade 阈值偏严)+ 加速闭环(7.5min→更短),让现场更流畅。
+
+### P-028 · Phase 5 · 展示加速:grade v2(职责归位)+ MAX_REWRITES=1(最坏时长上界)  ✅
+- **背景**:连 Pi 实测闭环单 incident ~7.5min,现场偏慢。拆解发现两个 specialist 的 grade **每轮判"不充分"跑满 3 轮 rewrite** 是主因(各做 4 轮 RAG)。
+- **根因(诊断 grade 真实 reason)**:grade v1 要求 excerpts **fully** answer the goal——含"补救数值 / 验证步骤 / 具名标准(ASHRAE 62.1)"。但标准文档(WELL)只给阈值/要求,**补救+验证是 generate 节点推理产出的**,不是检索目标;且 corpus 是 WELL 单源,grade 却期待 ASHRAE → 永远判缺。**grade 比 generate 严**,职责错配。
+- **修法 ① grade v1→v2**(`ops/prompts/specialist/grade/v2.md` + builder 调用点 bump 到 2):判定对象从"覆盖整个 goal 含补救"收窄到"**是否有足够标准证据 ground 诊断**",明确不要求 excerpts 自带补救/验证/具名标准。保留"off-topic→false"质量门(防假阳性,守硬约束 #11)。**实证(开发机)**:同一批 13 chunk,v1 false(要补救数值)→ v2 true;再喂 off-topic(噪声/照明)chunk → v2 仍 false(没退化成无脑 true)。
+- **修法 ② MAX_REWRITES 3→1**(`builder.py`):grade v2 后首轮 sufficient 率高,真正还触发 rewrite 的是 **corpus 薄的 domain**(thermal/lighting/acoustic thresholds 待对齐 P-016)——而 rewrite 救不了 corpus 缺的证据(每轮都 false→最终 generate fallback)。降到 1 给闭环时长一个上界,不损结果质量。CLAUDE.md "capped at 3" 是上限,1≤3 不违反。
+- **Pi 实测**:co2_spike `7.5min → 2:15`(S1 grade round-0 sufficient、met 关单质量无损)。其中 ~104s 是两次模型冷加载(memory bge-m3 31s + reranker 73s)——走**常驻 gateway / 面板注入**时 lazy-singleton 只加载一次,**展示前预热一次**后续 incident ~40s(不必改代码,运维技巧)。
+- **遗留**:① planner 非确定(co2_spike 有时单 S1、有时 S1+S2,本次因 episodic 召回 3 个成功旧案简化为 S1——记忆生效的副产物)② thermal/lighting/acoustic corpus 薄(根治要补 corpus,P-016)。两者都由 MAX_REWRITES=1 兜底(最坏 ~3min)。
+- **关联**:`ops/prompts/specialist/grade/v2.md` · `agents/specialists/builder.py`(grade v2 调用点 + MAX_REWRITES) · memory `project-exhibit-remaining-abc`、`project-corpus-source`。

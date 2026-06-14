@@ -46,7 +46,11 @@ from rag.retrieve import FINAL_TOP_K
 
 log = get_logger("specialist")
 
-MAX_REWRITES = 3  # rewrite cap per subtask (CLAUDE.md: "Retries are capped at 3")
+# Exhibit latency cap: 1 rewrite (CLAUDE.md allows up to 3). With grade v2 the round-0
+# excerpts are usually sufficient, so the rounds we cut were mostly burning time on
+# corpus-thin domains (thermal/lighting/acoustic thresholds not yet aligned) where
+# rewriting cannot conjure evidence the corpus lacks — bound the worst case instead.
+MAX_REWRITES = 1  # rewrite cap per subtask
 _JSON = {"type": "json_object"}
 # v4 reasoning models otherwise spend the token budget on reasoning_content and
 # sometimes return an empty message.content. These nodes are structured (JSON /
@@ -156,7 +160,7 @@ def _make_retrieve() -> Any:
 
 
 def _make_grade(router: Router) -> Any:
-    tmpl = load_prompt("specialist/grade")
+    tmpl = load_prompt("specialist/grade", 2)  # v2: ground on facts, not the fix
 
     def grade(state: SpecialistState) -> dict[str, Any]:
         chunks = state.retrieved_chunks
