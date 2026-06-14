@@ -32,7 +32,7 @@ from core.checkpointer import open_checkpointer
 from core.config import get_settings
 from core.graph import INTERRUPT_BEFORE, build_main_graph
 from core.logging import configure_logging
-from core.state import MainIncidentState
+from core.state import MainIncidentState, _append_failed, _merge_results
 from mcp_servers.ticket.server import init_schema
 from sensing.simulator import get_room, save_room
 from sensing.simulator.scenarios import SCENARIOS, arm, scenario_names
@@ -74,12 +74,14 @@ def _fmt_value(v: Any) -> str:
 
 
 def _accumulate(acc: dict[str, Any], delta: dict[str, Any]) -> None:
-    """Fold one node's update into the running state, honouring the reducers."""
+    """Fold one node's update into the running state, honouring the reducers — by
+    calling the SAME reducers LangGraph uses, so the snapshot matches the checkpoint
+    even across a replan reset (the reset sentinels clear, not merge)."""
     for key, value in delta.items():
         if key == "subtask_results":
-            acc[key] = {**(acc.get(key) or {}), **value}
+            acc[key] = _merge_results(acc.get(key) or {}, value)
         elif key == "failed_subtasks":
-            acc[key] = list(acc.get(key) or []) + list(value)
+            acc[key] = _append_failed(acc.get(key) or [], value)
         else:
             acc[key] = value
 
@@ -224,23 +226,32 @@ def run_scenario(name: str, show_state: bool = False) -> None:
             print("结果: 停在 Tier 3 — 该 domain 无 actuator,需人工审批(执行器是 Phase 5)。")
             print("      诊断已产出,如实展示分级自治的能力边界。")
         elif snap.next == ("verifier",):
-            mins = _target_minutes(snap.values)
-            room = get_room()
-            room.advance_minutes(mins)
-            save_room()
-            print(f"动作已执行,挂起在 verifier 前。模拟推进 {mins} 分钟 →")
-            print(f"  {sc.expected_sensor} 现读数 ≈ {room.read_all().get(sc.expected_sensor)}")
-            print(BAR)
-            _stream(graph, None, config, show_state, acc)  # resume → verifier → END
-            final = graph.get_state(config)
-            verdict = final.values.get("verifier_verdict")
+            # Suspend/resume loop: a "missed" verdict replans and re-suspends before verify,
+            # so we advance the sim and resume once PER attempt until a terminal verdict.
+            attempt = 0
+            while snap.next == ("verifier",):
+                attempt += 1
+                mins = _target_minutes(snap.values)
+                room = get_room()
+                room.advance_minutes(mins)
+                save_room()
+                print(f"\n[尝试 {attempt}] 动作已执行,挂起在 verifier 前。模拟推进 {mins} 分钟 →")
+                print(f"  {sc.expected_sensor} 现读数 ≈ {room.read_all().get(sc.expected_sensor)}")
+                print(BAR)
+                _stream(graph, None, config, show_state, acc)  # resume → verifier → close|replan
+                snap = graph.get_state(config)
+            verdict = snap.values.get("verifier_verdict")
+            replans = snap.values.get("replan_count", 0)
             print("\n" + BAR)
+            tail = f" (replan ×{replans})" if replans else ""
             print(
-                f"结果: status={final.values.get('status')} "
-                f"verdict={getattr(verdict, 'verdict', None)}"
+                f"结果: status={snap.values.get('status')} "
+                f"verdict={getattr(verdict, 'verdict', None)}{tail}"
             )
         else:
-            print(f"结果: 提前结束(critic 否决或无异常)status={snap.values.get('status')}")
+            replans = snap.values.get("replan_count", 0)
+            tail = f" (replan ×{replans} 后耗尽预算)" if replans else ""
+            print(f"结果: 提前结束(critic 否决或无异常)status={snap.values.get('status')}{tail}")
         print(BAR)
 
 

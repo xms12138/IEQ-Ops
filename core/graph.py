@@ -5,6 +5,13 @@ Node order (Phase 2 — ReWOO DAG fan-out replaces Phase 1's single specialist):
             → hydrate_placeholders → dispatch ⇄ {airquality|thermal|lighting|acoustic}
             → critic → autonomy_gate → action → ⟨suspend⟩ → verifier → END
 
+The loop closes (CLAUDE.md Principle #2 — a failed intervention triggers replan, not
+silence): a Tier 1/2 critic disapproval or a verifier "missed" routes back through a
+`replan` node → planner for a fresh attempt while replan budget remains (MAX_REPLANS in
+core/state.py), and terminates the incident FAILED once the budget is spent. The replan
+node resets the attempt-scoped reducer channels (subtask_results / failed_subtasks) so
+the retry's plan is not blocked by the previous attempt's results.
+
 The dispatch loop is a wave-based topological executor over the planner's subtask
 DAG. Each pass:
   1. `hydrate_placeholders` resolves the ReWOO refs (`#{id}.diagnosis`) of every
@@ -60,6 +67,8 @@ from core.state import (
     Plan,
     SpecialistResult,
     Subtask,
+    replans_left,
+    reset_attempt_channels,
     tier_for_sensor,
 )
 from mcp_servers.actuator.server import mcp as actuator_server
@@ -226,6 +235,25 @@ def action(state: MainIncidentState) -> dict[str, Any]:
     return {"action_taken": action_desc, "status": IncidentStatus.VERIFYING}
 
 
+def replan(state: MainIncidentState) -> dict[str, Any]:
+    """Re-enter the planner after a Tier 1/2 critic disapproval or a verifier "missed",
+    while replan budget remains (the router gates that; this node assumes a retry).
+
+    A clean retry must wipe the previous attempt's accumulated fan-out: subtask_results
+    (merge reducer) and failed_subtasks (append reducer) would otherwise persist and make
+    the new plan's subtasks look already-resolved — reset_attempt_channels() pushes the
+    reset sentinels that tell those reducers to replace. critic_verdict / verifier_verdict
+    are left intact so the planner can read WHY the last attempt failed; the critic and
+    verifier overwrite them next cycle. replan_count is bumped here (and only here), so the
+    budget check the critic/verifier ran still matches what the next cycle sees."""
+    log.info("replan", incident_id=state.incident_id, attempt=state.replan_count + 1)
+    return {
+        **reset_attempt_channels(),
+        "replan_count": state.replan_count + 1,
+        "status": IncidentStatus.PLANNING,
+    }
+
+
 # ── conditional routing ───────────────────────────────────────────────────────
 
 
@@ -253,18 +281,29 @@ def route_dispatch(state: MainIncidentState) -> list[Send] | str:
 
 def _route_after_critic(state: MainIncidentState) -> str:
     """Gate the action on the critic's verdict. An approved diagnosis proceeds to the
-    autonomy gate. A disapproval means "do not auto-actuate this": for a domain the
-    system WOULD action automatically (Tier 1/2) that ends the incident WITHOUT acting
-    (CriticAgent marked it FAILED). But a human-only domain (Tier 3, no actuator) has
-    no autonomous action to suppress — a disapproval there is precisely the signal to
-    escalate, so it routes to the gate to block on interrupt() with the critic's
-    concern. (Phase 3 will route a Tier 1/2 disapproval to replan instead of END.)"""
+    autonomy gate. A human-only domain (Tier 3, no actuator) has no autonomous action to
+    suppress, so even a disapproval there routes to the gate to block on interrupt() with
+    the critic's concern (escalate, don't fail). A Tier 1/2 disapproval means "do not
+    auto-actuate this": while replan budget remains it loops back through the planner for
+    a fresh diagnosis; once the budget is spent it ends the incident WITHOUT acting
+    (CriticAgent marked it FAILED). The critic node decides retry-vs-fail with the SAME
+    replans_left() check, so its ticket side effects match this route."""
     verdict = state.critic_verdict
     if verdict is not None and verdict.approved:
         return "autonomy_gate"
     if tier_for_sensor(state.anomaly.sensor if state.anomaly else None) is AutonomyTier.APPROVE:
         return "autonomy_gate"
+    if replans_left(state.replan_count):
+        return "replan"
     return END
+
+
+def _route_after_verifier(state: MainIncidentState) -> str:
+    """A terminal verdict (CLOSED on "met", or FAILED once the replan budget is spent)
+    ends the incident. A "missed" with budget remaining has the verifier set status back
+    to PLANNING — route to replan for a fresh attempt rather than failing silently
+    (CLAUDE.md Principle #2: a failed intervention triggers replan, not silence)."""
+    return "replan" if state.status is IncidentStatus.PLANNING else END
 
 
 # ── graph assembly ────────────────────────────────────────────────────────────
@@ -295,6 +334,7 @@ def build_main_graph(wrap: _NodeWrapper = _identity) -> StateGraph[MainIncidentS
     builder.add_node("critic", wrap(CriticAgent().run, "critic"))
     builder.add_node("autonomy_gate", wrap(autonomy_gate, "autonomy_gate"))
     builder.add_node("action", wrap(action, "action"))
+    builder.add_node("replan", wrap(replan, "replan"))
     builder.add_node("verifier", wrap(VerifierAgent().run, "verifier"))
 
     builder.set_entry_point("monitor")
@@ -307,10 +347,15 @@ def build_main_graph(wrap: _NodeWrapper = _identity) -> StateGraph[MainIncidentS
     for domain in _SPECIALIST_DOMAINS:
         builder.add_edge(domain, "hydrate_placeholders")
     builder.add_conditional_edges(
-        "critic", _route_after_critic, {"autonomy_gate": "autonomy_gate", END: END}
+        "critic",
+        _route_after_critic,
+        {"autonomy_gate": "autonomy_gate", "replan": "replan", END: END},
     )
     builder.add_edge("autonomy_gate", "action")
     builder.add_edge("action", "verifier")
-    builder.add_edge("verifier", END)
+    # replan loops back to the planner; the planner re-reads the (preserved) critic/
+    # verifier verdict as failure context and produces a fresh DAG on the reset channels.
+    builder.add_edge("replan", "planner")
+    builder.add_conditional_edges("verifier", _route_after_verifier, {"replan": "replan", END: END})
 
     return builder

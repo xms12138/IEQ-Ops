@@ -74,7 +74,12 @@ def scan_tick() -> None:
 
 
 def resume_tick() -> None:
-    """Resume every suspended thread whose window has elapsed; purge each when done."""
+    """Resume every suspended thread whose window has elapsed; purge each when done.
+
+    A "missed" verdict replans (verifier → replan → planner → … → action) and suspends
+    the SAME thread before verify a second time. So after resuming, re-check snap.next:
+    a still-suspended thread is re-registered for a fresh window (its checkpoint lives on)
+    rather than purged — only a terminal thread is discarded (#10)."""
     pending = due()
     if not pending:
         return
@@ -83,8 +88,13 @@ def resume_tick() -> None:
         for tid, incident_id in pending:
             snap = graph.get_state(_config(tid))
             if snap.next:
-                graph.invoke(None, _config(tid))  # continue from checkpoint → verifier → END
+                graph.invoke(None, _config(tid))  # verifier → (close/fail | replan → re-suspend)
                 final = graph.get_state(_config(tid))
+                if final.next:  # replanned on a miss → suspended again before verify
+                    resume_at = datetime.now(UTC) + timedelta(minutes=_target_minutes(final.values))
+                    register(tid, incident_id, resume_at)  # idempotent upsert → new window
+                    log.info("resume_replanned", thread_id=tid, incident_id=incident_id)
+                    continue  # keep the thread + checkpoint alive for the next window
                 log.info(
                     "resume_done",
                     thread_id=tid,

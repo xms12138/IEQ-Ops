@@ -50,6 +50,20 @@ SCENARIOS: dict[str, Scenario] = {
         closes_loop=True,
         room={"occupancy": 5, "ventilation_m3h": 60.0, "co2_ppm": 1300.0},
     ),
+    "co2_overcrowded": Scenario(
+        name="co2_overcrowded",
+        description=(
+            "持续超员:20人挤在50m³会议室,通风已拉满(450m³/h)仍压不住 CO2(稳态≈1220ppm)。"
+            "单一执行器无解 → 系统重试到预算耗尽后如实判 FAILED(展示闭环 replan + 安全底线)"
+        ),
+        expected_sensor="co2",
+        expected_domain="airquality",
+        closes_loop=True,
+        # vent already maxed (450) yet C_ss = 420 + 20*0.018e6/450 ≈ 1220 > any sane target,
+        # so every 15-min verify still reads ≈1220 → "missed" → replan, deterministically, until
+        # MAX_REPLANS is spent. The honest outcome of an anomaly the actuator cannot fix.
+        room={"occupancy": 20, "ventilation_m3h": 450.0, "co2_ppm": 1220.0},
+    ),
     "overheating": Scenario(
         name="overheating",
         description="午后西晒 + HVAC 不足,室温升到 29°C(超 25°C 热舒适上限)",

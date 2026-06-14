@@ -21,7 +21,6 @@ Design notes
 
 from __future__ import annotations
 
-import operator
 from enum import IntEnum, StrEnum
 from typing import Annotated
 
@@ -41,13 +40,38 @@ SENSOR_DOMAIN: dict[str, str] = {
 }
 
 
+class _ResetResults(dict):  # type: ignore[type-arg]
+    """Sentinel dict subclass: a reducer receiving one REPLACES the channel with its
+    contents instead of merging. The replan node returns an empty one to clear the
+    previous attempt's specialist results — a plain {} would merge to a no-op and the
+    stale results would survive into the retry. It IS a dict, so the channel stays
+    type-valid (the reducer normalises it back to a plain dict)."""
+
+
+class _ResetList(list):  # type: ignore[type-arg]
+    """Sentinel list subclass: tells the append reducer to REPLACE, not extend — the
+    replan node clears failed_subtasks so a reused subtask_id is not seen as already
+    resolved (which would leave the retry's subtasks permanently un-dispatched)."""
+
+
 def _merge_results(
     a: dict[str, SpecialistResult], b: dict[str, SpecialistResult]
 ) -> dict[str, SpecialistResult]:
     """Reducer for subtask_results: parallel specialist fan-out (Send) writes this
     key concurrently, one subtask_id each. Merge instead of last-write-wins, which
-    LangGraph would reject as a concurrent update to a non-reducer channel."""
+    LangGraph would reject as a concurrent update to a non-reducer channel. A
+    _ResetResults push (replan) replaces instead of merging."""
+    if isinstance(b, _ResetResults):
+        return dict(b)
     return {**a, **b}
+
+
+def _append_failed(a: list[str], b: list[str]) -> list[str]:
+    """Reducer for failed_subtasks: append by default (concurrent specialist failures),
+    but a _ResetList push (replan) replaces — clears the previous attempt's failures."""
+    if isinstance(b, _ResetList):
+        return list(b)
+    return a + list(b)
 
 
 class IncidentStatus(StrEnum):
@@ -82,6 +106,35 @@ def tier_for_sensor(sensor: str | None) -> AutonomyTier:
     with no actuator defaults to APPROVE (Tier 3 — human-only resolution)."""
     domain = SENSOR_DOMAIN.get(sensor or "", "airquality")
     return _TIER_BY_DOMAIN.get(domain, AutonomyTier.APPROVE)
+
+
+# ── Replan budget (closed-loop completion — CLAUDE.md Principle #2) ────────────
+# Attempts AFTER the first. A Tier 1/2 critic disapproval or a verifier "missed"
+# routes a still-budgeted incident back through the planner (the replan node resets
+# the attempt-scoped channels and bumps replan_count) instead of failing silently;
+# once the budget is spent the incident terminates FAILED. Total planner runs per
+# incident = MAX_REPLANS + 1.
+MAX_REPLANS = 2
+
+
+def replans_left(replan_count: int) -> bool:
+    """True while the incident may still be retried. The critic and verifier read this
+    to choose retry vs. terminal failure; the replan node then increments the count, so
+    they both see the SAME (pre-increment) value and decide consistently with the router."""
+    return replan_count < MAX_REPLANS
+
+
+def reset_attempt_channels() -> dict[str, object]:
+    """The state delta the replan node returns to clear one failed attempt: empty the
+    two reducer channels (via the reset sentinels) and drop the stale action. The
+    counter bump + status live with the node so this stays a pure data helper.
+    critic_verdict / verifier_verdict are deliberately NOT cleared — the planner reads
+    them as failure context, and the critic/verifier overwrite them next cycle."""
+    return {
+        "subtask_results": _ResetResults(),
+        "failed_subtasks": _ResetList(),
+        "action_taken": None,
+    }
 
 
 # ── Locked schemas (hard constraints — extra fields are forbidden) ────────────
@@ -186,8 +239,9 @@ class MainIncidentState(BaseModel):
     # subtask_ids whose specialist failed (no usable diagnosis). Append-reducer so
     # the dispatch loop counts them as "resolved" and never re-dispatches them —
     # a failed dependency simply leaves its dependents un-runnable and the wave
-    # loop terminates instead of spinning. Full replan/Tier-3 routing is future.
-    failed_subtasks: Annotated[list[str], operator.add] = Field(default_factory=list)
+    # loop terminates instead of spinning. The replan node resets it (_ResetList)
+    # so a retry's fresh plan is not blocked by the previous attempt's failures.
+    failed_subtasks: Annotated[list[str], _append_failed] = Field(default_factory=list)
 
     # critic
     critic_verdict: CriticVerdict | None = None

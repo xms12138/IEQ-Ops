@@ -43,6 +43,7 @@ from core.state import (
     IncidentStatus,
     MainIncidentState,
     SpecialistResult,
+    replans_left,
     tier_for_sensor,
 )
 from mcp_servers.client import call_tool
@@ -104,7 +105,11 @@ class CriticAgent:
         human-only domain (Tier 3, no actuator) has no autonomous action to suppress,
         so the rejection ESCALATES to the human at the autonomy gate (status
         AWAITING_APPROVAL) — the incident is reported, not failed. A domain the system
-        would auto-actuate (Tier 1/2) is failed: never act on a rejected diagnosis."""
+        would auto-actuate (Tier 1/2) loops back to the planner for a fresh diagnosis
+        while replan budget remains (status PLANNING, no ticket FAILED write — the
+        incident is being retried, not failed); only once the budget is spent is it
+        failed. Either way: never act on a rejected diagnosis. The router
+        (_route_after_critic) reads the SAME replans_left() so its edge matches."""
         sensor = state.anomaly.sensor if state.anomaly else None
         if tier_for_sensor(sensor) is AutonomyTier.APPROVE:
             log.info("critic_escalate_human", sensor=sensor)
@@ -116,6 +121,9 @@ class CriticAgent:
                     status=IncidentStatus.AWAITING_APPROVAL.value,
                 )
             return {"critic_verdict": verdict, "status": IncidentStatus.AWAITING_APPROVAL}
+        if replans_left(state.replan_count):
+            log.info("critic_replan", sensor=sensor, attempt=state.replan_count + 1)
+            return {"critic_verdict": verdict, "status": IncidentStatus.PLANNING}
         return self._fail(state, verdict)
 
     def _validate(self, result: SpecialistResult, state: MainIncidentState) -> CriticVerdict:

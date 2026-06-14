@@ -4,9 +4,12 @@ Runs 15 (simulated) minutes after the action. Reads the target metric again and
 checks it against the specialist's declared ExpectedOutcome (Hard Constraint #13)
 — a pure numeric comparison, which is exactly why this can run on the LOCAL tier
 (Qwen3-8B in prod; dev override → deepseek-v4-flash). Closes the incident on
-"met", marks it failed on "missed" (Phase 2 will route "missed" to replan), and on
-either terminal verdict writes the finished trajectory to Episodic Memory (Phase 3,
-Hard Constraint #3 — through memory/episodic.py, never an inline upsert here).
+"met"; on "missed" it routes back to the planner for a fresh attempt while replan
+budget remains (status PLANNING → _route_after_verifier → replan), and only fails the
+incident once the budget is spent (CLAUDE.md Principle #2 — a failed intervention
+triggers replan, not silence). The finished trajectory is written to Episodic Memory
+only on a TERMINAL verdict (Hard Constraint #3 — through memory/episodic.py, never an
+inline upsert here); a retry's interim miss is not the incident's outcome.
 
 A deterministic Python comparison backs the LLM up; Phase 1 handles the CO2
 upper-bound case only.
@@ -26,6 +29,7 @@ from core.state import (
     IncidentStatus,
     MainIncidentState,
     VerifierVerdict,
+    replans_left,
 )
 from mcp_servers.client import call_tool
 from mcp_servers.sensor.server import mcp as sensor_server
@@ -55,7 +59,16 @@ class VerifierAgent:
 
         verdict = self._check(expected, current)
         met = verdict.verdict == "met"
-        new_status = IncidentStatus.CLOSED if met else IncidentStatus.FAILED
+        # "missed" with budget left → PLANNING (the router loops back to replan); met, or
+        # missed-and-out-of-budget → a terminal verdict that ends the incident.
+        if met:
+            new_status = IncidentStatus.CLOSED
+        elif replans_left(state.replan_count):
+            new_status = IncidentStatus.PLANNING
+        else:
+            new_status = IncidentStatus.FAILED
+        terminal = new_status is not IncidentStatus.PLANNING
+
         call_tool(
             ticket_server,
             "update_incident",
@@ -64,13 +77,21 @@ class VerifierAgent:
             verdict=verdict.verdict,
             delta=verdict.delta,
         )
-        log.info("verifier_verdict", verdict=verdict.verdict, delta=verdict.delta, current=current)
-        # Trajectory → Episodic Memory. Hard Constraint #3: the write goes through the
-        # memory module (with audit log), not an inline upsert here. Both terminal
-        # verdicts are stored — a "missed" attempt teaches the planner what not to
-        # repeat. verdict/new_status are passed in because they are not yet in `state`
+        log.info(
+            "verifier_verdict",
+            verdict=verdict.verdict,
+            delta=verdict.delta,
+            current=current,
+            status=new_status.value,
+        )
+        # Trajectory → Episodic Memory only on a TERMINAL verdict. Hard Constraint #3: the
+        # write goes through the memory module (with audit log), not an inline upsert here.
+        # A retry's interim miss is NOT the incident's outcome — the eventual terminal
+        # trajectory records what finally happened; interim misses live in action_log /
+        # LangFuse. verdict/new_status are passed in because they are not yet in `state`
         # (LangGraph merges this node's return only after the node finishes).
-        save_trajectory(state, verdict=verdict, status=new_status)
+        if terminal:
+            save_trajectory(state, verdict=verdict, status=new_status)
         return {"verifier_verdict": verdict, "status": new_status}
 
     def _check(self, expected: ExpectedOutcome, current: float) -> VerifierVerdict:
