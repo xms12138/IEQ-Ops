@@ -24,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 
 from agents.conversational import ConversationalAgent
 from core.logging import get_logger
+from frontend.api import ops
 from mcp_servers.client import call_tool
 from mcp_servers.sensor.server import mcp as sensor_server
 from mcp_servers.ticket.server import init_schema
@@ -68,6 +69,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="IEQ-Ops 问答管家", lifespan=lifespan)
+app.include_router(ops.router)  # operator dashboard: /ops + /api/incidents + /api/inject
 
 
 @app.get("/", response_class=HTMLResponse)
