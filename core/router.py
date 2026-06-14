@@ -63,6 +63,14 @@ NODE_TIERS: dict[str, ModelTier] = {
 _RETRYABLE = (APITimeoutError, APIConnectionError)
 
 
+def _status_is_retryable(exc: APIStatusError) -> bool:
+    """A 5xx (server) or 429 (rate limit) is transient — worth the fallback model. The SDK
+    already exhausted its same-model backoff retries before this propagated, so the other
+    model (a separate capacity pool) is the next thing to try. Any other 4xx is a real
+    client error (bad request / auth) — re-raise, don't burn the fallback on it."""
+    return exc.status_code >= 500 or exc.status_code == 429
+
+
 class RouterExhausted(RuntimeError):
     """Primary and fallback both failed. Caller should raise a Tier 3 incident."""
 
@@ -73,6 +81,11 @@ class Router:
         self._client: OpenAI = TracedOpenAI(
             api_key=self.settings.deepseek_api_key,
             base_url=self.settings.deepseek_base_url,
+            # Bound the per-call wait (SDK default 600 s would stall an unattended scan)
+            # and let the SDK retry transient blips (connection / 429 / 5xx) with backoff
+            # before the router escalates to its fallback model.
+            timeout=self.settings.llm_timeout_s,
+            max_retries=self.settings.llm_max_retries,
         )
 
     def _tier_models(self, tier: ModelTier) -> tuple[str, str]:
@@ -111,7 +124,7 @@ class Router:
             except _RETRYABLE as exc:
                 log.warning("route_retry", node=node, model=model, attempt=attempt, error=str(exc))
             except APIStatusError as exc:
-                if exc.status_code < 500:
+                if not _status_is_retryable(exc):
                     raise  # client error (bad request / auth) — don't burn the fallback
                 log.warning(
                     "route_retry", node=node, model=model, attempt=attempt, status=exc.status_code
@@ -153,7 +166,7 @@ class Router:
                     raise  # already streamed partial output; retrying would duplicate
                 log.warning("route_retry", node=node, model=model, attempt=attempt, error=str(exc))
             except APIStatusError as exc:
-                if produced or exc.status_code < 500:
+                if produced or not _status_is_retryable(exc):
                     raise
                 log.warning(
                     "route_retry", node=node, model=model, attempt=attempt, status=exc.status_code

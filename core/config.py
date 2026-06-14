@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     deepseek_model_pro: str = "deepseek-v4-pro"  # reasoning tier — Planner, Reflector
     deepseek_model_flash: str = "deepseek-v4-flash"  # fast tier — Specialist, Conversational
 
+    # ── LLM resilience (core/router.py) ──
+    # Per-request timeout (seconds) on the OpenAI client. The SDK default is 600 s — far
+    # too long for an unattended loop: a hung connection would block a 5-min scan for ten
+    # minutes. Bound it so the router falls through to its model fallback promptly. Generous
+    # enough for a reasoning-tier (pro) call; lower only if the hot path must stay snappier.
+    llm_timeout_s: float = 120.0
+    # In-SDK retries per model BEFORE the router tries its fallback model. The OpenAI client
+    # retries connection errors / 429 / 5xx with exponential backoff; this is the first line
+    # against a transient cloud blip, the model fallback is the second.
+    llm_max_retries: int = 2
+
     # ── Postgres (checkpointer + ticket server) ──
     database_url: str = "postgresql://ieqops:changeme@localhost:5432/ieqops"
 
