@@ -22,8 +22,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastmcp.exceptions import ToolError
 
+from core.checkpointer import open_checkpointer
 from core.db import get_pool
 from core.logging import get_logger
+from core.state import IncidentStatus
+from core.suspend import discard as discard_thread
+from core.suspend import thread_for_incident
 from mcp_servers.client import call_tool
 from mcp_servers.ticket.server import mcp as ticket_server
 from sensing.simulator.scenarios import SCENARIOS, arm
@@ -118,6 +122,47 @@ def inject(scenario: str = Form(...)) -> JSONResponse:
     return JSONResponse(
         {"ok": True, "scenario": scenario, "description": SCENARIOS[scenario].description}
     )
+
+
+@router.post("/api/incidents/{incident_id}/decision")
+def decide(incident_id: str, decision: str = Form(...)) -> JSONResponse:
+    """Tier-3 human decision from the dashboard. SCOPE: bookkeeping, not a graph resume —
+    it closes/fails the ticket and drops the parked thread + checkpoint, it does NOT drive
+    the autonomy_gate interrupt() (a deliberate, labelled limitation; the durable interrupt
+    stays as the architecture's Tier-3 block). Dropping the thread is what stops the
+    scheduler's resume_tick from later auto-failing it over the operator's verdict."""
+    if decision not in ("approve", "reject"):
+        return JSONResponse({"ok": False, "error": "decision must be approve|reject"}, 400)
+    try:
+        inc = call_tool(ticket_server, "get_incident", incident_id=incident_id)
+    except ToolError:
+        return JSONResponse({"error": f"incident {incident_id!r} not found"}, status_code=404)
+    if inc["status"] != IncidentStatus.AWAITING_APPROVAL.value:
+        return JSONResponse(
+            {"ok": False, "error": f"incident is {inc['status']}, not awaiting approval"}, 409
+        )
+
+    approved = decision == "approve"
+    new_status = IncidentStatus.CLOSED if approved else IncidentStatus.FAILED
+    note = "resolved by human approval (Tier 3)" if approved else "rejected by operator (Tier 3)"
+    call_tool(
+        ticket_server,
+        "update_incident",
+        incident_id=incident_id,
+        status=new_status.value,
+        action_taken=note,
+    )
+    # Drop the parked thread (+ its checkpoint) so the scheduler does not resume it later.
+    tid = thread_for_incident(incident_id)
+    if tid is not None:
+        try:
+            with open_checkpointer() as cp:
+                cp.delete_thread(tid)
+        except Exception as exc:  # noqa: BLE001 — checkpoint cleanup is best-effort
+            log.warning("ops_checkpoint_delete_failed", thread_id=tid, error=str(exc))
+        discard_thread(tid)
+    log.info("ops_tier3_decision", incident_id=incident_id, decision=decision, thread_id=tid)
+    return JSONResponse({"ok": True, "incident_id": incident_id, "status": new_status.value})
 
 
 def _scan_now() -> None:

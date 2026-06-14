@@ -55,6 +55,12 @@ tr.inc:hover { background:#f8fafc; }
 .kv dt { color:#64748b; }
 .kv dd { margin:0; word-break:break-word; }
 .sheet .x { float:right; cursor:pointer; color:#94a3b8; font-size:18px; line-height:1; }
+.decide { margin-top:16px; border-top:1px solid #f1f5f9; padding-top:14px; }
+.decide .hint { padding:0 0 10px; font-size:12px; color:#64748b; }
+.decide button { padding:9px 16px; margin-right:8px; border:0; border-radius:9px; cursor:pointer;
+  font-size:14px; font-weight:600; color:#fff; }
+.decide button:disabled { opacity:.5; cursor:wait; }
+.decide .ok { background:#16a34a; } .decide .no { background:#dc2626; }
 .empty { padding:40px; text-align:center; color:#94a3b8; font-size:14px; }
 a.butler { color:#fff; opacity:.85; font-size:12px; text-decoration:underline; }
 </style>
@@ -173,10 +179,27 @@ async function showDetail(id){
     ['Opened', it.created_at && new Date(it.created_at).toLocaleString('en-GB')],
     ['Updated', it.updated_at && new Date(it.updated_at).toLocaleString('en-GB')],
   ];
+  const approve = it.status === 'awaiting_approval'
+    ? `<div class="decide">
+         <p class="hint">Tier 3 — no autonomous actuator. Review the diagnosis, then act and record:</p>
+         <button class="ok" data-d="approve">✓ Approve &amp; resolve</button>
+         <button class="no" data-d="reject">✕ Reject</button>
+       </div>` : '';
   document.getElementById('sheet').innerHTML =
     `<span class="x" onclick="closeModal()">✕</span><h3>${badge(it.status)} &nbsp;${esc(it.incident_id)}</h3>` +
-    `<dl class="kv">` + rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') + `</dl>`;
+    `<dl class="kv">` + rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') + `</dl>` + approve;
+  document.querySelectorAll('.decide button').forEach(b => b.onclick = () => decide(it.incident_id, b.dataset.d));
   document.getElementById('modal').classList.add('show');
+}
+
+async function decide(id, d){
+  document.querySelectorAll('.decide button').forEach(b => b.disabled = true);
+  try {
+    const fd = new FormData(); fd.append('decision', d);
+    const r = await fetch('/api/incidents/'+encodeURIComponent(id)+'/decision', {method:'POST', body:fd}).then(r=>r.json());
+    if (r.ok){ toast(`${d==='approve'?'Approved':'Rejected'} — ${id} → ${r.status}`); closeModal(); refresh(); }
+    else { toast('Failed: '+(r.error||'?')); }
+  } catch(e){ toast('Decision failed'); }
 }
 function closeModal(){ document.getElementById('modal').classList.remove('show'); }
 document.getElementById('modal').onclick = e => { if (e.target.id==='modal') closeModal(); };

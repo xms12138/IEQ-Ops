@@ -64,3 +64,17 @@ def discard(thread_id: str) -> None:
     with _conn() as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM suspended_threads WHERE thread_id = %s", (thread_id,))
     log.info("suspend_discarded", thread_id=thread_id)
+
+
+def thread_for_incident(incident_id: str) -> str | None:
+    """The suspended thread_id parked for this incident, or None. Used by the operator
+    dashboard's Tier-3 approval: a human decision must drop the parked thread so the
+    scheduler's resume_tick does not later auto-fail it over the human's verdict."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT thread_id FROM suspended_threads WHERE incident_id = %s "
+            "ORDER BY created_at DESC LIMIT 1",
+            (incident_id,),
+        )
+        row = cur.fetchone()
+    return str(row["thread_id"]) if row else None

@@ -201,6 +201,17 @@ def autonomy_gate(state: MainIncidentState) -> dict[str, Any]:
         else:
             reason = "Tier 3 action requires human approval"
             concerns = []
+        # Park the ticket as awaiting human approval so the operator dashboard can surface
+        # it (it otherwise still reads ACTING from the critic). interrupt() below is the
+        # durable block; the dashboard's Tier-3 decision closes/fails the incident out of
+        # band (bookkeeping — it does not drive this interrupt; see frontend/api/ops.py).
+        if state.incident_id is not None:
+            call_tool(
+                ticket_server,
+                "update_incident",
+                incident_id=state.incident_id,
+                status=IncidentStatus.AWAITING_APPROVAL.value,
+            )
         decision = interrupt({"reason": reason, "domain": domain, "concerns": concerns})
         if not (isinstance(decision, dict) and decision.get("approved") is True):
             log.info("autonomy_gate_rejected", domain=domain)
