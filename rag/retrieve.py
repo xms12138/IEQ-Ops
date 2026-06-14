@@ -109,6 +109,7 @@ class RetrievalStack:
         device: str = "cuda",
         fp16: bool = True,
         collection: str = COLLECTION,
+        candidate_top_k: int = CANDIDATE_TOP_K,
     ) -> None:
         # Heavy deps imported here (not at module top) so importing this module
         # stays cheap and never drags torch into the graph process, which never
@@ -121,6 +122,11 @@ class RetrievalStack:
         self._torch = torch
         self.collection = collection
         self.device = device
+        # How many RRF-fused candidates the reranker scores. The reranker forward is
+        # the whole retrieve cost on CPU (~6 s/candidate, fully linear — Pi spike), so
+        # the exhibit Pi overrides this small (RAG_RERANK_CANDIDATES) to trade recall
+        # for latency; GPU eval keeps the default 30 and never needs the cut.
+        self.candidate_top_k = candidate_top_k
         half = fp16 and device == "cuda"
 
         # BGE-M3 dense encoder — shared loader, identical config to ingest (so query
@@ -236,7 +242,7 @@ class RetrievalStack:
 
         # ── RRF fuse → candidate positions ──
         fused = rrf(dense_pos, sparse_pos)
-        cand_pos = sorted(fused, key=lambda i: fused[i], reverse=True)[:CANDIDATE_TOP_K]
+        cand_pos = sorted(fused, key=lambda i: fused[i], reverse=True)[: self.candidate_top_k]
         if not cand_pos:
             return []
         dense_set, sparse_set = set(dense_pos), set(sparse_pos)

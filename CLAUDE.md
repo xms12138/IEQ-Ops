@@ -21,7 +21,7 @@ This file is the project constitution for Claude Code. Read this before any non-
 - **Author:** Zihang He, MSc Connected Environments, UCL CASA
 - **Submission:** CASA0022 dissertation, December 2026
 - **Secondary purpose:** flagship portfolio project for 2027届 autumn campus recruitment in China (LLM application engineer / agent engineer roles at ByteDance, Alibaba, DeepSeek, Zhipu, Moonshot; SOE track at 三桶油 / 中信 / 中国电科)
-- **Hardware:** Raspberry Pi 4 + SCD40 (CO2) + DHT22 + BH1750 + microphone; one or more controllable actuators (smart plug / WiFi bulb / ESP32 fan); RTX 3060 (6GB) for local LLM inference
+- **Hardware (exhibit build, 2026-06):** Raspberry Pi 4 (8GB, Debian 13 Lite) runs the full stack on-device; an **Arduino MKR WiFi 1010** sensor node sends readings over WiFi/MQTT — **SCD-30** (CO2 + temp + humidity, I2C — one sensor covers air + thermal) + **Grove Light Sensor v1.1** + **Grove Sound Sensor v1.6** (analog, relative values, not true lux/dBA — accepted for the exhibit); a touchscreen drives the kiosk. **RAG retrieval (BGE-M3 + reranker) runs on the Pi CPU** (on-demand load, ~10 s/incident acceptable since the closed loop fires only occasionally); all LLM calls are cloud DeepSeek. The dev box has an RTX 3060 (6GB) but the deployed exhibit is **Pi-only**. Dev/deploy reach the Pi via `ssh pi` (Windows portproxy over IPv6 bypasses the home router's AP client-isolation — see memory `project-pi-bringup`).
 
 ---
 

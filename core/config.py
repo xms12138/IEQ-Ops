@@ -13,6 +13,7 @@ Usage:
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +37,21 @@ class Settings(BaseSettings):
     # ── Qdrant (memory + RAG vectors) ──
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
+
+    # ── RAG retrieval tuning ──
+    # Device for the BGE-M3 + reranker stack in mcp-rag-server. Default "cuda" (dev box
+    # with the RTX 3060); the CPU-only exhibit Pi sets "cpu" in .env. Read here through
+    # Settings (not a bare os.getenv) so systemd units pick it up from EnvironmentFile.
+    # Accepts the legacy IEQ_RAG_DEVICE name too, so existing .env files keep working.
+    rag_device: str = Field(
+        default="cuda", validation_alias=AliasChoices("rag_device", "ieq_rag_device")
+    )
+    # Candidates the reranker scores. Default 30 = the eval/GPU baseline. The CPU-only
+    # exhibit Pi sets this low (e.g. 5) in .env: the reranker forward is ~6 s/candidate
+    # and the entire retrieve cost, so fewer candidates trades recall for latency. At 5
+    # (== FINAL_TOP_K) the reranker only reorders the RRF top-5 rather than precision-
+    # selecting from a larger pool — an accepted exhibit trade-off, not the eval path.
+    rag_rerank_candidates: int = 30
 
     # ── LangFuse (observability) ──
     langfuse_host: str = "http://localhost:3000"

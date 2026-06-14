@@ -14,7 +14,6 @@ touching this body — the tool contract (name + RetrievedChunk shape) stays fix
 
 from __future__ import annotations
 
-import os
 import threading
 
 from fastmcp import FastMCP
@@ -34,16 +33,21 @@ _stack_lock = threading.Lock()
 
 
 def _get_stack() -> RetrievalStack:
-    """Lazy singleton — load BGE-M3 + reranker (GPU) + BM25 index on first use, not
-    at import, so importing this server (in-memory transport, tests) does not eagerly
-    seize the GPU. IEQ_RAG_DEVICE=cpu forces fp32/CPU for a machine without the card."""
+    """Lazy singleton — load BGE-M3 + reranker + BM25 index on first use, not at import,
+    so importing this server (in-memory transport, tests) does not eagerly seize the GPU.
+    settings.rag_device="cpu" (.env / RAG_DEVICE / legacy IEQ_RAG_DEVICE) forces fp32/CPU
+    for a machine without the card (the exhibit Pi)."""
     global _stack
     if _stack is None:
         with _stack_lock:
             if _stack is None:  # re-check inside the lock — only the first thread builds
-                device = os.getenv("IEQ_RAG_DEVICE", "cuda")
+                settings = get_settings()
+                device = settings.rag_device
                 _stack = RetrievalStack(
-                    get_settings().qdrant_url, device=device, fp16=(device == "cuda")
+                    settings.qdrant_url,
+                    device=device,
+                    fp16=(device == "cuda"),
+                    candidate_top_k=settings.rag_rerank_candidates,
                 )
     return _stack
 
