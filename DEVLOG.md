@@ -254,3 +254,10 @@
 - **诚实标注**:代码 + commit 明写「bookkeeping, not a graph resume — 不驱动 interrupt(),durable interrupt 仍是架构的 Tier3 阻塞」。这是作者知情选择的、清晰标注的范围限制,非隐藏的假实现。真 resume 留到有 per-domain actuator。
 - **验证**:注入 `overheating` → thermal 单停在 `awaiting_approval`(`autonomy_gate tier=3` → `incident_updated awaiting_approval` → `scan_suspended`);approve → `closed` +「resolved by human approval (Tier 3)」、挂起线程 `thread_for_incident`→None(scheduler 不会再 auto-fail)、再审 409、stats 待审归 0。`mypy --strict core/` + ruff 过。
 - **关联**:`core/graph.py`(autonomy_gate)· `core/suspend.py`(thread_for_incident)· `frontend/api/ops.py`(decision 端点)· `frontend/app/ops.html` · 关联 [[feedback_impl_vs_plan]] 的诚实标注原则 · commit `0913e48`
+
+### P-027 · Phase 5 · 展示路径隔离 replan(co2_overcrowded 移出面板,replan 留论文/CLI)  ✅
+- **动机**:连 Pi 把功能完整跑了一遍(7 项全绿:基础设施 / 运维面板 / 问答 / RAG 检索 / 语音 TTS / scheduler / 闭环),其中 `co2_spike` 在 Pi 纯 CPU 上端到端**一遍过关单**(monitor→记忆召回→ReWOO DAG→Agentic RAG→critic→Tier1 执行→verify met→轨迹回写,~7.5min)。作者据此拍板:**现场展示只走一遍过,绝不出现 replan 过程**(replan 闭环留到论文再讲),保证准确、流畅、不出意外。
+- **要隔离的就是 `co2_overcrowded`**:它是确定性 FAILED 场景(20 人 @50m³ + 通风拉满 450m³/h,CO2 稳态 ≈1220>900,单执行器无解)→ verifier 每窗都 missed → replan×2 → 耗尽预算判 FAILED。这正是展示最怕的"意外",必须从现场路径拿掉。
+- **落地**(最小面):① `sensing/simulator/scenarios.py` 的 `Scenario` 加 `exhibit_safe: bool = True`,仅 `co2_overcrowded=False` ② `frontend/api/ops.py`:`/api/scenarios` 列表 `if s.exhibit_safe` 过滤、`/api/inject` 对非 exhibit-safe 场景返 **403**(防直接 POST 绕过面板)③ `demo.py` CLI **不变**——`--list` 仍列、`demo co2_overcrowded` 仍能跑,留给论文/作者复现 replan。
+- **验证**(Pi 实跑):面板 `/api/scenarios` 只剩 `['co2_spike','overheating','dim_workspace','noisy_room']`、`co2_overcrowded hidden:True`;`POST /api/inject co2_overcrowded` → `403 "paper/CLI-only (not exhibit-safe)"`。ruff 过、`exhibit_safe` map 正确。
+- **关联**:`sensing/simulator/scenarios.py`(exhibit_safe)· `frontend/api/ops.py`(/api/scenarios 过滤 + /api/inject 403)· demo.py CLI 保留 · memory `project-exhibit-remaining-abc`。**下一步**:排查 grade 总判"不充分"跑满 3 轮 rewrite 的主因(WELL chunk 质量 / grade 阈值偏严)+ 加速闭环(7.5min→更短),让现场更流畅。

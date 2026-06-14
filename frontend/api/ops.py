@@ -103,6 +103,7 @@ def scenarios() -> JSONResponse:
                 "closes_loop": s.closes_loop,
             }
             for s in SCENARIOS.values()
+            if s.exhibit_safe  # hide replan/FAILED demos (co2_overcrowded) from the live panel
         ]
     )
 
@@ -112,9 +113,16 @@ def inject(scenario: str = Form(...)) -> JSONResponse:
     """Arm a named scenario and kick one scan in the background so the injected anomaly
     becomes a live incident within seconds, not at the next 5-min tick. Returns immediately;
     the new incident shows up in the stream as the scan progresses."""
-    if scenario not in SCENARIOS:
+    sc = SCENARIOS.get(scenario)
+    if sc is None:
         return JSONResponse(
             {"ok": False, "error": f"unknown scenario {scenario!r}"}, status_code=400
+        )
+    if not sc.exhibit_safe:
+        # co2_overcrowded & friends are replan/FAILED demos — paper/CLI only, never injected live.
+        return JSONResponse(
+            {"ok": False, "error": f"scenario {scenario!r} is paper/CLI-only (not exhibit-safe)"},
+            status_code=403,
         )
     arm(scenario)
     threading.Thread(target=_scan_now, name=f"inject-{scenario}", daemon=True).start()

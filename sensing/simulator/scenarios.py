@@ -39,6 +39,12 @@ class Scenario:
     expected_domain: str  # which Specialist the incident should route to
     closes_loop: bool  # True only for airquality (has actuator + Verifier)
     room: dict[str, float] = field(default_factory=dict)
+    # Exhibit safety. True = a deterministic single-pass outcome, safe to inject live in front
+    # of an audience. False = a replan/FAILED demonstration (co2_overcrowded): kept for the
+    # dissertation write-up and CLI runs, but hidden from the exhibit inject panel so a live
+    # demo never shows a replan loop or a FAILED incident. Enforced in ops.py (/api/scenarios
+    # filters it out, /api/inject rejects it); the demo.py CLI still lists and runs it.
+    exhibit_safe: bool = True
 
 
 SCENARIOS: dict[str, Scenario] = {
@@ -63,6 +69,7 @@ SCENARIOS: dict[str, Scenario] = {
         # so every 15-min verify still reads ≈1220 → "missed" → replan, deterministically, until
         # MAX_REPLANS is spent. The honest outcome of an anomaly the actuator cannot fix.
         room={"occupancy": 20, "ventilation_m3h": 450.0, "co2_ppm": 1220.0},
+        exhibit_safe=False,  # replan→FAILED demo — paper/CLI only, never on the live exhibit panel
     ),
     "overheating": Scenario(
         name="overheating",
