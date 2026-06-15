@@ -2,10 +2,15 @@
 # Adjust WorkingDirectory and the uv path to the deployment host (e.g. on a Raspberry
 # Pi: `which uv`). Install: copy to /etc/systemd/system/, then
 #   sudo systemctl daemon-reload && sudo systemctl enable --now ieq-web
+# Also make sure the data stores auto-start on boot (belt-and-braces with Wants= below):
+#   sudo systemctl enable postgresql qdrant
 [Unit]
 Description=IEQ-Ops Q&A butler - FastAPI web
-After=network-online.target
-Wants=network-online.target
+# Needs Postgres (checkpointer + tickets + sensor history) and Qdrant (RAG + memory).
+# Wants= (not just After=) so enabling this unit pulls the DBs up at boot even if they
+# were never enabled standalone — closes the "postgresql didn't auto-start" single point.
+After=network-online.target postgresql.service qdrant.service
+Wants=network-online.target postgresql.service qdrant.service
 
 [Service]
 Type=simple

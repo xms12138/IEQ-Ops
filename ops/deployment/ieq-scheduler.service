@@ -3,16 +3,18 @@
 # monitor→…→action pass on the current readings, and every 1 min it resumes any thread
 # whose 15-min verify window has elapsed. Without this unit nothing fires unattended.
 #
-# Needs Postgres (checkpointer + tickets) and Qdrant (RAG + memory); the After/Wants on
-# them order boot but are best-effort — a scan that races a cold DB just fails and the
-# next tick retries (APScheduler keeps the process alive), so Restart covers the rest.
+# Needs Postgres (checkpointer + tickets) and Qdrant (RAG + memory). Wants= pulls them up
+# at boot (even if they were never enabled standalone) and After= orders us after them; if
+# a scan still races a cold DB the tick just fails and the next one retries (APScheduler
+# keeps the process alive), so Restart covers the rest.
 # Adjust WorkingDirectory and the uv path to the deployment host (Pi: `which uv`). Install:
 #   sudo cp ieq-scheduler.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now ieq-scheduler
+#   sudo systemctl enable postgresql qdrant   # belt-and-braces: DBs auto-start on boot
 [Unit]
 Description=IEQ-Ops autonomous heartbeat - incident scan + verify resume
 After=network-online.target postgresql.service qdrant.service
-Wants=network-online.target
+Wants=network-online.target postgresql.service qdrant.service
 
 [Service]
 Type=simple

@@ -50,6 +50,7 @@ htmlcov/
 data/
 postgres_data/
 qdrant_data/
+var/            # simulator state (sim_state.json) + other runtime files — never committed
 
 # ---- OS / editor ----
 .DS_Store

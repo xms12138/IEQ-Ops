@@ -22,9 +22,12 @@ Two deliberate choices, both to keep the cross-restart test deterministic:
 * Time advances only via explicit advance_minutes(), never wall-clock. The run
   harness advances the room by ExpectedOutcome.target_time_min just before the
   Verifier reads, so "15 minutes later" is exact, not flaky.
-* Room state is persisted to a JSON file (IEQ_SIM_STATE). The physical world is
-  durable; the simulator stands in for it, so its state must survive the process
-  kill that the 15-min suspend/resume test performs.
+* Room state is persisted to a JSON file (IEQ_SIM_STATE, default <repo>/var/
+  sim_state.json — durable disk, NOT /tmp). The physical world is durable; the
+  simulator stands in for it, so its state must survive both the process kill that
+  the 15-min suspend/resume test performs AND a reboot/power-cut: /tmp is tmpfs (or
+  cleared on boot), so a power cut mid-loop would drop the post-action room that the
+  resumed Verifier reads back.
 """
 
 from __future__ import annotations
@@ -37,7 +40,11 @@ from pathlib import Path
 OUTDOOR_CO2 = 420.0  # ppm, typical outdoor baseline
 CO2_PER_PERSON_M3H = 0.018  # pure CO2 exhaled by a seated adult (~0.005 L/s)
 
-_STATE_PATH = Path(os.getenv("IEQ_SIM_STATE", "/tmp/ieq_sim_state.json"))
+# Default on durable disk (repo var/), not /tmp — see the module docstring: /tmp does
+# not survive a reboot, which would strand a resumed mid-loop incident. IEQ_SIM_STATE
+# overrides (e.g. tests point it at a tmp_path).
+_DEFAULT_STATE_PATH = Path(__file__).resolve().parents[2] / "var" / "sim_state.json"
+_STATE_PATH = Path(os.getenv("IEQ_SIM_STATE", str(_DEFAULT_STATE_PATH)))
 
 
 @dataclass
@@ -119,8 +126,10 @@ def reload_room() -> RoomState:
 
 
 def save_room() -> None:
-    """Persist the current room so it survives a process restart."""
+    """Persist the current room so it survives a process restart (and a reboot — the
+    default path is on durable disk, not /tmp). Creates the parent dir on first write."""
     if _room is not None:
+        _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         _STATE_PATH.write_text(json.dumps(asdict(_room)), encoding="utf-8")
 
 
