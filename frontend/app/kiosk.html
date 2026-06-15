@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IEQ-Ops Exhibit</title>
+<style>
+* { box-sizing: border-box; }
+body { margin:0; font-family: system-ui, "Segoe UI", sans-serif; background:#f4f6f8;
+  color:#1c2733; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+header { background:#0f766e; color:#fff; padding:10px 18px; display:flex; align-items:center;
+  gap:18px; flex-wrap:wrap; }
+header h1 { margin:0; font-size:18px; white-space:nowrap; }
+.pills { display:flex; gap:8px; }
+.pill { background:rgba(255,255,255,.16); border-radius:999px; padding:3px 11px; font-size:13px;
+  display:flex; gap:5px; align-items:baseline; }
+.pill b { font-size:15px; }
+.readings { margin-left:auto; font-size:13px; opacity:.95; white-space:nowrap; }
+main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
+
+/* ── left: the autonomous incident stream ── */
+.stream { flex:1.3; background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; position:sticky; top:0; background:#f8fafc; color:#64748b; font-weight:600;
+  padding:9px 12px; border-bottom:1px solid #e2e8f0; font-size:12px; }
+td { padding:9px 12px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+tr.inc { cursor:pointer; } tr.inc:hover { background:#f8fafc; }
+.badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px;
+  font-weight:700; color:#fff; letter-spacing:.3px; }
+.sensor { font-weight:700; color:#0f766e; }
+.mono { font-variant-numeric:tabular-nums; }
+.muted { color:#94a3b8; }
+.id { font-family: ui-monospace, monospace; font-size:11px; color:#64748b; }
+.empty { padding:40px; text-align:center; color:#94a3b8; font-size:14px; }
+
+/* ── right column: approvals + inject + Q&A ── */
+.right { flex:1; min-width:380px; max-width:480px; display:flex; flex-direction:column; gap:12px;
+  overflow:hidden; }
+.card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:13px 14px; }
+.card h2 { margin:0 0 10px; font-size:14px; color:#334155; }
+
+#approvals { display:none; border-color:#fdba74; background:#fff7ed; }
+#approvals.show { display:block; }
+#approvals h2 { color:#c2410c; }
+.appr { border:1px solid #fed7aa; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+  background:#fff; }
+.appr:last-child { margin-bottom:0; }
+.appr .top { font-size:13px; margin-bottom:4px; }
+.appr .ds { font-size:12px; color:#64748b; margin-bottom:9px; line-height:1.4; }
+.appr button { padding:7px 13px; margin-right:7px; border:0; border-radius:8px; cursor:pointer;
+  font-size:13px; font-weight:600; color:#fff; }
+.appr button:disabled { opacity:.5; cursor:wait; }
+.appr .ok { background:#16a34a; } .appr .no { background:#dc2626; }
+
+.inject button { display:block; width:100%; text-align:left; margin-bottom:8px; padding:9px 11px;
+  border:1px solid #cbd5e1; border-radius:9px; background:#fff; cursor:pointer; font-size:13px; }
+.inject button:last-child { margin-bottom:0; }
+.inject button:hover { border-color:#0f766e; background:#f0fdfa; }
+.inject button:disabled { opacity:.5; cursor:wait; }
+.inject .nm { font-weight:700; }
+.inject .t1 { float:right; background:#16a34a; }
+.inject .t3 { float:right; background:#ea580c; }
+.inject .ds { color:#64748b; font-size:11px; margin-top:3px; line-height:1.35; }
+
+/* Q&A card grows to fill the rest of the column; the chat log scrolls inside it. */
+.qa { flex:1; display:flex; flex-direction:column; overflow:hidden; padding-bottom:0; }
+.chat { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; padding:2px 2px 10px; }
+.bubble { max-width:88%; padding:9px 13px; border-radius:14px; line-height:1.5;
+  white-space:pre-wrap; word-break:break-word; font-size:14px; }
+.bubble.user { align-self:flex-end; background:#0f766e; color:#fff; border-bottom-right-radius:4px; }
+.bubble.bot { align-self:flex-start; background:#f1f5f9; border-bottom-left-radius:4px; }
+.inputbar { display:flex; gap:7px; padding-top:10px; border-top:1px solid #e2e8f0; align-items:center; }
+.inputbar input#q { flex:1; padding:9px 11px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; }
+.inputbar button { padding:9px 14px; border:0; border-radius:10px; background:#0f766e; color:#fff;
+  font-size:14px; cursor:pointer; }
+.inputbar button#mic { background:#e2e8f0; color:#0f172a; }
+.inputbar button#mic.on { background:#dc2626; color:#fff; }
+.tts { font-size:12px; color:#475569; display:flex; align-items:center; gap:4px; white-space:nowrap; }
+
+#toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#0f172a;
+  color:#fff; padding:10px 18px; border-radius:10px; font-size:13px; opacity:0;
+  transition:opacity .25s; pointer-events:none; }
+#toast.show { opacity:.95; }
+#modal { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none;
+  align-items:center; justify-content:center; }
+#modal.show { display:flex; }
+.sheet { background:#fff; border-radius:14px; padding:20px 22px; width:min(440px,92vw);
+  max-height:84vh; overflow:auto; }
+.sheet h3 { margin:0 0 12px; font-size:15px; }
+.kv { display:grid; grid-template-columns:120px 1fr; gap:6px 10px; font-size:13px; }
+.kv dt { color:#64748b; } .kv dd { margin:0; word-break:break-word; }
+.sheet .x { float:right; cursor:pointer; color:#94a3b8; font-size:18px; line-height:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛️ IEQ-Ops Exhibit</h1>
+  <div class="pills" id="pills"></div>
+  <div class="readings" id="readings">readings…</div>
+</header>
+<main>
+  <div class="stream">
+    <table>
+      <thead><tr>
+        <th>Time</th><th>Incident</th><th>Sensor</th><th>Value</th><th>Status</th><th>Action / Outcome</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="right">
+    <div class="card" id="approvals">
+      <h2>⏳ Needs your approval (Tier 3)</h2>
+      <div id="apprList"></div>
+    </div>
+    <div class="card inject">
+      <h2>⚡ Inject an anomaly</h2>
+      <div id="scenarios" class="muted" style="font-size:13px">Loading scenarios…</div>
+    </div>
+    <div class="card qa">
+      <h2>💬 Ask the room butler</h2>
+      <div class="chat" id="chat"></div>
+      <form id="form" class="inputbar">
+        <input id="q" autocomplete="off" placeholder="Ask… e.g. what's the CO₂ now?">
+        <button type="submit">Send</button>
+        <button type="button" id="mic" title="Ask by voice">🎤</button>
+        <label class="tts"><input type="checkbox" id="ttsToggle" checked> Speak</label>
+      </form>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const STATUS = {
+  open:{c:'#f59e0b',l:'OPEN'}, planning:{c:'#6366f1',l:'PLANNING'},
+  diagnosing:{c:'#6366f1',l:'DIAGNOSING'}, acting:{c:'#0ea5e9',l:'ACTING'},
+  awaiting_approval:{c:'#ea580c',l:'NEEDS APPROVAL'}, verifying:{c:'#0891b2',l:'VERIFYING'},
+  closed:{c:'#16a34a',l:'CLOSED'}, failed:{c:'#dc2626',l:'FAILED'},
+};
+const SENSOR = {co2:'CO₂', temperature:'TEMP', humidity:'RH', lux:'LUX', noise_db:'NOISE'};
+const UNIT = {co2:'ppm', temperature:'°C', humidity:'%', lux:'lux', noise_db:'dBA'};
+const esc = s => { const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; };
+const hhmmss = iso => { try { return new Date(iso).toLocaleTimeString('en-GB'); } catch { return '—'; } };
+
+function badge(status){
+  const s = STATUS[status] || {c:'#64748b', l:(status||'?').toUpperCase()};
+  return `<span class="badge" style="background:${s.c}">${s.l}</span>`;
+}
+function outcome(it){
+  if (it.verdict) {
+    const d = it.delta==null ? '' : ` (Δ${it.delta>0?'+':''}${it.delta})`;
+    const col = it.verdict==='met' ? '#16a34a' : '#dc2626';
+    return `<span style="color:${col};font-weight:600">${esc(it.verdict)}${d}</span>` +
+           (it.action_taken ? ` · <span class="muted">${esc(it.action_taken)}</span>` : '');
+  }
+  return it.action_taken ? `<span class="muted">${esc(it.action_taken)}</span>` : '<span class="muted">—</span>';
+}
+
+// ── incident stream + stats + approvals (the autonomous side) ──
+async function refresh(){
+  try {
+    const [inc, st] = await Promise.all([
+      fetch('/api/incidents?limit=60').then(r=>r.json()),
+      fetch('/api/stats').then(r=>r.json()),
+    ]);
+    renderPills(st);
+    renderRows(inc);
+    renderApprovals(inc.filter(i => i.status === 'awaiting_approval'));
+  } catch(e){ /* transient — keep last view */ }
+}
+function renderPills(st){
+  document.getElementById('pills').innerHTML =
+    `<span class="pill" style="background:rgba(245,158,11,.30)">active <b>${st.active||0}</b></span>` +
+    `<span class="pill" style="background:rgba(22,163,74,.30)">closed <b>${st.closed||0}</b></span>` +
+    `<span class="pill" style="background:rgba(220,38,38,.30)">failed <b>${st.failed||0}</b></span>`;
+}
+let _ids = '';
+function renderRows(items){
+  const tb = document.getElementById('rows');
+  if (!items.length){ tb.innerHTML = '<tr><td colspan="6" class="empty">No incidents yet — inject one →</td></tr>'; _ids=''; return; }
+  const sig = items.map(i=>i.incident_id+i.status+i.verdict).join('|');
+  if (sig === _ids) return;  // skip re-render when nothing changed (no flicker)
+  _ids = sig;
+  tb.innerHTML = items.map(it => {
+    const short = (it.incident_id||'').replace(/^I-/,'');
+    return `<tr class="inc" data-id="${esc(it.incident_id)}">
+      <td class="mono">${hhmmss(it.created_at)}</td>
+      <td class="id">${esc(short)}</td>
+      <td class="sensor">${SENSOR[it.sensor]||esc(it.sensor)}</td>
+      <td class="mono">${esc(it.value)} <span class="muted">${UNIT[it.sensor]||''}</span></td>
+      <td>${badge(it.status)}</td><td>${outcome(it)}</td></tr>`;
+  }).join('');
+  tb.querySelectorAll('tr.inc').forEach(r => r.onclick = () => showDetail(r.dataset.id));
+}
+let _appr = '';
+function renderApprovals(items){
+  const box = document.getElementById('approvals'), list = document.getElementById('apprList');
+  box.classList.toggle('show', items.length > 0);
+  const sig = items.map(i=>i.incident_id).join('|');
+  if (sig === _appr) return;
+  _appr = sig;
+  list.innerHTML = items.map(it =>
+    `<div class="appr" data-id="${esc(it.incident_id)}">
+       <div class="top">${badge(it.status)} <span class="sensor">${SENSOR[it.sensor]||esc(it.sensor)}</span>
+         <span class="mono">${esc(it.value)} ${UNIT[it.sensor]||''}</span></div>
+       <div class="ds">The system diagnosed this but the fix is a Tier-3 action — it is holding for your decision.</div>
+       <button class="ok" data-d="approve">✓ Approve &amp; resolve</button>
+       <button class="no" data-d="reject">✕ Reject</button>
+     </div>`).join('');
+  list.querySelectorAll('.appr').forEach(card =>
+    card.querySelectorAll('button').forEach(b => b.onclick = () => decide(card.dataset.id, b.dataset.d)));
+}
+
+async function showDetail(id){
+  const it = await fetch('/api/incidents/'+encodeURIComponent(id)).then(r=>r.json());
+  const rows = [
+    ['Incident', it.incident_id], ['Status', (STATUS[it.status]||{l:it.status}).l],
+    ['Sensor', `${SENSOR[it.sensor]||it.sensor} = ${it.value} ${UNIT[it.sensor]||''}`],
+    ['Rule', it.rule_violated], ['Action', it.action_taken || '—'],
+    ['Verdict', it.verdict ? `${it.verdict}${it.delta==null?'':` (Δ ${it.delta})`}` : '—'],
+    ['Opened', it.created_at && new Date(it.created_at).toLocaleString('en-GB')],
+  ];
+  const approve = it.status === 'awaiting_approval'
+    ? `<div style="margin-top:14px"><button class="ok" data-d="approve"
+         style="padding:8px 14px;border:0;border-radius:8px;background:#16a34a;color:#fff;font-weight:600;cursor:pointer">✓ Approve &amp; resolve</button>
+         <button class="no" data-d="reject"
+         style="padding:8px 14px;margin-left:8px;border:0;border-radius:8px;background:#dc2626;color:#fff;font-weight:600;cursor:pointer">✕ Reject</button></div>` : '';
+  document.getElementById('sheet').innerHTML =
+    `<span class="x" onclick="closeModal()">✕</span><h3>${badge(it.status)} &nbsp;${esc(it.incident_id)}</h3>` +
+    `<dl class="kv">` + rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') + `</dl>` + approve;
+  document.querySelectorAll('#sheet button[data-d]').forEach(b => b.onclick = () => decide(it.incident_id, b.dataset.d));
+  document.getElementById('modal').classList.add('show');
+}
+async function decide(id, d){
+  document.querySelectorAll('button[data-d]').forEach(b => b.disabled = true);
+  try {
+    const fd = new FormData(); fd.append('decision', d);
+    const r = await fetch('/api/incidents/'+encodeURIComponent(id)+'/decision', {method:'POST', body:fd}).then(r=>r.json());
+    if (r.ok){ toast(`${d==='approve'?'Approved':'Rejected'} — ${id} → ${r.status}`); closeModal(); refresh(); }
+    else { toast('Failed: '+(r.error||'?')); }
+  } catch(e){ toast('Decision failed'); }
+}
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+document.getElementById('modal').onclick = e => { if (e.target.id==='modal') closeModal(); };
+
+async function loadScenarios(){
+  const scs = await fetch('/api/scenarios').then(r=>r.json());
+  const box = document.getElementById('scenarios');
+  box.innerHTML = scs.map(s => {
+    const t = s.tier === 1
+      ? '<span class="badge t1">AUTO</span>' : '<span class="badge t3">NEEDS APPROVAL</span>';
+    return `<button data-name="${esc(s.name)}"><span class="nm">${esc(s.name)}</span> ${t}
+       <div class="ds">${esc(s.description)}</div></button>`;
+  }).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => inject(b));
+}
+async function inject(btn){
+  btn.disabled = true;
+  try {
+    const fd = new FormData(); fd.append('scenario', btn.dataset.name);
+    const r = await fetch('/api/inject', {method:'POST', body:fd}).then(r=>r.json());
+    toast(r.ok ? `Injected “${btn.dataset.name}” — loop firing…` : `Inject failed: ${r.error||'?'}`);
+    setTimeout(refresh, 1200);
+  } catch(e){ toast('Inject failed'); }
+  setTimeout(()=>{ btn.disabled = false; }, 4000);  // re-enable after the single-flight scan window
+}
+
+let _toastT;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastT); _toastT = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+async function loadReadings(){
+  try {
+    const r = await fetch('/api/sensors/current').then(r=>r.json());
+    const co2 = (typeof r.co2 === 'number') ? r.co2.toFixed(0) : r.co2;
+    document.getElementById('readings').textContent =
+      `CO₂ ${co2} ppm · ${r.temperature}°C · ${r.humidity}% · ${r.lux} lux · ${r.noise_db} dBA`;
+  } catch(e){}
+}
+
+// ── Q&A butler (the conversational side) — text + cascade voice ──
+const MAX_TURNS = 6;
+const chat = document.getElementById('chat');
+const qInput = document.getElementById('q');
+const micBtn = document.getElementById('mic');
+const ttsToggle = document.getElementById('ttsToggle');
+let history = [];
+
+function addBubble(role, text){
+  const b = document.createElement('div');
+  b.className = 'bubble ' + role; b.innerHTML = esc(text);
+  chat.appendChild(b); chat.scrollTop = chat.scrollHeight; return b;
+}
+function stripMarkdown(s){
+  return s.replace(/[*_`#]+/g,'').replace(/^\s*[-•]\s+/gm,'').replace(/\s{2,}/g,' ').trim();
+}
+function speak(text){
+  if (!ttsToggle.checked || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(stripMarkdown(text));
+  u.lang = 'en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+}
+class PcmPlayer {
+  constructor(sampleRate = 24000){ this.sampleRate = sampleRate; this.ctx = null; this.next = 0; }
+  _ensure(){ if (!this.ctx){ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); this.next = this.ctx.currentTime; } }
+  push(int16){
+    this._ensure();
+    const f32 = new Float32Array(int16.length);
+    for (let i=0;i<int16.length;i++) f32[i] = int16[i]/32768;
+    const buf = this.ctx.createBuffer(1, f32.length, this.sampleRate);
+    buf.copyToChannel(f32, 0);
+    const src = this.ctx.createBufferSource(); src.buffer = buf; src.connect(this.ctx.destination);
+    const t = Math.max(this.next, this.ctx.currentTime); src.start(t); this.next = t + buf.duration;
+  }
+}
+function b64ToInt16(b64){
+  const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return new Int16Array(bytes.buffer, 0, Math.floor(bin.length/2));
+}
+class WavRecorder {
+  constructor(targetRate = 16000){ this.targetRate = targetRate; this.chunks=[]; this.ctx=null; this.stream=null; this.proc=null; this.srcRate=0; }
+  async start(){
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this.ctx = new (window.AudioContext||window.webkitAudioContext)(); this.srcRate = this.ctx.sampleRate; this.chunks=[];
+    const source = this.ctx.createMediaStreamSource(this.stream);
+    this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
+    this.proc.onaudioprocess = (e) => { this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    source.connect(this.proc); this.proc.connect(this.ctx.destination);
+  }
+  stop(){
+    if (this.proc) this.proc.disconnect();
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    const merged = this._merge(this.chunks);
+    const down = this._downsample(merged, this.srcRate, this.targetRate);
+    const blob = this._encodeWav(down, this.targetRate);
+    if (this.ctx) this.ctx.close(); return blob;
+  }
+  _merge(c){ let n=0; c.forEach(x=>n+=x.length); const o=new Float32Array(n); let k=0; c.forEach(x=>{o.set(x,k);k+=x.length;}); return o; }
+  _downsample(buf, from, to){
+    if (!from || to >= from) return buf;
+    const ratio = from/to, newLen = Math.round(buf.length/ratio), out = new Float32Array(newLen);
+    let oi=0, ii=0;
+    while (oi<newLen){ const next=Math.round((oi+1)*ratio); let s=0,c=0; for (let i=ii;i<next&&i<buf.length;i++){s+=buf[i];c++;} out[oi++]=c?s/c:0; ii=next; }
+    return out;
+  }
+  _encodeWav(samples, rate){
+    const buf = new ArrayBuffer(44+samples.length*2), view = new DataView(buf);
+    const w=(o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i, s.charCodeAt(i)); };
+    w(0,'RIFF'); view.setUint32(4,36+samples.length*2,true); w(8,'WAVE'); w(12,'fmt ');
+    view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+    view.setUint32(24,rate,true); view.setUint32(28,rate*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
+    w(36,'data'); view.setUint32(40,samples.length*2,true);
+    let o=44; for (let i=0;i<samples.length;i++){ const x=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,x<0?x*32768:x*32767,true); o+=2; }
+    return new Blob([view], { type:'audio/wav' });
+  }
+}
+
+async function askText(query){
+  addBubble('user', query); const bot = addBubble('bot', '…'); let full='';
+  try {
+    const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ query, history: JSON.stringify(history.slice(-MAX_TURNS)) }) });
+    if (!r.ok || !r.body) throw new Error('HTTP '+r.status);
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    for (;;){ const {value,done} = await reader.read(); if (done) break;
+      full += dec.decode(value,{stream:true}); bot.innerHTML = esc(full); chat.scrollTop = chat.scrollHeight; }
+    full = (full + dec.decode()).trim(); bot.innerHTML = esc(full);
+    if (full){ speak(full); history.push({role:'user',content:query},{role:'assistant',content:full}); }
+  } catch(e){ bot.innerHTML = 'Request failed: ' + esc(String(e)); }
+  chat.scrollTop = chat.scrollHeight;
+}
+async function askVoiceStream(transcript, wavBlob){
+  const player = new PcmPlayer(24000);
+  let bot=null, full='', queryText=transcript||'', gotAudio=false;
+  try {
+    const fd = new FormData();
+    if (wavBlob) fd.append('audio', wavBlob, 'speech.wav');
+    fd.append('debug_text', transcript||''); fd.append('history', JSON.stringify(history.slice(-MAX_TURNS)));
+    const r = await fetch('/api/voice/stream', { method:'POST', body:fd });
+    if (!r.ok || !r.body) throw new Error('HTTP '+r.status);
+    const reader = r.body.getReader(), dec = new TextDecoder(); let buf='';
+    for (;;){ const {value,done} = await reader.read(); if (done) break;
+      buf += dec.decode(value,{stream:true}); let nl;
+      while ((nl = buf.indexOf('\n')) >= 0){
+        const line = buf.slice(0,nl).trim(); buf = buf.slice(nl+1); if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type==='query'){ queryText = ev.text; addBubble('user', '🎤 '+ev.text); bot = addBubble('bot','…'); full=''; }
+        else if (ev.type==='token'){ if (!bot) bot = addBubble('bot',''); full += ev.text; bot.innerHTML = esc(full); chat.scrollTop = chat.scrollHeight; }
+        else if (ev.type==='audio'){ gotAudio = true; player.push(b64ToInt16(ev.pcm_b64)); }
+        else if (ev.type==='error'){ if (!bot) bot = addBubble('bot',''); bot.innerHTML = esc(ev.text); }
+        else if (ev.type==='done'){
+          full = (ev.text||full).trim(); if (bot) bot.innerHTML = esc(full);
+          if (!gotAudio && full) speak(full);
+          if (full) history.push({role:'user',content:queryText},{role:'assistant',content:full});
+        }
+      }
+    }
+  } catch(e){ (bot||addBubble('bot','')).innerHTML = 'Request failed: ' + esc(String(e)); }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+document.getElementById('form').addEventListener('submit', (e) => {
+  e.preventDefault(); const q = qInput.value.trim(); if (!q) return; qInput.value=''; askText(q);
+});
+
+// Mic: click to start recording, click again to stop and send (server STT + cascade voice).
+const recorder = new WavRecorder(16000);
+let recording = false, sttTranscript = '';
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let sr = null;
+if (SR){ sr = new SR(); sr.lang='en-US'; sr.interimResults=false; sr.maxAlternatives=1;
+  sr.onresult = (ev)=>{ const t = ev.results[0][0].transcript.trim(); if (t) sttTranscript=t; }; sr.onerror=()=>{}; }
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+  micBtn.addEventListener('click', async () => {
+    if (!recording){
+      sttTranscript = '';
+      try { await recorder.start(); } catch(e){ addBubble('bot','Mic error: '+esc(String(e))); return; }
+      if (sr){ try{ sr.start(); }catch(e){} }
+      recording = true; micBtn.classList.add('on'); micBtn.textContent = '⏺';
+    } else {
+      recording = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤';
+      if (sr){ try{ sr.stop(); }catch(e){} }
+      let wav = null; try { wav = recorder.stop(); } catch(e){}
+      setTimeout(() => askVoiceStream(sttTranscript, wav), 250);
+    }
+  });
+} else { micBtn.disabled = true; micBtn.title = 'This browser cannot capture audio (try Chrome)'; }
+
+loadScenarios(); refresh(); loadReadings();
+setInterval(refresh, 3000);
+setInterval(loadReadings, 10000);
+</script>
+</body>
+</html>

@@ -64,6 +64,33 @@ class Settings(BaseSettings):
     # selecting from a larger pool — an accepted exhibit trade-off, not the eval path.
     rag_rerank_candidates: int = 30
 
+    # ── Exhibit / closed-loop pacing ──
+    # The live exhibit stands the simulator in for the physical world, which only evolves
+    # via RoomState.advance_minutes() — never wall-clock. So the scheduler's resume must
+    # fast-forward the simulator across the verify window before the Verifier reads;
+    # otherwise it sees the injected anomaly value unchanged → a false "missed" → a needless
+    # replan in front of the audience. Three knobs (defaults ARE the exhibit config, so the
+    # Pi needs no override — flip these only for the paper's true-15-min runs or once real
+    # hardware feeds readings):
+    #   exhibit_mode          — compress the wall-clock resume wait (a visitor can't stand
+    #                           for the real 15-min window) down to verify_window_seconds.
+    #   verify_window_seconds — wall-clock seconds the scheduler waits before resuming a
+    #                           suspended thread under exhibit_mode (~90 s reads as "the
+    #                           system is observing the effect" without dragging).
+    #   sensor_source         — "sim" | "hardware". Only "sim" fast-forwards the room on
+    #                           resume; once the Arduino feeds real readings the world moves
+    #                           on its own and the scheduler must NOT touch the simulator.
+    exhibit_mode: bool = Field(
+        default=True, validation_alias=AliasChoices("exhibit_mode", "ieq_exhibit_mode")
+    )
+    verify_window_seconds: int = Field(
+        default=90,
+        validation_alias=AliasChoices("verify_window_seconds", "ieq_verify_window_seconds"),
+    )
+    sensor_source: str = Field(
+        default="sim", validation_alias=AliasChoices("sensor_source", "ieq_sensor_source")
+    )
+
     # ── LangFuse (observability) ──
     langfuse_host: str = "http://localhost:3000"
     langfuse_public_key: str = ""

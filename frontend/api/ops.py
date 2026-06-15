@@ -25,7 +25,7 @@ from fastmcp.exceptions import ToolError
 from core.checkpointer import open_checkpointer
 from core.db import get_pool
 from core.logging import get_logger
-from core.state import IncidentStatus
+from core.state import IncidentStatus, tier_for_sensor
 from core.suspend import discard as discard_thread
 from core.suspend import thread_for_incident
 from mcp_servers.client import call_tool
@@ -52,6 +52,14 @@ _scan_lock = threading.Lock()
 def ops_page(request: Request) -> Any:
     """The operator dashboard single page."""
     return _templates.TemplateResponse(request, "ops.html")
+
+
+@router.get("/kiosk", response_class=HTMLResponse)
+def kiosk_page(request: Request) -> Any:
+    """The merged exhibit kiosk — incident stream + anomaly inject + Tier-3 approval card +
+    voice Q&A on one screen (frontend/app/kiosk.html). The exhibit's single entry point: the
+    audience sees the autonomous loop work AND can talk to the butler from the same display."""
+    return _templates.TemplateResponse(request, "kiosk.html")
 
 
 @router.get("/api/incidents")
@@ -101,6 +109,10 @@ def scenarios() -> JSONResponse:
                 "sensor": s.expected_sensor,
                 "domain": s.expected_domain,
                 "closes_loop": s.closes_loop,
+                # Action tier the autonomy_gate will assign (1 = auto-resolve, 3 = needs human
+                # approval). Derived from the sensor's domain, not stored — so the panel can
+                # badge each scenario "auto" vs "needs approval" without a second source of truth.
+                "tier": int(tier_for_sensor(s.expected_sensor)),
             }
             for s in SCENARIOS.values()
             if s.exhibit_safe  # hide replan/FAILED demos (co2_overcrowded) from the live panel
@@ -184,7 +196,9 @@ def _scan_now() -> None:
     try:
         from ops.scheduler import scan_tick
 
-        scan_tick()
+        # wait=True: block for the cross-process scan advisory lock so the presenter's inject
+        # is never dropped just because the scheduler's heartbeat scan is mid-flight.
+        scan_tick(wait=True)
     except Exception as exc:  # noqa: BLE001 — demo trigger, never propagate to the request
         log.warning("ops_scan_failed", error=str(exc))
     finally:

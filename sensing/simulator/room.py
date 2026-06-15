@@ -105,6 +105,19 @@ def get_room() -> RoomState:
     return _room
 
 
+def reload_room() -> RoomState:
+    """Drop the cached singleton and re-read the persisted state file, returning the fresh
+    room. The simulator file (IEQ_SIM_STATE) is the single source of truth across processes:
+    the web process arms a scenario and runs the action (persisting the post-action room),
+    while the scheduler process resumes the suspended thread in a SEPARATE process whose
+    cached _room would otherwise be stale. Whoever is about to advance physics (the
+    scheduler, before the Verifier reads) calls this first so it integrates the latest
+    persisted state forward, not its own out-of-date cache."""
+    global _room
+    _room = None
+    return get_room()
+
+
 def save_room() -> None:
     """Persist the current room so it survives a process restart."""
     if _room is not None:
