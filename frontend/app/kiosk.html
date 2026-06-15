@@ -109,6 +109,8 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
   font-size:14px; cursor:pointer; }
 .inputbar button#mic { background:#e2e8f0; color:#0f172a; }
 .inputbar button#mic.on { background:#dc2626; color:#fff; }
+.inputbar button#stop { background:#fee2e2; color:#dc2626; }
+.inputbar button#stop:hover { background:#dc2626; color:#fff; }
 .tts { font-size:12px; color:#475569; display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .empty { padding:30px; text-align:center; color:#94a3b8; font-size:14px; }
 
@@ -158,6 +160,7 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
         <input id="q" autocomplete="off" placeholder="Ask… e.g. what's the CO₂ now?">
         <button type="submit">Send</button>
         <button type="button" id="mic" title="Ask by voice">🎤</button>
+        <button type="button" id="stop" title="Stop / interrupt the answer">⏹</button>
         <label class="tts"><input type="checkbox" id="ttsToggle" checked> Speak</label>
       </form>
     </div>
@@ -369,6 +372,17 @@ const qInput = document.getElementById('q');
 const micBtn = document.getElementById('mic');
 const ttsToggle = document.getElementById('ttsToggle');
 let history = [];
+// Interrupt: the Stop button aborts the in-flight stream and kills any audio — the Pi
+// cascade PCM (PcmPlayer) and the browser-TTS fallback — so a long answer can be cut short.
+let currentAbort = null, currentPlayer = null;
+function interruptPlayback(){
+  let hit = false;
+  if (currentAbort){ try { currentAbort.abort(); } catch(e){} currentAbort = null; hit = true; }
+  if (currentPlayer){ try { currentPlayer.stop(); } catch(e){} currentPlayer = null; hit = true; }
+  if ('speechSynthesis' in window && window.speechSynthesis.speaking){ window.speechSynthesis.cancel(); hit = true; }
+  if (hit) toast('Stopped');
+}
+document.getElementById('stop').addEventListener('click', interruptPlayback);
 function addBubble(role, text){ const b = document.createElement('div'); b.className = 'bubble '+role;
   b.innerHTML = esc(text); chat.appendChild(b); chat.scrollTop = chat.scrollHeight; return b; }
 function stripMarkdown(s){ return s.replace(/[*_`#]+/g,'').replace(/^\s*[-•]\s+/gm,'').replace(/\s{2,}/g,' ').trim(); }
@@ -376,13 +390,14 @@ function speak(text){ if (!ttsToggle.checked || !('speechSynthesis' in window)) 
   const u = new SpeechSynthesisUtterance(stripMarkdown(text)); u.lang='en-US';
   window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
 class PcmPlayer {
-  constructor(sampleRate = 24000){ this.sampleRate = sampleRate; this.ctx = null; this.next = 0; }
+  constructor(sampleRate = 24000){ this.sampleRate = sampleRate; this.ctx = null; this.next = 0; this.stopped = false; }
   _ensure(){ if (!this.ctx){ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); this.next = this.ctx.currentTime; } }
-  push(int16){ this._ensure(); const f32 = new Float32Array(int16.length);
+  push(int16){ if (this.stopped) return; this._ensure(); const f32 = new Float32Array(int16.length);
     for (let i=0;i<int16.length;i++) f32[i] = int16[i]/32768;
     const buf = this.ctx.createBuffer(1, f32.length, this.sampleRate); buf.copyToChannel(f32, 0);
     const src = this.ctx.createBufferSource(); src.buffer = buf; src.connect(this.ctx.destination);
     const t = Math.max(this.next, this.ctx.currentTime); src.start(t); this.next = t + buf.duration; }
+  stop(){ this.stopped = true; if (this.ctx){ try { this.ctx.close(); } catch(e){} this.ctx = null; } }
 }
 function b64ToInt16(b64){ const bin = atob(b64); const bytes = new Uint8Array(bin.length);
   for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i); return new Int16Array(bytes.buffer, 0, Math.floor(bin.length/2)); }
@@ -410,8 +425,9 @@ class WavRecorder {
 }
 async function askText(query){
   addBubble('user', query); const bot = addBubble('bot', '…'); let full='';
+  const ac = new AbortController(); currentAbort = ac;
   try {
-    const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    const r = await fetch('/api/chat', { method:'POST', signal:ac.signal, headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body: new URLSearchParams({ query, history: JSON.stringify(history.slice(-MAX_TURNS)) }) });
     if (!r.ok || !r.body) throw new Error('HTTP '+r.status);
     const reader = r.body.getReader(), dec = new TextDecoder();
@@ -419,15 +435,17 @@ async function askText(query){
       full += dec.decode(value,{stream:true}); bot.innerHTML = esc(full); chat.scrollTop = chat.scrollHeight; }
     full = (full + dec.decode()).trim(); bot.innerHTML = esc(full);
     if (full){ speak(full); history.push({role:'user',content:query},{role:'assistant',content:full}); }
-  } catch(e){ bot.innerHTML = 'Request failed: ' + esc(String(e)); }
+  } catch(e){ if (e.name !== 'AbortError') bot.innerHTML = 'Request failed: ' + esc(String(e)); }
+  if (currentAbort === ac) currentAbort = null;
   chat.scrollTop = chat.scrollHeight;
 }
 async function askVoiceStream(transcript, wavBlob){
   const player = new PcmPlayer(24000); let bot=null, full='', queryText=transcript||'', gotAudio=false;
+  const ac = new AbortController(); currentAbort = ac; currentPlayer = player;
   try {
     const fd = new FormData(); if (wavBlob) fd.append('audio', wavBlob, 'speech.wav');
     fd.append('debug_text', transcript||''); fd.append('history', JSON.stringify(history.slice(-MAX_TURNS)));
-    const r = await fetch('/api/voice/stream', { method:'POST', body:fd });
+    const r = await fetch('/api/voice/stream', { method:'POST', signal:ac.signal, body:fd });
     if (!r.ok || !r.body) throw new Error('HTTP '+r.status);
     const reader = r.body.getReader(), dec = new TextDecoder(); let buf='';
     for (;;){ const {value,done} = await reader.read(); if (done) break;
@@ -442,7 +460,8 @@ async function askVoiceStream(transcript, wavBlob){
           if (!gotAudio && full) speak(full); if (full) history.push({role:'user',content:queryText},{role:'assistant',content:full}); }
       }
     }
-  } catch(e){ (bot||addBubble('bot','')).innerHTML = 'Request failed: ' + esc(String(e)); }
+  } catch(e){ if (e.name !== 'AbortError') (bot||addBubble('bot','')).innerHTML = 'Request failed: ' + esc(String(e)); }
+  if (currentAbort === ac) currentAbort = null;
   chat.scrollTop = chat.scrollHeight;
 }
 document.getElementById('form').addEventListener('submit', (e) => {
