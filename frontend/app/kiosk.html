@@ -39,7 +39,7 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
 .sx .lim { font-size:10px; color:#94a3b8; }
 
 /* ── Incidents (compact cards with a pipeline) ── */
-.incidents { display:flex; flex-direction:column; overflow:hidden; max-height:40%; }
+.incidents { display:flex; flex-direction:column; overflow:hidden; flex:0 0 auto; max-height:26%; }
 .inc-list { overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
 .hiw { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .hiw-body { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; padding-top:2px; }
@@ -148,13 +148,13 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
       <h2>📡 Live Sensors</h2>
       <div class="sensors-grid" id="sensors"><div class="muted" style="font-size:13px">Loading…</div></div>
     </div>
-    <div class="card incidents">
-      <h2>📋 Recent Incidents <span class="muted" style="font-weight:400;font-size:12px">— latest 3</span></h2>
-      <div class="inc-list" id="incList"><div class="empty">Loading…</div></div>
-    </div>
     <div class="card hiw">
       <h2>🔍 How it's working <span class="hiw-id" id="hiwId"></span></h2>
       <div class="hiw-body" id="hiwBody"><div class="empty">Inject an anomaly to watch the agent reason…</div></div>
+    </div>
+    <div class="card incidents">
+      <h2>📋 Recent Incidents <span class="muted" style="font-weight:400;font-size:12px">— latest 3</span></h2>
+      <div class="inc-list" id="incList"><div class="empty">Loading…</div></div>
     </div>
   </div>
   <div class="right">

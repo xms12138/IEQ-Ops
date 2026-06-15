@@ -234,9 +234,12 @@ def _record_evidence(incident_id: str, chunks: list[dict[str, Any]], diagnosis: 
         return
     try:
         if chunks:
+            # Top few passages only (later rewrite rounds append lower-relevance repeats),
+            # and collapse the PDF extraction's hard line breaks so the panel reads cleanly.
             evidence = "\n\n".join(
-                f"[{i + 1} · {c.get('source', '?')}] {str(c.get('text', '')).strip()[:280]}"
-                for i, c in enumerate(chunks)
+                f"[{i + 1} · {c.get('source', '?')}] "
+                + re.sub(r"\s+", " ", str(c.get("text", "")).strip())[:240]
+                for i, c in enumerate(chunks[:6])
             )
             record_step(incident_id, "evidence", evidence)
         record_step(incident_id, "diagnosis", diagnosis)
