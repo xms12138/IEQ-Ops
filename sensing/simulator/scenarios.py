@@ -50,7 +50,10 @@ class Scenario:
 SCENARIOS: dict[str, Scenario] = {
     "co2_spike": Scenario(
         name="co2_spike",
-        description="满员会议室通风不足,CO2 冲到 1300ppm(完整闭环:通风→恢复→关单)",
+        description=(
+            "Packed meeting room, under-ventilated — CO2 spikes to 1300 ppm "
+            "(full loop: ventilate → recover → close)"
+        ),
         expected_sensor="co2",
         expected_domain="airquality",
         closes_loop=True,
@@ -59,8 +62,10 @@ SCENARIOS: dict[str, Scenario] = {
     "co2_overcrowded": Scenario(
         name="co2_overcrowded",
         description=(
-            "持续超员:20人挤在50m³会议室,通风已拉满(450m³/h)仍压不住 CO2(稳态≈1220ppm)。"
-            "单一执行器无解 → 系统重试到预算耗尽后如实判 FAILED(展示闭环 replan + 安全底线)"
+            "Sustained overcrowding: 20 people in a 50 m³ room, ventilation already maxed "
+            "(450 m³/h) yet CO2 won't drop (steady state ≈1220 ppm). No single actuator can "
+            "fix it → the system retries until the budget is spent, then honestly marks FAILED "
+            "(demonstrates the replan loop + safety floor)"
         ),
         expected_sensor="co2",
         expected_domain="airquality",
@@ -73,7 +78,10 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "overheating": Scenario(
         name="overheating",
-        description="午后西晒 + HVAC 不足,室温升到 29°C(超 25°C 热舒适上限)",
+        description=(
+            "Afternoon west sun + weak HVAC — room temperature climbs to 29°C "
+            "(over the 25°C comfort limit)"
+        ),
         expected_sensor="temperature",
         expected_domain="thermal",
         closes_loop=False,
@@ -81,7 +89,10 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "dim_workspace": Scenario(
         name="dim_workspace",
-        description="阴天 + 部分灯具故障,照度跌到 120lux(低于 320lux 工作面要求)",
+        description=(
+            "Overcast + partial luminaire failure — illuminance drops to 120 lux "
+            "(below the 320 lux task requirement)"
+        ),
         expected_sensor="lux",
         expected_domain="lighting",
         closes_loop=False,
@@ -89,7 +100,10 @@ SCENARIOS: dict[str, Scenario] = {
     ),
     "noisy_room": Scenario(
         name="noisy_room",
-        description="隔壁施工噪声穿透,室内 68dBA(超 50dBA 办公背景噪声上限)",
+        description=(
+            "Construction noise next door — 68 dBA indoors "
+            "(over the 50 dBA office background limit)"
+        ),
         expected_sensor="noise_db",
         expected_domain="acoustic",
         closes_loop=False,

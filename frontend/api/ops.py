@@ -31,6 +31,7 @@ from core.suspend import thread_for_incident
 from mcp_servers.client import call_tool
 from mcp_servers.ticket.server import mcp as ticket_server
 from sensing.simulator.scenarios import SCENARIOS, arm
+from sensing.thresholds import THRESHOLDS
 
 log = get_logger("ops-dashboard")
 
@@ -118,6 +119,14 @@ def scenarios() -> JSONResponse:
             if s.exhibit_safe  # hide replan/FAILED demos (co2_overcrowded) from the live panel
         ]
     )
+
+
+@router.get("/api/thresholds")
+def thresholds() -> JSONResponse:
+    """Per-sensor band (unit / low / high / rule) the Monitor judges against. Lets the kiosk
+    colour each live reading in/out of band from the SAME source the Monitor uses
+    (sensing/thresholds.py), instead of a hard-coded copy drifting in the page."""
+    return JSONResponse(THRESHOLDS)
 
 
 @router.post("/api/inject")

@@ -8,42 +8,68 @@
 * { box-sizing: border-box; }
 body { margin:0; font-family: system-ui, "Segoe UI", sans-serif; background:#f4f6f8;
   color:#1c2733; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
-header { background:#0f766e; color:#fff; padding:10px 18px; display:flex; align-items:center;
-  gap:18px; flex-wrap:wrap; }
+header { background:#0f766e; color:#fff; padding:11px 18px; display:flex; align-items:center; gap:16px; }
 header h1 { margin:0; font-size:18px; white-space:nowrap; }
-.pills { display:flex; gap:8px; }
-.pill { background:rgba(255,255,255,.16); border-radius:999px; padding:3px 11px; font-size:13px;
+.pills { display:flex; gap:8px; margin-left:auto; }
+.pill { background:rgba(255,255,255,.16); border-radius:999px; padding:3px 12px; font-size:13px;
   display:flex; gap:5px; align-items:baseline; }
-.pill b { font-size:15px; }
-.readings { margin-left:auto; font-size:13px; opacity:.95; white-space:nowrap; }
+.pill b { font-size:16px; }
 main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
-
-/* ── left: the autonomous incident stream ── */
-.stream { flex:1.3; background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:auto; }
-table { width:100%; border-collapse:collapse; font-size:13px; }
-th { text-align:left; position:sticky; top:0; background:#f8fafc; color:#64748b; font-weight:600;
-  padding:9px 12px; border-bottom:1px solid #e2e8f0; font-size:12px; }
-td { padding:9px 12px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
-tr.inc { cursor:pointer; } tr.inc:hover { background:#f8fafc; }
-.badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px;
-  font-weight:700; color:#fff; letter-spacing:.3px; }
-.sensor { font-weight:700; color:#0f766e; }
-.mono { font-variant-numeric:tabular-nums; }
+.left { flex:1.4; display:flex; flex-direction:column; gap:14px; overflow:hidden; }
+.right { width:410px; display:flex; flex-direction:column; gap:13px; overflow:hidden; }
+.card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:13px 15px; }
+.card h2 { margin:0 0 11px; font-size:14px; color:#334155; display:flex; align-items:center; gap:6px; }
 .muted { color:#94a3b8; }
-.id { font-family: ui-monospace, monospace; font-size:11px; color:#64748b; }
-.empty { padding:40px; text-align:center; color:#94a3b8; font-size:14px; }
 
-/* ── right column: approvals + inject + Q&A ── */
-.right { flex:1; min-width:380px; max-width:480px; display:flex; flex-direction:column; gap:12px;
-  overflow:hidden; }
-.card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:13px 14px; }
-.card h2 { margin:0 0 10px; font-size:14px; color:#334155; }
+/* ── Live sensors ── */
+.sensors-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+.sx { border:1px solid #e2e8f0; border-radius:10px; padding:9px 10px; background:#fbfdfd; }
+.sx.bad { border-color:#fca5a5; background:#fef2f2; }
+.sx .nm { font-size:11px; color:#64748b; display:flex; align-items:center; gap:4px; }
+.sx .val { font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; margin:1px 0; }
+.sx.ok .val { color:#0f766e; } .sx.bad .val { color:#dc2626; }
+.sx .val small { font-size:11px; font-weight:600; color:#94a3b8; }
+.sx .bar { position:relative; height:7px; border-radius:4px; background:#e2e8f0; margin:7px 0 5px; overflow:hidden; }
+.sx .band { position:absolute; top:0; bottom:0; background:#bbf7d0; }
+.sx .mark { position:absolute; top:-2px; width:3px; height:11px; border-radius:2px; background:#0f766e; transform:translateX(-1px); }
+.sx.bad .mark { background:#dc2626; }
+.sx .lim { font-size:10px; color:#94a3b8; }
 
+/* ── Incidents (compact cards with a pipeline) ── */
+.incidents { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.inc-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; }
+.inc { border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; cursor:pointer; }
+.inc:hover { background:#f8fafc; }
+.inc-top { display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:9px; }
+.inc-top .sensor { font-weight:700; color:#0f766e; }
+.inc-top .val { font-variant-numeric:tabular-nums; }
+.inc-top .id { font-family: ui-monospace, monospace; font-size:10px; color:#94a3b8; margin-left:auto; }
+.badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:10px; font-weight:700;
+  color:#fff; letter-spacing:.3px; }
+.inc-out { font-size:12px; color:#64748b; margin-top:8px; }
+
+/* pipeline step rail */
+.rail { display:flex; align-items:center; }
+.step { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.dot { width:13px; height:13px; border-radius:50%; border:2px solid #cbd5e1; background:#fff; }
+.step .lbl { font-size:9px; color:#94a3b8; white-space:nowrap; }
+.seg { flex:1; height:2px; background:#cbd5e1; margin:0 2px; margin-bottom:14px; }
+.step.done .dot { background:#16a34a; border-color:#16a34a; }
+.step.done .lbl { color:#16a34a; }
+.seg.done { background:#16a34a; }
+.step.cur .dot { background:#0ea5e9; border-color:#0ea5e9; animation:pulse 1.1s ease-in-out infinite; }
+.step.cur .lbl { color:#0ea5e9; font-weight:700; }
+.step.appr .dot { background:#ea580c; border-color:#ea580c; animation:pulse 1.1s ease-in-out infinite; }
+.step.appr .lbl { color:#ea580c; font-weight:700; }
+.step.fail .dot { background:#dc2626; border-color:#dc2626; }
+.step.fail .lbl { color:#dc2626; font-weight:700; }
+@keyframes pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(14,165,233,.5);} 50%{ box-shadow:0 0 0 5px rgba(14,165,233,0);} }
+
+/* ── Approvals ── */
 #approvals { display:none; border-color:#fdba74; background:#fff7ed; }
 #approvals.show { display:block; }
 #approvals h2 { color:#c2410c; }
-.appr { border:1px solid #fed7aa; border-radius:10px; padding:10px 12px; margin-bottom:8px;
-  background:#fff; }
+.appr { border:1px solid #fed7aa; border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff; }
 .appr:last-child { margin-bottom:0; }
 .appr .top { font-size:13px; margin-bottom:4px; }
 .appr .ds { font-size:12px; color:#64748b; margin-bottom:9px; line-height:1.4; }
@@ -52,21 +78,29 @@ tr.inc { cursor:pointer; } tr.inc:hover { background:#f8fafc; }
 .appr button:disabled { opacity:.5; cursor:wait; }
 .appr .ok { background:#16a34a; } .appr .no { background:#dc2626; }
 
-.inject button { display:block; width:100%; text-align:left; margin-bottom:8px; padding:9px 11px;
+/* ── Inject (collapsible) ── */
+.inject .toggle { width:100%; display:flex; align-items:center; justify-content:space-between;
+  background:#f0fdfa; border:1px solid #99f6e4; border-radius:9px; padding:10px 13px; cursor:pointer;
+  font-size:14px; font-weight:600; color:#0f766e; }
+.inject .toggle .chev { transition:transform .2s; }
+.inject.open .toggle .chev { transform:rotate(180deg); }
+.inject .menu { display:none; margin-top:9px; }
+.inject.open .menu { display:block; }
+.inject .menu button { display:block; width:100%; text-align:left; margin-bottom:8px; padding:9px 11px;
   border:1px solid #cbd5e1; border-radius:9px; background:#fff; cursor:pointer; font-size:13px; }
-.inject button:last-child { margin-bottom:0; }
-.inject button:hover { border-color:#0f766e; background:#f0fdfa; }
-.inject button:disabled { opacity:.5; cursor:wait; }
+.inject .menu button:last-child { margin-bottom:0; }
+.inject .menu button:hover { border-color:#0f766e; background:#f0fdfa; }
+.inject .menu button:disabled { opacity:.5; cursor:wait; }
 .inject .nm { font-weight:700; }
 .inject .t1 { float:right; background:#16a34a; }
 .inject .t3 { float:right; background:#ea580c; }
 .inject .ds { color:#64748b; font-size:11px; margin-top:3px; line-height:1.35; }
 
-/* Q&A card grows to fill the rest of the column; the chat log scrolls inside it. */
-.qa { flex:1; display:flex; flex-direction:column; overflow:hidden; padding-bottom:0; }
+/* ── Q&A ── */
+.qa { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .chat { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; padding:2px 2px 10px; }
-.bubble { max-width:88%; padding:9px 13px; border-radius:14px; line-height:1.5;
-  white-space:pre-wrap; word-break:break-word; font-size:14px; }
+.bubble { max-width:88%; padding:9px 13px; border-radius:14px; line-height:1.5; white-space:pre-wrap;
+  word-break:break-word; font-size:14px; }
 .bubble.user { align-self:flex-end; background:#0f766e; color:#fff; border-bottom-right-radius:4px; }
 .bubble.bot { align-self:flex-start; background:#f1f5f9; border-bottom-left-radius:4px; }
 .inputbar { display:flex; gap:7px; padding-top:10px; border-top:1px solid #e2e8f0; align-items:center; }
@@ -76,16 +110,14 @@ tr.inc { cursor:pointer; } tr.inc:hover { background:#f8fafc; }
 .inputbar button#mic { background:#e2e8f0; color:#0f172a; }
 .inputbar button#mic.on { background:#dc2626; color:#fff; }
 .tts { font-size:12px; color:#475569; display:flex; align-items:center; gap:4px; white-space:nowrap; }
+.empty { padding:30px; text-align:center; color:#94a3b8; font-size:14px; }
 
-#toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#0f172a;
-  color:#fff; padding:10px 18px; border-radius:10px; font-size:13px; opacity:0;
-  transition:opacity .25s; pointer-events:none; }
+#toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff;
+  padding:10px 18px; border-radius:10px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; }
 #toast.show { opacity:.95; }
-#modal { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none;
-  align-items:center; justify-content:center; }
+#modal { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:center; justify-content:center; }
 #modal.show { display:flex; }
-.sheet { background:#fff; border-radius:14px; padding:20px 22px; width:min(440px,92vw);
-  max-height:84vh; overflow:auto; }
+.sheet { background:#fff; border-radius:14px; padding:20px 22px; width:min(440px,92vw); max-height:84vh; overflow:auto; }
 .sheet h3 { margin:0 0 12px; font-size:15px; }
 .kv { display:grid; grid-template-columns:120px 1fr; gap:6px 10px; font-size:13px; }
 .kv dt { color:#64748b; } .kv dd { margin:0; word-break:break-word; }
@@ -96,25 +128,28 @@ tr.inc { cursor:pointer; } tr.inc:hover { background:#f8fafc; }
 <header>
   <h1>🏛️ IEQ-Ops Exhibit</h1>
   <div class="pills" id="pills"></div>
-  <div class="readings" id="readings">readings…</div>
 </header>
 <main>
-  <div class="stream">
-    <table>
-      <thead><tr>
-        <th>Time</th><th>Incident</th><th>Sensor</th><th>Value</th><th>Status</th><th>Action / Outcome</th>
-      </tr></thead>
-      <tbody id="rows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
-    </table>
+  <div class="left">
+    <div class="card">
+      <h2>📡 Live Sensors</h2>
+      <div class="sensors-grid" id="sensors"><div class="muted" style="font-size:13px">Loading…</div></div>
+    </div>
+    <div class="card incidents">
+      <h2>📋 Recent Incidents <span class="muted" style="font-weight:400;font-size:12px">— latest 5</span></h2>
+      <div class="inc-list" id="incList"><div class="empty">Loading…</div></div>
+    </div>
   </div>
   <div class="right">
     <div class="card" id="approvals">
       <h2>⏳ Needs your approval (Tier 3)</h2>
       <div id="apprList"></div>
     </div>
-    <div class="card inject">
-      <h2>⚡ Inject an anomaly</h2>
-      <div id="scenarios" class="muted" style="font-size:13px">Loading scenarios…</div>
+    <div class="card inject" id="inject">
+      <div class="toggle" id="injectToggle">
+        <span>⚡ Inject an anomaly</span><span class="chev">▾</span>
+      </div>
+      <div class="menu" id="scenarios"><div class="muted" style="font-size:13px">Loading…</div></div>
     </div>
     <div class="card qa">
       <h2>💬 Ask the room butler</h2>
@@ -138,73 +173,112 @@ const STATUS = {
   awaiting_approval:{c:'#ea580c',l:'NEEDS APPROVAL'}, verifying:{c:'#0891b2',l:'VERIFYING'},
   closed:{c:'#16a34a',l:'CLOSED'}, failed:{c:'#dc2626',l:'FAILED'},
 };
-const SENSOR = {co2:'CO₂', temperature:'TEMP', humidity:'RH', lux:'LUX', noise_db:'NOISE'};
+const SENSOR_LABEL = {co2:'CO₂', temperature:'TEMP', humidity:'RH', lux:'LUX', noise_db:'NOISE'};
 const UNIT = {co2:'ppm', temperature:'°C', humidity:'%', lux:'lux', noise_db:'dBA'};
 const esc = s => { const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; };
-const hhmmss = iso => { try { return new Date(iso).toLocaleTimeString('en-GB'); } catch { return '—'; } };
+function badge(status){ const s = STATUS[status]||{c:'#64748b',l:(status||'?').toUpperCase()};
+  return `<span class="badge" style="background:${s.c}">${s.l}</span>`; }
 
-function badge(status){
-  const s = STATUS[status] || {c:'#64748b', l:(status||'?').toUpperCase()};
-  return `<span class="badge" style="background:${s.c}">${s.l}</span>`;
-}
-function outcome(it){
-  if (it.verdict) {
-    const d = it.delta==null ? '' : ` (Δ${it.delta>0?'+':''}${it.delta})`;
-    const col = it.verdict==='met' ? '#16a34a' : '#dc2626';
-    return `<span style="color:${col};font-weight:600">${esc(it.verdict)}${d}</span>` +
-           (it.action_taken ? ` · <span class="muted">${esc(it.action_taken)}</span>` : '');
-  }
-  return it.action_taken ? `<span class="muted">${esc(it.action_taken)}</span>` : '<span class="muted">—</span>';
-}
+// ── Live sensors: value + in/out-of-band colour + a band-on-rail mini gauge ──
+// Sensors to show, with a purely-visual display range for the gauge (the BAND comes from
+// /api/thresholds — the Monitor's own source — so only the rail extent is cosmetic here).
+const SENSORS = [
+  {k:'co2',         name:'CO₂',         viz:[400,1400]},
+  {k:'temperature', name:'Temperature', viz:[16,32]},
+  {k:'humidity',    name:'Humidity',    viz:[20,70]},
+  {k:'lux',         name:'Light',       viz:[0,600]},
+  {k:'noise_db',    name:'Noise',       viz:[30,70]},
+];
+let THRESH = {};
+async function loadThresholds(){ try { THRESH = await fetch('/api/thresholds').then(r=>r.json()); } catch(e){} }
 
-// ── incident stream + stats + approvals (the autonomous side) ──
-async function refresh(){
-  try {
-    const [inc, st] = await Promise.all([
-      fetch('/api/incidents?limit=60').then(r=>r.json()),
-      fetch('/api/stats').then(r=>r.json()),
-    ]);
-    renderPills(st);
-    renderRows(inc);
-    renderApprovals(inc.filter(i => i.status === 'awaiting_approval'));
-  } catch(e){ /* transient — keep last view */ }
+function bandText(k){
+  const t = THRESH[k]; if (!t) return '';
+  if (t.low!=null && t.high!=null) return `${t.low}–${t.high} ${t.unit}`;
+  if (t.high!=null) return `≤ ${t.high} ${t.unit}`;
+  if (t.low!=null) return `≥ ${t.low} ${t.unit}`;
+  return '';
 }
-function renderPills(st){
-  document.getElementById('pills').innerHTML =
-    `<span class="pill" style="background:rgba(245,158,11,.30)">active <b>${st.active||0}</b></span>` +
-    `<span class="pill" style="background:rgba(22,163,74,.30)">closed <b>${st.closed||0}</b></span>` +
-    `<span class="pill" style="background:rgba(220,38,38,.30)">failed <b>${st.failed||0}</b></span>`;
-}
-let _ids = '';
-function renderRows(items){
-  const tb = document.getElementById('rows');
-  if (!items.length){ tb.innerHTML = '<tr><td colspan="6" class="empty">No incidents yet — inject one →</td></tr>'; _ids=''; return; }
-  const sig = items.map(i=>i.incident_id+i.status+i.verdict).join('|');
-  if (sig === _ids) return;  // skip re-render when nothing changed (no flicker)
-  _ids = sig;
-  tb.innerHTML = items.map(it => {
-    const short = (it.incident_id||'').replace(/^I-/,'');
-    return `<tr class="inc" data-id="${esc(it.incident_id)}">
-      <td class="mono">${hhmmss(it.created_at)}</td>
-      <td class="id">${esc(short)}</td>
-      <td class="sensor">${SENSOR[it.sensor]||esc(it.sensor)}</td>
-      <td class="mono">${esc(it.value)} <span class="muted">${UNIT[it.sensor]||''}</span></td>
-      <td>${badge(it.status)}</td><td>${outcome(it)}</td></tr>`;
+function inBand(k, v){ const t = THRESH[k]; if (!t) return true;
+  if (t.low!=null && v < t.low) return false; if (t.high!=null && v > t.high) return false; return true; }
+
+async function loadSensors(){
+  let d; try { d = await fetch('/api/sensors/current').then(r=>r.json()); } catch(e){ return; }
+  document.getElementById('sensors').innerHTML = SENSORS.map(s => {
+    const v = d[s.k]; if (v==null) return '';
+    const [lo, hi] = s.viz, span = hi - lo;
+    const pct = x => Math.max(0, Math.min(100, (x - lo) / span * 100));
+    const t = THRESH[s.k] || {};
+    const bL = pct(t.low!=null ? t.low : lo), bR = pct(t.high!=null ? t.high : hi);
+    const ok = inBand(s.k, v);
+    const shown = (s.k==='co2') ? Math.round(v) : v;
+    return `<div class="sx ${ok?'ok':'bad'}">
+      <div class="nm">${s.name} ${ok?'✓':'⚠'}</div>
+      <div class="val">${shown}<small> ${UNIT[s.k]}</small></div>
+      <div class="bar"><div class="band" style="left:${bL}%;width:${Math.max(2,bR-bL)}%"></div>
+        <div class="mark" style="left:${pct(v)}%"></div></div>
+      <div class="lim">band ${bandText(s.k)}</div>
+    </div>`;
   }).join('');
-  tb.querySelectorAll('tr.inc').forEach(r => r.onclick = () => showDetail(r.dataset.id));
 }
+
+// ── Incidents: compact cards, each with a Detect→…→Done pipeline rail ──
+const STEPS = ['Detect','Plan','Diagnose','Act','Verify','Done'];
+const STEP_OF = { open:1, planning:1, diagnosing:2, acting:3, awaiting_approval:3, verifying:4, closed:5, failed:5 };
+function rail(status){
+  const cur = STEP_OF[status] ?? 0;
+  let html = '';
+  STEPS.forEach((lbl, i) => {
+    let cls = 'step';
+    if (i < cur) cls += ' done';
+    else if (i === cur) {
+      if (status === 'closed') cls += ' done';
+      else if (status === 'failed') cls += ' fail';
+      else if (status === 'awaiting_approval') cls += ' appr';
+      else cls += ' cur';
+    }
+    html += `<div class="${cls}"><div class="dot"></div><div class="lbl">${lbl}</div></div>`;
+    if (i < STEPS.length - 1) html += `<div class="seg ${i < cur ? 'done':''}"></div>`;
+  });
+  return `<div class="rail">${html}</div>`;
+}
+function incOutcome(it){
+  if (it.verdict){ const dd = it.delta==null?'':` (Δ${it.delta>0?'+':''}${it.delta})`;
+    const col = it.verdict==='met'?'#16a34a':'#dc2626';
+    return `<span style="color:${col};font-weight:600">${esc(it.verdict)}${dd}</span>` +
+           (it.action_taken?` · ${esc(it.action_taken)}`:''); }
+  return it.action_taken ? esc(it.action_taken) : '<span class="muted">working…</span>';
+}
+let _sig = '';
+function renderIncidents(items){
+  const box = document.getElementById('incList');
+  if (!items.length){ box.innerHTML = '<div class="empty">No incidents yet — inject one with ⚡ →</div>'; _sig=''; return; }
+  const sig = items.map(i=>i.incident_id+i.status+i.verdict).join('|');
+  if (sig === _sig) return;  // no change → no re-render (don't restart the pulse)
+  _sig = sig;
+  box.innerHTML = items.map(it => {
+    const short = (it.incident_id||'').replace(/^I-/,'');
+    return `<div class="inc" data-id="${esc(it.incident_id)}">
+      <div class="inc-top"><span class="sensor">${SENSOR_LABEL[it.sensor]||esc(it.sensor)}</span>
+        <span class="val">${esc(it.value)} ${UNIT[it.sensor]||''}</span>
+        ${badge(it.status)}<span class="id">${esc(short)}</span></div>
+      ${rail(it.status)}
+      <div class="inc-out">${incOutcome(it)}</div></div>`;
+  }).join('');
+  box.querySelectorAll('.inc').forEach(r => r.onclick = () => showDetail(r.dataset.id));
+}
+
+// ── Approvals (Tier 3) ──
 let _appr = '';
 function renderApprovals(items){
   const box = document.getElementById('approvals'), list = document.getElementById('apprList');
   box.classList.toggle('show', items.length > 0);
-  const sig = items.map(i=>i.incident_id).join('|');
-  if (sig === _appr) return;
-  _appr = sig;
+  const sig = items.map(i=>i.incident_id).join('|'); if (sig === _appr) return; _appr = sig;
   list.innerHTML = items.map(it =>
     `<div class="appr" data-id="${esc(it.incident_id)}">
-       <div class="top">${badge(it.status)} <span class="sensor">${SENSOR[it.sensor]||esc(it.sensor)}</span>
-         <span class="mono">${esc(it.value)} ${UNIT[it.sensor]||''}</span></div>
-       <div class="ds">The system diagnosed this but the fix is a Tier-3 action — it is holding for your decision.</div>
+       <div class="top">${badge(it.status)} <span style="font-weight:700;color:#0f766e">${SENSOR_LABEL[it.sensor]||esc(it.sensor)}</span>
+         <span style="font-variant-numeric:tabular-nums">${esc(it.value)} ${UNIT[it.sensor]||''}</span></div>
+       <div class="ds">Diagnosed, but the fix is a Tier-3 action — holding for your decision.</div>
        <button class="ok" data-d="approve">✓ Approve &amp; resolve</button>
        <button class="no" data-d="reject">✕ Reject</button>
      </div>`).join('');
@@ -212,11 +286,26 @@ function renderApprovals(items){
     card.querySelectorAll('button').forEach(b => b.onclick = () => decide(card.dataset.id, b.dataset.d)));
 }
 
+async function refresh(){
+  try {
+    const [inc, st] = await Promise.all([
+      fetch('/api/incidents?limit=5').then(r=>r.json()),
+      fetch('/api/stats').then(r=>r.json()),
+    ]);
+    document.getElementById('pills').innerHTML =
+      `<span class="pill" style="background:rgba(245,158,11,.30)">active <b>${st.active||0}</b></span>` +
+      `<span class="pill" style="background:rgba(22,163,74,.30)">closed <b>${st.closed||0}</b></span>` +
+      `<span class="pill" style="background:rgba(220,38,38,.30)">failed <b>${st.failed||0}</b></span>`;
+    renderIncidents(inc);
+    renderApprovals(inc.filter(i => i.status === 'awaiting_approval'));
+  } catch(e){}
+}
+
 async function showDetail(id){
   const it = await fetch('/api/incidents/'+encodeURIComponent(id)).then(r=>r.json());
   const rows = [
     ['Incident', it.incident_id], ['Status', (STATUS[it.status]||{l:it.status}).l],
-    ['Sensor', `${SENSOR[it.sensor]||it.sensor} = ${it.value} ${UNIT[it.sensor]||''}`],
+    ['Sensor', `${SENSOR_LABEL[it.sensor]||it.sensor} = ${it.value} ${UNIT[it.sensor]||''}`],
     ['Rule', it.rule_violated], ['Action', it.action_taken || '—'],
     ['Verdict', it.verdict ? `${it.verdict}${it.delta==null?'':` (Δ ${it.delta})`}` : '—'],
     ['Opened', it.created_at && new Date(it.created_at).toLocaleString('en-GB')],
@@ -244,12 +333,14 @@ async function decide(id, d){
 function closeModal(){ document.getElementById('modal').classList.remove('show'); }
 document.getElementById('modal').onclick = e => { if (e.target.id==='modal') closeModal(); };
 
+// ── Inject (collapsible) ──
+const injectEl = document.getElementById('inject');
+document.getElementById('injectToggle').onclick = () => injectEl.classList.toggle('open');
 async function loadScenarios(){
   const scs = await fetch('/api/scenarios').then(r=>r.json());
   const box = document.getElementById('scenarios');
   box.innerHTML = scs.map(s => {
-    const t = s.tier === 1
-      ? '<span class="badge t1">AUTO</span>' : '<span class="badge t3">NEEDS APPROVAL</span>';
+    const t = s.tier === 1 ? '<span class="badge t1">AUTO</span>' : '<span class="badge t3">NEEDS APPROVAL</span>';
     return `<button data-name="${esc(s.name)}"><span class="nm">${esc(s.name)}</span> ${t}
        <div class="ds">${esc(s.description)}</div></button>`;
   }).join('');
@@ -261,103 +352,62 @@ async function inject(btn){
     const fd = new FormData(); fd.append('scenario', btn.dataset.name);
     const r = await fetch('/api/inject', {method:'POST', body:fd}).then(r=>r.json());
     toast(r.ok ? `Injected “${btn.dataset.name}” — loop firing…` : `Inject failed: ${r.error||'?'}`);
+    injectEl.classList.remove('open');
     setTimeout(refresh, 1200);
   } catch(e){ toast('Inject failed'); }
-  setTimeout(()=>{ btn.disabled = false; }, 4000);  // re-enable after the single-flight scan window
+  setTimeout(()=>{ btn.disabled = false; }, 4000);
 }
 
 let _toastT;
-function toast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(_toastT); _toastT = setTimeout(()=>t.classList.remove('show'), 3000);
-}
-async function loadReadings(){
-  try {
-    const r = await fetch('/api/sensors/current').then(r=>r.json());
-    const co2 = (typeof r.co2 === 'number') ? r.co2.toFixed(0) : r.co2;
-    document.getElementById('readings').textContent =
-      `CO₂ ${co2} ppm · ${r.temperature}°C · ${r.humidity}% · ${r.lux} lux · ${r.noise_db} dBA`;
-  } catch(e){}
-}
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastT); _toastT = setTimeout(()=>t.classList.remove('show'), 3000); }
 
-// ── Q&A butler (the conversational side) — text + cascade voice ──
+// ── Q&A butler — text + cascade voice (unchanged behaviour) ──
 const MAX_TURNS = 6;
 const chat = document.getElementById('chat');
 const qInput = document.getElementById('q');
 const micBtn = document.getElementById('mic');
 const ttsToggle = document.getElementById('ttsToggle');
 let history = [];
-
-function addBubble(role, text){
-  const b = document.createElement('div');
-  b.className = 'bubble ' + role; b.innerHTML = esc(text);
-  chat.appendChild(b); chat.scrollTop = chat.scrollHeight; return b;
-}
-function stripMarkdown(s){
-  return s.replace(/[*_`#]+/g,'').replace(/^\s*[-•]\s+/gm,'').replace(/\s{2,}/g,' ').trim();
-}
-function speak(text){
-  if (!ttsToggle.checked || !('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(stripMarkdown(text));
-  u.lang = 'en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-}
+function addBubble(role, text){ const b = document.createElement('div'); b.className = 'bubble '+role;
+  b.innerHTML = esc(text); chat.appendChild(b); chat.scrollTop = chat.scrollHeight; return b; }
+function stripMarkdown(s){ return s.replace(/[*_`#]+/g,'').replace(/^\s*[-•]\s+/gm,'').replace(/\s{2,}/g,' ').trim(); }
+function speak(text){ if (!ttsToggle.checked || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(stripMarkdown(text)); u.lang='en-US';
+  window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
 class PcmPlayer {
   constructor(sampleRate = 24000){ this.sampleRate = sampleRate; this.ctx = null; this.next = 0; }
   _ensure(){ if (!this.ctx){ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); this.next = this.ctx.currentTime; } }
-  push(int16){
-    this._ensure();
-    const f32 = new Float32Array(int16.length);
+  push(int16){ this._ensure(); const f32 = new Float32Array(int16.length);
     for (let i=0;i<int16.length;i++) f32[i] = int16[i]/32768;
-    const buf = this.ctx.createBuffer(1, f32.length, this.sampleRate);
-    buf.copyToChannel(f32, 0);
+    const buf = this.ctx.createBuffer(1, f32.length, this.sampleRate); buf.copyToChannel(f32, 0);
     const src = this.ctx.createBufferSource(); src.buffer = buf; src.connect(this.ctx.destination);
-    const t = Math.max(this.next, this.ctx.currentTime); src.start(t); this.next = t + buf.duration;
-  }
+    const t = Math.max(this.next, this.ctx.currentTime); src.start(t); this.next = t + buf.duration; }
 }
-function b64ToInt16(b64){
-  const bin = atob(b64); const bytes = new Uint8Array(bin.length);
-  for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
-  return new Int16Array(bytes.buffer, 0, Math.floor(bin.length/2));
-}
+function b64ToInt16(b64){ const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i); return new Int16Array(bytes.buffer, 0, Math.floor(bin.length/2)); }
 class WavRecorder {
   constructor(targetRate = 16000){ this.targetRate = targetRate; this.chunks=[]; this.ctx=null; this.stream=null; this.proc=null; this.srcRate=0; }
-  async start(){
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  async start(){ this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     this.ctx = new (window.AudioContext||window.webkitAudioContext)(); this.srcRate = this.ctx.sampleRate; this.chunks=[];
-    const source = this.ctx.createMediaStreamSource(this.stream);
-    this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
+    const source = this.ctx.createMediaStreamSource(this.stream); this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
     this.proc.onaudioprocess = (e) => { this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
-    source.connect(this.proc); this.proc.connect(this.ctx.destination);
-  }
-  stop(){
-    if (this.proc) this.proc.disconnect();
-    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
-    const merged = this._merge(this.chunks);
-    const down = this._downsample(merged, this.srcRate, this.targetRate);
-    const blob = this._encodeWav(down, this.targetRate);
-    if (this.ctx) this.ctx.close(); return blob;
-  }
+    source.connect(this.proc); this.proc.connect(this.ctx.destination); }
+  stop(){ if (this.proc) this.proc.disconnect(); if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    const merged = this._merge(this.chunks); const down = this._downsample(merged, this.srcRate, this.targetRate);
+    const blob = this._encodeWav(down, this.targetRate); if (this.ctx) this.ctx.close(); return blob; }
   _merge(c){ let n=0; c.forEach(x=>n+=x.length); const o=new Float32Array(n); let k=0; c.forEach(x=>{o.set(x,k);k+=x.length;}); return o; }
-  _downsample(buf, from, to){
-    if (!from || to >= from) return buf;
-    const ratio = from/to, newLen = Math.round(buf.length/ratio), out = new Float32Array(newLen);
-    let oi=0, ii=0;
-    while (oi<newLen){ const next=Math.round((oi+1)*ratio); let s=0,c=0; for (let i=ii;i<next&&i<buf.length;i++){s+=buf[i];c++;} out[oi++]=c?s/c:0; ii=next; }
-    return out;
-  }
-  _encodeWav(samples, rate){
-    const buf = new ArrayBuffer(44+samples.length*2), view = new DataView(buf);
+  _downsample(buf, from, to){ if (!from || to >= from) return buf;
+    const ratio = from/to, newLen = Math.round(buf.length/ratio), out = new Float32Array(newLen); let oi=0, ii=0;
+    while (oi<newLen){ const next=Math.round((oi+1)*ratio); let s=0,c=0; for (let i=ii;i<next&&i<buf.length;i++){s+=buf[i];c++;} out[oi++]=c?s/c:0; ii=next; } return out; }
+  _encodeWav(samples, rate){ const buf = new ArrayBuffer(44+samples.length*2), view = new DataView(buf);
     const w=(o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i, s.charCodeAt(i)); };
     w(0,'RIFF'); view.setUint32(4,36+samples.length*2,true); w(8,'WAVE'); w(12,'fmt ');
     view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
     view.setUint32(24,rate,true); view.setUint32(28,rate*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
     w(36,'data'); view.setUint32(40,samples.length*2,true);
-    let o=44; for (let i=0;i<samples.length;i++){ const x=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,x<0?x*32768:x*32767,true); o+=2; }
-    return new Blob([view], { type:'audio/wav' });
-  }
+    let o=44; for (let i=0;i<samples.length;i++){ const x=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,x<0?x*32768:x*32767,true); o+=2; } return new Blob([view], { type:'audio/wav' }); }
 }
-
 async function askText(query){
   addBubble('user', query); const bot = addBubble('bot', '…'); let full='';
   try {
@@ -373,65 +423,49 @@ async function askText(query){
   chat.scrollTop = chat.scrollHeight;
 }
 async function askVoiceStream(transcript, wavBlob){
-  const player = new PcmPlayer(24000);
-  let bot=null, full='', queryText=transcript||'', gotAudio=false;
+  const player = new PcmPlayer(24000); let bot=null, full='', queryText=transcript||'', gotAudio=false;
   try {
-    const fd = new FormData();
-    if (wavBlob) fd.append('audio', wavBlob, 'speech.wav');
+    const fd = new FormData(); if (wavBlob) fd.append('audio', wavBlob, 'speech.wav');
     fd.append('debug_text', transcript||''); fd.append('history', JSON.stringify(history.slice(-MAX_TURNS)));
     const r = await fetch('/api/voice/stream', { method:'POST', body:fd });
     if (!r.ok || !r.body) throw new Error('HTTP '+r.status);
     const reader = r.body.getReader(), dec = new TextDecoder(); let buf='';
     for (;;){ const {value,done} = await reader.read(); if (done) break;
       buf += dec.decode(value,{stream:true}); let nl;
-      while ((nl = buf.indexOf('\n')) >= 0){
-        const line = buf.slice(0,nl).trim(); buf = buf.slice(nl+1); if (!line) continue;
+      while ((nl = buf.indexOf('\n')) >= 0){ const line = buf.slice(0,nl).trim(); buf = buf.slice(nl+1); if (!line) continue;
         const ev = JSON.parse(line);
         if (ev.type==='query'){ queryText = ev.text; addBubble('user', '🎤 '+ev.text); bot = addBubble('bot','…'); full=''; }
         else if (ev.type==='token'){ if (!bot) bot = addBubble('bot',''); full += ev.text; bot.innerHTML = esc(full); chat.scrollTop = chat.scrollHeight; }
         else if (ev.type==='audio'){ gotAudio = true; player.push(b64ToInt16(ev.pcm_b64)); }
         else if (ev.type==='error'){ if (!bot) bot = addBubble('bot',''); bot.innerHTML = esc(ev.text); }
-        else if (ev.type==='done'){
-          full = (ev.text||full).trim(); if (bot) bot.innerHTML = esc(full);
-          if (!gotAudio && full) speak(full);
-          if (full) history.push({role:'user',content:queryText},{role:'assistant',content:full});
-        }
+        else if (ev.type==='done'){ full = (ev.text||full).trim(); if (bot) bot.innerHTML = esc(full);
+          if (!gotAudio && full) speak(full); if (full) history.push({role:'user',content:queryText},{role:'assistant',content:full}); }
       }
     }
   } catch(e){ (bot||addBubble('bot','')).innerHTML = 'Request failed: ' + esc(String(e)); }
   chat.scrollTop = chat.scrollHeight;
 }
-
 document.getElementById('form').addEventListener('submit', (e) => {
-  e.preventDefault(); const q = qInput.value.trim(); if (!q) return; qInput.value=''; askText(q);
-});
-
-// Mic: click to start recording, click again to stop and send (server STT + cascade voice).
+  e.preventDefault(); const q = qInput.value.trim(); if (!q) return; qInput.value=''; askText(q); });
 const recorder = new WavRecorder(16000);
 let recording = false, sttTranscript = '';
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let sr = null;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let sr = null;
 if (SR){ sr = new SR(); sr.lang='en-US'; sr.interimResults=false; sr.maxAlternatives=1;
   sr.onresult = (ev)=>{ const t = ev.results[0][0].transcript.trim(); if (t) sttTranscript=t; }; sr.onerror=()=>{}; }
 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
   micBtn.addEventListener('click', async () => {
-    if (!recording){
-      sttTranscript = '';
+    if (!recording){ sttTranscript = '';
       try { await recorder.start(); } catch(e){ addBubble('bot','Mic error: '+esc(String(e))); return; }
-      if (sr){ try{ sr.start(); }catch(e){} }
-      recording = true; micBtn.classList.add('on'); micBtn.textContent = '⏺';
-    } else {
-      recording = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤';
-      if (sr){ try{ sr.stop(); }catch(e){} }
-      let wav = null; try { wav = recorder.stop(); } catch(e){}
-      setTimeout(() => askVoiceStream(sttTranscript, wav), 250);
-    }
+      if (sr){ try{ sr.start(); }catch(e){} } recording = true; micBtn.classList.add('on'); micBtn.textContent = '⏺';
+    } else { recording = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤';
+      if (sr){ try{ sr.stop(); }catch(e){} } let wav = null; try { wav = recorder.stop(); } catch(e){}
+      setTimeout(() => askVoiceStream(sttTranscript, wav), 250); }
   });
 } else { micBtn.disabled = true; micBtn.title = 'This browser cannot capture audio (try Chrome)'; }
 
-loadScenarios(); refresh(); loadReadings();
+loadThresholds().then(loadSensors); loadScenarios(); refresh();
 setInterval(refresh, 3000);
-setInterval(loadReadings, 10000);
+setInterval(loadSensors, 5000);
 </script>
 </body>
 </html>
