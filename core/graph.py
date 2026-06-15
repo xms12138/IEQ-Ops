@@ -74,6 +74,7 @@ from core.state import (
 from mcp_servers.actuator.server import mcp as actuator_server
 from mcp_servers.client import call_tool
 from mcp_servers.ticket.server import mcp as ticket_server
+from mcp_servers.ticket.server import record_step
 
 log = get_logger("graph")
 
@@ -274,19 +275,37 @@ def _route_after_monitor(state: MainIncidentState) -> str:
     return "planner" if state.incident_id else END
 
 
+def _record_plan(incident_id: str, plan: Plan) -> None:
+    """Best-effort: write the planner's DAG to the exhibit display side-channel (the
+    'how it works' panel). Off the control flow — a display write must never break dispatch."""
+    try:
+        summary = "\n".join(f"{st.subtask_id} [{st.domain}] {st.goal}" for st in plan.subtasks)
+        record_step(incident_id, "plan", summary)
+    except Exception:  # noqa: BLE001 — observability write, never propagate
+        log.warning("record_plan_failed", incident_id=incident_id)
+
+
 def route_dispatch(state: MainIncidentState) -> list[Send] | str:
     """Fan out the ready wave as parallel Sends to the domain specialist nodes;
-    when nothing is ready (DAG complete, or remainder blocked by a failed dep),
-    advance to critic. Each Send carries one subtask (with its hydrated goal)."""
+    when nothing is ready (DAG complete, or remainder blocked by a failed dep), advance to
+    critic. Each Send carries one subtask (with its hydrated goal) plus the incident_id, so
+    the specialist subgraph can write its retrieved evidence to the display side-channel
+    while its own state stays isolated from the parent checkpoint."""
     ready = _ready_subtasks(state)
     if not ready:
         return "critic"
+    # First wave of this (re)plan — subtask_results is still empty (it is reset on replan),
+    # so the plan is recorded exactly once per plan for the exhibit panel.
+    if state.incident_id and state.current_plan is not None and not state.subtask_results:
+        _record_plan(state.incident_id, state.current_plan)
     sends: list[Send] = []
     for st in ready:
         target = st.domain if st.domain in _SPECIALIST_DOMAINS else "airquality"
         if target != st.domain:
             log.warning("dispatch_unknown_domain", domain=st.domain, fallback=target)
-        sends.append(Send(target, {"subtask": st.model_dump()}))
+        sends.append(
+            Send(target, {"subtask": st.model_dump(), "incident_id": state.incident_id or ""})
+        )
     return sends
 
 

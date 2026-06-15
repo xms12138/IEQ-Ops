@@ -10,10 +10,13 @@ body { margin:0; font-family: system-ui, "Segoe UI", sans-serif; background:#f4f
   color:#1c2733; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 header { background:#0f766e; color:#fff; padding:11px 18px; display:flex; align-items:center; gap:16px; }
 header h1 { margin:0; font-size:18px; white-space:nowrap; }
-.pills { display:flex; gap:8px; margin-left:auto; }
+.pills { display:flex; gap:8px; }
 .pill { background:rgba(255,255,255,.16); border-radius:999px; padding:3px 12px; font-size:13px;
   display:flex; gap:5px; align-items:baseline; }
 .pill b { font-size:16px; }
+.patrol { margin-left:auto; font-size:12px; opacity:.95; white-space:nowrap; }
+.patrol .scanning { color:#bbf7d0; font-weight:700; animation:blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
 main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
 .left { flex:1.4; display:flex; flex-direction:column; gap:14px; overflow:hidden; }
 .right { width:410px; display:flex; flex-direction:column; gap:13px; overflow:hidden; }
@@ -36,8 +39,15 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
 .sx .lim { font-size:10px; color:#94a3b8; }
 
 /* ── Incidents (compact cards with a pipeline) ── */
-.incidents { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-.inc-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; }
+.incidents { display:flex; flex-direction:column; overflow:hidden; max-height:40%; }
+.inc-list { overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.hiw { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.hiw-body { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; padding-top:2px; }
+.hiw-step { border:1px solid #e2e8f0; border-radius:9px; padding:9px 11px; background:#fbfdfd; }
+.hiw-h { font-size:12px; font-weight:700; color:#0f766e; margin-bottom:5px; }
+.hiw-c { font-size:12px; color:#334155; white-space:pre-wrap; word-break:break-word; line-height:1.5;
+  max-height:170px; overflow-y:auto; }
+.hiw-id { font-weight:400; font-size:11px; color:#94a3b8; }
 .inc { border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; cursor:pointer; }
 .inc:hover { background:#f8fafc; }
 .inc-top { display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:9px; }
@@ -130,6 +140,7 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
 <header>
   <h1>🏛️ IEQ-Ops Exhibit</h1>
   <div class="pills" id="pills"></div>
+  <div class="patrol" id="patrol">🛰️ patrol: starting…</div>
 </header>
 <main>
   <div class="left">
@@ -138,8 +149,12 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
       <div class="sensors-grid" id="sensors"><div class="muted" style="font-size:13px">Loading…</div></div>
     </div>
     <div class="card incidents">
-      <h2>📋 Recent Incidents <span class="muted" style="font-weight:400;font-size:12px">— latest 5</span></h2>
+      <h2>📋 Recent Incidents <span class="muted" style="font-weight:400;font-size:12px">— latest 3</span></h2>
       <div class="inc-list" id="incList"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="card hiw">
+      <h2>🔍 How it's working <span class="hiw-id" id="hiwId"></span></h2>
+      <div class="hiw-body" id="hiwBody"><div class="empty">Inject an anomaly to watch the agent reason…</div></div>
     </div>
   </div>
   <div class="right">
@@ -246,11 +261,10 @@ function rail(status){
   return `<div class="rail">${html}</div>`;
 }
 function incOutcome(it){
-  if (it.verdict){ const dd = it.delta==null?'':` (Δ${it.delta>0?'+':''}${it.delta})`;
-    const col = it.verdict==='met'?'#16a34a':'#dc2626';
-    return `<span style="color:${col};font-weight:600">${esc(it.verdict)}${dd}</span>` +
-           (it.action_taken?` · ${esc(it.action_taken)}`:''); }
-  return it.action_taken ? esc(it.action_taken) : '<span class="muted">working…</span>';
+  if (!it.verdict) return '';  // keep the card terse — the pipeline rail shows progress
+  const dd = it.delta==null?'':` (Δ${it.delta>0?'+':''}${it.delta})`;
+  const col = it.verdict==='met'?'#16a34a':'#dc2626';
+  return `<span style="color:${col};font-weight:600">${esc(it.verdict)}${dd}</span>`;
 }
 let _sig = '';
 function renderIncidents(items){
@@ -260,13 +274,11 @@ function renderIncidents(items){
   if (sig === _sig) return;  // no change → no re-render (don't restart the pulse)
   _sig = sig;
   box.innerHTML = items.map(it => {
-    const short = (it.incident_id||'').replace(/^I-/,'');
+    const out = incOutcome(it);
     return `<div class="inc" data-id="${esc(it.incident_id)}">
       <div class="inc-top"><span class="sensor">${SENSOR_LABEL[it.sensor]||esc(it.sensor)}</span>
-        <span class="val">${esc(it.value)} ${UNIT[it.sensor]||''}</span>
-        ${badge(it.status)}<span class="id">${esc(short)}</span></div>
-      ${rail(it.status)}
-      <div class="inc-out">${incOutcome(it)}</div></div>`;
+        <span class="val">${esc(it.value)} ${UNIT[it.sensor]||''}</span>${badge(it.status)}</div>
+      ${rail(it.status)}${out?`<div class="inc-out">${out}</div>`:''}</div>`;
   }).join('');
   box.querySelectorAll('.inc').forEach(r => r.onclick = () => showDetail(r.dataset.id));
 }
@@ -292,7 +304,7 @@ function renderApprovals(items){
 async function refresh(){
   try {
     const [inc, st] = await Promise.all([
-      fetch('/api/incidents?limit=5').then(r=>r.json()),
+      fetch('/api/incidents?limit=3').then(r=>r.json()),
       fetch('/api/stats').then(r=>r.json()),
     ]);
     document.getElementById('pills').innerHTML =
@@ -301,6 +313,7 @@ async function refresh(){
       `<span class="pill" style="background:rgba(220,38,38,.30)">failed <b>${st.failed||0}</b></span>`;
     renderIncidents(inc);
     renderApprovals(inc.filter(i => i.status === 'awaiting_approval'));
+    loadHowItWorks(inc[0]);  // newest incident — show its plan/evidence/diagnosis trail
   } catch(e){}
 }
 
@@ -364,6 +377,50 @@ async function inject(btn){
 let _toastT;
 function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(_toastT); _toastT = setTimeout(()=>t.classList.remove('show'), 3000); }
+
+// ── "How it works": the newest incident's plan → retrieved evidence → diagnosis ──
+const STEP_META = {
+  plan:      { icon:'🗺️', label:'Plan — ReWOO subtask DAG' },
+  evidence:  { icon:'📚', label:'Retrieved standards evidence' },
+  diagnosis: { icon:'🧠', label:'Diagnosis' },
+};
+let _hiwSig = '';
+async function loadHowItWorks(latest){
+  if (!latest) return;
+  const id = latest.incident_id;
+  let steps; try { steps = await fetch('/api/incidents/'+encodeURIComponent(id)+'/steps').then(r=>r.json()); } catch(e){ return; }
+  const sig = id + '|' + steps.map(s=>s.step).join(',');
+  if (sig === _hiwSig) return;  // no new step → don't re-render
+  _hiwSig = sig;
+  document.getElementById('hiwId').textContent = '· ' + id.replace(/^I-/,'');
+  const body = document.getElementById('hiwBody');
+  if (!steps.length){ body.innerHTML = '<div class="empty">Planning…</div>'; return; }
+  body.innerHTML = steps.map(s => {
+    const m = STEP_META[s.step] || { icon:'•', label:s.step };
+    return `<div class="hiw-step"><div class="hiw-h">${m.icon} ${esc(m.label)}</div>
+      <div class="hiw-c">${esc(s.content)}</div></div>`;
+  }).join('');
+}
+
+// ── Autonomous-patrol indicator: last scan + countdown to the next 5-min tick ──
+let _lastScan = null, _intervalMin = 5;
+async function loadScheduler(){
+  try { const d = await fetch('/api/scheduler/status').then(r=>r.json());
+    _lastScan = d.last_scan ? new Date(d.last_scan) : null;
+    _intervalMin = d.interval_min || 5;
+  } catch(e){}
+}
+function tickPatrol(){
+  const el = document.getElementById('patrol');
+  if (!_lastScan){ el.innerHTML = '🛰️ patrol: starting…'; return; }
+  const now = Date.now(), next = _lastScan.getTime() + _intervalMin*60000;
+  const ago = Math.max(0, Math.floor((now - _lastScan.getTime())/1000));
+  const left = Math.ceil((next - now)/1000);
+  if (left <= 0){ el.innerHTML = '🛰️ <span class="scanning">scanning…</span>'; return; }
+  const mm = Math.floor(left/60), ss = String(left%60).padStart(2,'0');
+  const agoTxt = ago < 60 ? `${ago}s` : `${Math.floor(ago/60)}m`;
+  el.innerHTML = `🛰️ last scan ${agoTxt} ago · next in ${mm}m ${ss}s`;
+}
 
 // ── Q&A butler — text + cascade voice (unchanged behaviour) ──
 const MAX_TURNS = 6;
@@ -482,9 +539,11 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
   });
 } else { micBtn.disabled = true; micBtn.title = 'This browser cannot capture audio (try Chrome)'; }
 
-loadThresholds().then(loadSensors); loadScenarios(); refresh();
+loadThresholds().then(loadSensors); loadScenarios(); refresh(); loadScheduler();
 setInterval(refresh, 3000);
 setInterval(loadSensors, 5000);
+setInterval(loadScheduler, 10000);
+setInterval(tickPatrol, 1000);
 </script>
 </body>
 </html>

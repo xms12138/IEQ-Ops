@@ -29,6 +29,7 @@ from core.state import IncidentStatus, tier_for_sensor
 from core.suspend import discard as discard_thread
 from core.suspend import thread_for_incident
 from mcp_servers.client import call_tool
+from mcp_servers.ticket.server import get_last_scan, list_steps
 from mcp_servers.ticket.server import mcp as ticket_server
 from sensing.simulator.scenarios import SCENARIOS, arm
 from sensing.thresholds import THRESHOLDS
@@ -127,6 +128,22 @@ def thresholds() -> JSONResponse:
     colour each live reading in/out of band from the SAME source the Monitor uses
     (sensing/thresholds.py), instead of a hard-coded copy drifting in the page."""
     return JSONResponse(THRESHOLDS)
+
+
+@router.get("/api/scheduler/status")
+def scheduler_status() -> JSONResponse:
+    """Last autonomous scan wall-clock + scan interval, for the exhibit's patrol indicator
+    ('last scan · next in N min'). Proves the system is scanning on its own between incidents."""
+    from ops.scheduler import SCAN_INTERVAL_MIN
+
+    return JSONResponse({"last_scan": get_last_scan(), "interval_min": SCAN_INTERVAL_MIN})
+
+
+@router.get("/api/incidents/{incident_id}/steps")
+def incident_steps(incident_id: str) -> JSONResponse:
+    """The processing-detail trail (plan -> evidence -> diagnosis) the loop wrote for this
+    incident — the exhibit 'how it works' panel reads this to show the agent's reasoning."""
+    return JSONResponse(list_steps(incident_id))
 
 
 @router.post("/api/inject")

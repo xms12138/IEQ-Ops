@@ -66,6 +66,31 @@ CREATE TABLE IF NOT EXISTS suspended_threads (
 );
 """
 
+# incident_steps: a DISPLAY-ONLY audit trail of how the loop handled each incident — the
+# planner's plan, the Specialist's retrieved evidence, the final diagnosis. Written on a
+# SIDE CHANNEL (never the LangGraph checkpoint) so the subgraph's isolated retrieved_chunks
+# can reach the exhibit "how it works" panel without leaking into the parent state.
+_STEPS_DDL = """
+CREATE TABLE IF NOT EXISTS incident_steps (
+    incident_id text NOT NULL,
+    step        text NOT NULL,
+    content     text NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+"""
+_STEPS_INDEX = (
+    "CREATE INDEX IF NOT EXISTS incident_steps_id_idx ON incident_steps (incident_id, created_at)"
+)
+
+# scheduler_heartbeat: one row, the wall-clock of the scheduler's last scan tick, so the
+# exhibit can show "last scan · next in N min" — proof the system is patrolling on its own.
+_HEARTBEAT_DDL = """
+CREATE TABLE IF NOT EXISTS scheduler_heartbeat (
+    id           int PRIMARY KEY DEFAULT 1,
+    last_scan_at timestamptz NOT NULL DEFAULT now()
+);
+"""
+
 # sensor → incident-type code used in the incident id (CLAUDE.md I-{date}-{room}-{type})
 _SENSOR_TYPE = {"co2": "AQ", "temperature": "TH", "humidity": "TH", "lux": "LT", "noise_db": "AC"}
 
@@ -84,6 +109,9 @@ def init_schema() -> None:
         cur.execute(_READINGS_DDL)
         cur.execute(_READINGS_INDEX)
         cur.execute(_SUSPENDED_DDL)
+        cur.execute(_STEPS_DDL)
+        cur.execute(_STEPS_INDEX)
+        cur.execute(_HEARTBEAT_DDL)
     log.info("ticket_schema_ready")
 
 
@@ -189,3 +217,51 @@ def list_incidents(
             if row.get(k) is not None:
                 row[k] = row[k].isoformat()
     return rows
+
+
+# ── exhibit display side-channel (plain functions, NOT @mcp.tool — called inline from the
+# graph nodes, not exposed as agent tools; these are observability writes, not control flow) ──
+
+
+def record_step(incident_id: str, step: str, content: str) -> None:
+    """Append one processing-detail row for the exhibit 'how it works' panel
+    (step ∈ {plan, evidence, diagnosis}). Best-effort and OFF the control flow — callers
+    wrap it so a display write never breaks the agent loop."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO incident_steps (incident_id, step, content) VALUES (%s, %s, %s)",
+            (incident_id, step, content),
+        )
+
+
+def list_steps(incident_id: str) -> list[dict[str, Any]]:
+    """The processing-detail trail for one incident, oldest-first."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT step, content, created_at FROM incident_steps "
+            "WHERE incident_id = %s ORDER BY created_at",
+            (incident_id,),
+        )
+        rows = cur.fetchall()
+    for row in rows:
+        if row.get("created_at") is not None:
+            row["created_at"] = row["created_at"].isoformat()
+    return rows
+
+
+def record_scan() -> None:
+    """Stamp the scheduler's last-scan wall-clock (single-row upsert) for the exhibit's
+    'last scan · next in N' patrol indicator."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO scheduler_heartbeat (id, last_scan_at) VALUES (1, now()) "
+            "ON CONFLICT (id) DO UPDATE SET last_scan_at = now()"
+        )
+
+
+def get_last_scan() -> str | None:
+    """ISO wall-clock of the last scan tick, or None if the scheduler hasn't run yet."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT last_scan_at FROM scheduler_heartbeat WHERE id = 1")
+        row = cur.fetchone()
+    return row["last_scan_at"].isoformat() if row else None

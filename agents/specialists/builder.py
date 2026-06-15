@@ -42,6 +42,7 @@ from core.state import (
 )
 from mcp_servers.client import call_tool
 from mcp_servers.rag.server import mcp as rag_server
+from mcp_servers.ticket.server import record_step
 from rag.retrieve import FINAL_TOP_K
 
 log = get_logger("specialist")
@@ -65,6 +66,11 @@ class SpecialistState(BaseModel):
 
     # ── in (from parent) ──
     subtask: Subtask
+    # incident_id is the ONLY other parent context that enters — a scalar id, not bulky
+    # state, used solely to write retrieved evidence to the display side-channel. It is
+    # never returned to the parent, so the isolation that keeps retrieved_chunks out of the
+    # parent checkpoint is preserved.
+    incident_id: str = ""
     # ── decompose ──
     sub_queries: list[str] = Field(default_factory=list)
     # ── rewrite-loop control ──
@@ -220,6 +226,24 @@ def _make_rewrite(router: Router) -> Any:
     return rewrite
 
 
+def _record_evidence(incident_id: str, chunks: list[dict[str, Any]], diagnosis: str) -> None:
+    """Best-effort: write the retrieved evidence + final diagnosis to the exhibit display
+    side-channel. This is the ONLY place the subgraph's isolated retrieved_chunks surface —
+    as a read-only display write, never back into the parent checkpoint. Off the control flow."""
+    if not incident_id:
+        return
+    try:
+        if chunks:
+            evidence = "\n\n".join(
+                f"[{i + 1} · {c.get('source', '?')}] {str(c.get('text', '')).strip()[:280]}"
+                for i, c in enumerate(chunks)
+            )
+            record_step(incident_id, "evidence", evidence)
+        record_step(incident_id, "diagnosis", diagnosis)
+    except Exception:  # noqa: BLE001 — observability write, never break the loop
+        log.warning("record_evidence_failed", incident_id=incident_id)
+
+
 def _make_generate(router: Router) -> Any:
     tmpl = load_prompt("specialist/generate", 4)
 
@@ -254,6 +278,7 @@ def _make_generate(router: Router) -> Any:
             log.info(
                 "generate", subtask_id=st.subtask_id, metric=result.expected_outcome.target_metric
             )
+            _record_evidence(state.incident_id, chunks, result.diagnosis)
             return {"final_diagnosis": result}
         except (
             RouterExhausted,
@@ -338,7 +363,9 @@ def run_specialist(payload: dict[str, Any], domain: str) -> dict[str, Any]:
     subtask = raw if isinstance(raw, Subtask) else Subtask.model_validate(raw)
     # Run on the hydrated goal (ReWOO refs already resolved by hydrate_placeholders).
     child = subtask.model_copy(update={"goal": subtask.effective_goal})
-    out = SPECIALIST_SUBGRAPH.invoke({"subtask": child})
+    out = SPECIALIST_SUBGRAPH.invoke(
+        {"subtask": child, "incident_id": payload.get("incident_id", "")}
+    )
     diagnosis = out["final_diagnosis"] if isinstance(out, dict) else out.final_diagnosis
     if diagnosis is None:
         log.error("specialist_no_diagnosis", domain=domain, subtask_id=subtask.subtask_id)

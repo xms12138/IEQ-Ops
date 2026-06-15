@@ -49,7 +49,7 @@ from core.graph import INTERRUPT_BEFORE, build_main_graph
 from core.logging import configure_logging, get_logger
 from core.state import MainIncidentState
 from core.suspend import discard, due, register
-from mcp_servers.ticket.server import init_schema
+from mcp_servers.ticket.server import init_schema, record_scan
 from sensing.simulator.room import reload_room, save_room
 
 log = get_logger("scheduler")
@@ -128,6 +128,8 @@ def scan_tick(wait: bool = False) -> None:
         if not got:
             log.info("scan_skipped_locked")  # another process is mid-scan; dedup covers us
             return
+        if not wait:
+            record_scan()  # heartbeat: stamp this autonomous patrol tick (manual injects don't)
         reload_room()  # simulator file is the cross-process truth — pick up a scenario the
         #               web process just armed, not this process's stale cache.
         tid = f"thr-{uuid.uuid4().hex[:12]}"
@@ -200,7 +202,13 @@ def main() -> None:
     )
     scheduler = BlockingScheduler(timezone="UTC")
     scheduler.add_job(
-        scan_tick, "interval", minutes=SCAN_INTERVAL_MIN, max_instances=1, coalesce=True
+        scan_tick,
+        "interval",
+        minutes=SCAN_INTERVAL_MIN,
+        max_instances=1,
+        coalesce=True,
+        next_run_time=datetime.now(UTC),  # first patrol scan at once → heartbeat + kiosk
+        #                                   patrol indicator have data from boot, RAG warms up
     )
     scheduler.add_job(
         resume_tick, "interval", minutes=RESUME_INTERVAL_MIN, max_instances=1, coalesce=True
