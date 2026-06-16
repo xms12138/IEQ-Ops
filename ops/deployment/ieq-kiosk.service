@@ -1,0 +1,35 @@
+# IEQ-Ops exhibit kiosk — cage (Wayland kiosk compositor) running full-screen Chromium,
+# pointed at the on-device dashboard. This is what turns the Pi into a self-displaying
+# appliance: power on → straight into the dashboard, no dev box, no tunnel.
+#
+# Pi-specific unit (User=xms12138). Install:
+#   sudo cp ieq-kiosk.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable ieq-kiosk
+# cage takes over tty1 (Conflicts the console getty) and gets its DRM/input seat from
+# seatd; the user is in the `video` group that owns /run/seatd.sock. Needs a screen
+# plugged in to actually render — enabling now means it lights up on the next boot with
+# a display attached.
+[Unit]
+Description=IEQ-Ops exhibit kiosk (cage + Chromium fullscreen)
+After=ieq-web.service seatd.service systemd-user-sessions.service getty@tty1.service
+Wants=ieq-web.service seatd.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=xms12138
+WorkingDirectory=/home/xms12138/dissertation
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/home/xms12138/dissertation/ops/deployment/kiosk-start.sh
+Restart=on-failure
+RestartSec=5
+TTYPath=/dev/tty1
+PAMName=login
+UtmpIdentifier=tty1
+UtmpMode=user
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

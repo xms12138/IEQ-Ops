@@ -1,0 +1,11 @@
+{
+  "_comment": "IEQ-Ops kiosk Chromium managed policy. Installed to /etc/chromium/policies/managed/. Pre-authorises the mic for the local dashboard so the unattended kiosk never shows a permission prompt; everything else stays locked down.",
+  "AudioCaptureAllowed": true,
+  "AudioCaptureAllowedUrls": ["http://localhost:8000"],
+  "VideoCaptureAllowed": false,
+  "DefaultNotificationsSetting": 2,
+  "MetricsReportingEnabled": false,
+  "BackgroundModeEnabled": false,
+  "DefaultBrowserSettingEnabled": false,
+  "PasswordManagerEnabled": false
+}

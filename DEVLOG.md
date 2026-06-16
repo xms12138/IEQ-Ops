@@ -302,3 +302,13 @@
 - **审查 · scheduler.py 通读**:核心健壮无真 bug;本次加固恰好补上断电恢复链最后一环(`reload_room` 现能跨断电读到 post-action 房间)。1 个**可选优化**(未改,待确认+Pi 验证):`resume_tick` job 无 `next_run_time=now`(`scheduler.py:213`),断电重启后挂起 incident 最多等 1min 才被捡起(scan 有立即首跑、resume 没有)。
 - **诚实边界**:② 是**模板改动**(repo 单元是开发机版 `/home/xms`+`uv run`,Pi 跑特化版 `xms12138`+`.venv`),**Pi 开机后须把改动同步到 Pi 的 `/etc/systemd/system/` 那份 + `daemon-reload` + 重 enable 才生效**;`postgresql` 是否已 enabled 仍需 Pi 开机 `systemctl is-enabled postgresql` 坐实(本次因 ssh 隧道断未确认);传感器离线容错接真硬件再做。
 - **关联**:`sensing/simulator/room.py`(_DEFAULT_STATE_PATH + save mkdir + docstring)· `.gitignore`(var/)· `ops/deployment/ieq-web.service`+`ieq-scheduler.service`(Wants DB + enable 注释)· `ops/scheduler.py`(reload_room 断电恢复链)· memory `project-exhibit-remaining-abc`
+
+### P-032 · Phase 5 · Pi 自启 kiosk(cage + chromium 全屏)——头号成品缺口①落地,只差一块屏  ✅
+- **背景**:把 Pi 从「一套在跑的服务」变成「开机即用 appliance」——作者要「显示屏插上、Pi 开机就进工作界面,不再依赖开发机/隧道」。这是 [[project-exhibit-remaining-abc]] 的 A 档头号缺口①。Pi 是 Debian13 trixie **Lite**(实为装了 **RPi 官方源**,包带 `+rpt`):无桌面/无浏览器/无 kiosk 自启,kiosk 此前只能从开发机经 ssh 隧道看。
+- **方案 = cage + chromium**(都来自 RPi 源,硬件优化版):`cage` 是极简 **Wayland kiosk 合成器**(单一全屏应用、为 kiosk 而生,比 labwc/wayfire 桌面轻得多);chromium RPi 优化版。`/dev/dri/card0/card1` DRM 输出在,用户 `xms12138` **已在 `video render input` 组**(cage 访问显卡/输入正好需要)。
+- **seat 权限链路(天然就通)**:`seatd` 提供 DRM/input seat;`/run/seatd.sock` **属组 `video`**,用户已在 video 组 → 无需额外加组。`loginctl enable-linger xms12138` 让 `/run/user/1000` 常驻(kiosk service 不依赖交互登录会话)。
+- **麦克风免隧道**:chromium **managed policy**(`/etc/chromium/policies/managed/ieq-kiosk.json`)预授权 `AudioCaptureAllowedUrls=[http://localhost:8000]` → 无人值守 kiosk **不弹权限框**。浏览器跑在 Pi 本机、访问 `localhost` = **secure context**,麦克风**不需要任何隧道**(这正是浏览器要跑在 Pi 上、而非开发机的根本原因)。
+- **service**:`ieq-kiosk.service` —— `TTYPath=/dev/tty1`+`PAMName=login`(cage 拿 VT/session)、`Conflicts=getty@tty1`(接管控制台)、`After/Wants=ieq-web+seatd`、`XDG_RUNTIME_DIR=/run/user/1000`、`Restart=on-failure`。`enabled`(开机自启)。
+- **无显示器验证(关键)**:`systemctl start` 后 `active(running)`、`NRestarts=0`、**零报错**;`ps` 确认 `cage`(5912)+`chromium` 多进程全活;`/run/user/1000/wayland-0` 合成器 socket 就绪。即合成器+浏览器**全就绪**,cage **健康挂起等 DRM connector(热插拔)** → **插屏即亮,无需手动**。验证完 **stop 省资源 + 保持 enabled**(显示器还没到货,不空耗 chromium 内存)。
+- **诚实边界**:① **「全屏渲染那一下」必须显示器插上才能肉眼验**(无 connector 无法验画面)——已做到「插上即亮」的最大程度。② 麦克风/喇叭真机验证同样等外设到货。③ policy 预授权写死 `localhost:8000`,若 web 端口/URL 变要同步改 policy。交接:显示器插上 → 开机(或 `sudo systemctl start ieq-kiosk`)→ 自动全屏 kiosk + 麦克风可用,**全程不需要开发机**。
+- **关联**:`ops/deployment/kiosk-start.sh`(cage--chromium 启动)· `ops/deployment/ieq-kiosk.service`(tty1+seatd+linger)· `ops/deployment/chromium-kiosk-policy.json`(麦克风预授权)· seatd · memory [[project-exhibit-remaining-abc]] [[project-voice-cascade]] [[feedback-hardware-handoff]]
