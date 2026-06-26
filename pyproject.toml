@@ -35,6 +35,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "python-multipart>=0.0.29",
     "dashscope>=1.25.21",
+    "paho-mqtt>=2.1.0",          # MQTT subscriber: Arduino MKR1010 sensor node → sensor_readings (Phase 5 hardware)
 ]
 
 [dependency-groups]

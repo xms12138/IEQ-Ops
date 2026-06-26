@@ -10,6 +10,8 @@ eval/reports/
 *.pem
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+# WiFi password — fill locally, never commit (.gitignore has no inline comments)
+sensing/hardware/mkr1010_node/arduino_secrets.h
 
 # ---- Python ----
 __pycache__/

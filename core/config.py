@@ -91,6 +91,30 @@ class Settings(BaseSettings):
         default="sim", validation_alias=AliasChoices("sensor_source", "ieq_sensor_source")
     )
 
+    # ── Hardware sensor node (Arduino MKR1010 → MQTT → sensing/ingest → sensor_readings) ──
+    # Consumed only when sensor_source == "hardware". The ingest writer subscribes to the
+    # broker and runs sensing/calibration on each raw frame before record_reading().
+    mqtt_host: str = "localhost"  # Mosquitto broker — the Pi itself on the exhibit
+    mqtt_port: int = 1883
+    mqtt_topic: str = "ieq/readings"
+    # SCD30 self-heating: the chip sits on the MKR's regulator and reads several degC high
+    # (~36 °C raw against a ~26 °C room). Calibration subtracts this fixed offset on the Pi
+    # side (rather than setTemperatureOffset in firmware) so it tunes without reflashing.
+    temp_offset_c: float = 0.0
+    # Grove Light v1.1 / Sound v1.6 send raw 0–1023 ADC counts, NOT lux/dBA. Calibration maps
+    # raw→engineering units by linear interpolation between two measured extremes. While a
+    # channel's two raw extremes are equal (the 0/0 default) it is treated as UNCALIBRATED and
+    # sensing/calibration returns an in-band safe value, so the Monitor never false-fires on a
+    # raw count that has no physical meaning yet. Fill these once the extremes are measured.
+    light_raw_dark: float = 0.0  # raw count, dark room
+    light_raw_bright: float = 0.0  # raw count, under task lighting
+    light_lux_dark: float = 0.0  # lux at light_raw_dark
+    light_lux_bright: float = 500.0  # lux at light_raw_bright
+    sound_raw_quiet: float = 0.0  # raw count, quiet room
+    sound_raw_loud: float = 0.0  # raw count, loud noise
+    sound_db_quiet: float = 35.0  # dBA at sound_raw_quiet
+    sound_db_loud: float = 75.0  # dBA at sound_raw_loud
+
     # ── LangFuse (observability) ──
     langfuse_host: str = "http://localhost:3000"
     langfuse_public_key: str = ""

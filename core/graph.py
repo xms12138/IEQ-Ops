@@ -75,6 +75,7 @@ from mcp_servers.actuator.server import mcp as actuator_server
 from mcp_servers.client import call_tool
 from mcp_servers.ticket.server import mcp as ticket_server
 from mcp_servers.ticket.server import record_step
+from sensing.override import is_live_world
 
 log = get_logger("graph")
 
@@ -266,6 +267,31 @@ def replan(state: MainIncidentState) -> dict[str, Any]:
     }
 
 
+def advisory_close(state: MainIncidentState) -> dict[str, Any]:
+    """Live-world terminal: a REAL anomaly with no actuator the system can drive. Record the
+    diagnosis as advisory and park the incident in OBSERVING — NOT closed, so the Monitor's
+    dedup keeps it from re-opening every scan; the Monitor closes it once the reading recovers
+    (monitor._reconcile_recovered). No actuator, no Verifier, no FAILED: on real hardware the
+    system cannot physically intervene, so it diagnoses and watches rather than faking a fix.
+    Reached only when is_live_world(); sim and injected demos run the full closed loop."""
+    primary = state.primary_result()
+    verdict = state.critic_verdict
+    if primary is not None and (verdict is None or verdict.approved):
+        note = f"advisory (real-world, no actuator): {primary.diagnosis[:200]}"
+    else:
+        note = "advisory (real-world): diagnosis flagged by critic — human review suggested"
+    if state.incident_id is not None:
+        call_tool(
+            ticket_server,
+            "update_incident",
+            incident_id=state.incident_id,
+            status=IncidentStatus.OBSERVING.value,
+            action_taken=note,
+        )
+    log.info("advisory_close", incident_id=state.incident_id)
+    return {"status": IncidentStatus.OBSERVING}
+
+
 # ── conditional routing ───────────────────────────────────────────────────────
 
 
@@ -317,7 +343,13 @@ def _route_after_critic(state: MainIncidentState) -> str:
     auto-actuate this": while replan budget remains it loops back through the planner for
     a fresh diagnosis; once the budget is spent it ends the incident WITHOUT acting
     (CriticAgent marked it FAILED). The critic node decides retry-vs-fail with the SAME
-    replans_left() check, so its ticket side effects match this route."""
+    replans_left() check, so its ticket side effects match this route.
+
+    On the LIVE exhibit (is_live_world: hardware data, no injection) there is no actuator to
+    drive, so a real anomaly never enters the gate / action / Verifier — it routes to advisory
+    to record the diagnosis and observe. The full closed loop runs only under sim/injection."""
+    if is_live_world():
+        return "advisory"
     verdict = state.critic_verdict
     if verdict is not None and verdict.approved:
         return "autonomy_gate"
@@ -365,6 +397,7 @@ def build_main_graph(wrap: _NodeWrapper = _identity) -> StateGraph[MainIncidentS
     builder.add_node("autonomy_gate", wrap(autonomy_gate, "autonomy_gate"))
     builder.add_node("action", wrap(action, "action"))
     builder.add_node("replan", wrap(replan, "replan"))
+    builder.add_node("advisory", wrap(advisory_close, "advisory"))
     builder.add_node("verifier", wrap(VerifierAgent().run, "verifier"))
 
     builder.set_entry_point("monitor")
@@ -379,10 +412,11 @@ def build_main_graph(wrap: _NodeWrapper = _identity) -> StateGraph[MainIncidentS
     builder.add_conditional_edges(
         "critic",
         _route_after_critic,
-        {"autonomy_gate": "autonomy_gate", "replan": "replan", END: END},
+        {"autonomy_gate": "autonomy_gate", "replan": "replan", "advisory": "advisory", END: END},
     )
     builder.add_edge("autonomy_gate", "action")
     builder.add_edge("action", "verifier")
+    builder.add_edge("advisory", END)
     # replan loops back to the planner; the planner re-reads the (preserved) critic/
     # verifier verdict as failure context and produces a fresh DAG on the reset channels.
     builder.add_edge("replan", "planner")

@@ -26,6 +26,7 @@ from core.state import AnomalyRecord, IncidentStatus, MainIncidentState
 from mcp_servers.client import call_tool
 from mcp_servers.sensor.server import mcp as sensor_server
 from mcp_servers.ticket.server import mcp as ticket_server
+from sensing.override import is_live_world
 from sensing.thresholds import THRESHOLDS, rules_text
 
 log = get_logger("monitor")
@@ -38,6 +39,7 @@ class MonitorAgent:
 
     def run(self, state: MainIncidentState) -> dict[str, Any]:
         readings = call_tool(sensor_server, "read_sensors")
+        self._reconcile_recovered(readings)
         record = self._judge(readings)
         if not record.anomaly:
             log.info("monitor_no_anomaly", **readings)
@@ -63,6 +65,38 @@ class MonitorAgent:
         structlog.contextvars.bind_contextvars(incident_id=incident_id)
         log.info("monitor_anomaly", sensor=record.sensor, value=record.value)
         return {"anomaly": record, "incident_id": incident_id, "status": IncidentStatus.PLANNING}
+
+    def _reconcile_recovered(self, readings: dict[str, float]) -> None:
+        """Live-world only: close any active incident whose sensor has returned to band — the
+        real world recovered on its own (a window opened, the room emptied). The graph never
+        runs an actuator on the live exhibit (advisory path), so recovery is the only way a
+        real incident closes. Gated on is_live_world(): in sim/injection the Verifier closes
+        the loop, and an injected demo reads the simulator (untouched sensors sit in band),
+        so without the gate it would wrongly close a real incident on another sensor."""
+        if not is_live_world():
+            return
+        for sensor, t in THRESHOLDS.items():
+            existing = call_tool(ticket_server, "active_incident_for_sensor", sensor=sensor)
+            if not existing:
+                continue
+            value = readings.get(sensor)
+            if value is None or self._violated(value, t):
+                continue
+            call_tool(
+                ticket_server,
+                "update_incident",
+                incident_id=existing,
+                status=IncidentStatus.CLOSED.value,
+                action_taken=f"auto-closed: {sensor} back in band ({value} {t['unit']})",
+            )
+            log.info("monitor_recovered", sensor=sensor, value=value, incident_id=existing)
+
+    @staticmethod
+    def _violated(value: float, t: Any) -> bool:
+        """True if `value` breaches threshold `t` (above high or below low)."""
+        if t["high"] is not None and value > t["high"]:
+            return True
+        return bool(t["low"] is not None and value < t["low"])
 
     def _judge(self, readings: dict[str, float]) -> AnomalyRecord:
         prompt = self._template.safe_substitute(rules=rules_text(), readings=json.dumps(readings))

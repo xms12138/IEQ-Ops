@@ -32,6 +32,18 @@ log = get_logger("history")
 # tuple is checked first, which is what makes that interpolation injection-safe.
 SENSOR_COLUMNS = ("co2", "temperature", "humidity", "lux", "noise_db")
 
+# In-band fallbacks for read_sensors under sensor_source=='hardware' when the table is empty
+# (cold start before the first ingest frame) or a column is NULL — they match the simulator's
+# RoomState defaults so the Monitor never crashes or false-fires on startup. A real frame
+# overwrites these within seconds (the firmware publishes every 5 s).
+_SAFE_DEFAULTS: dict[str, float] = {
+    "co2": 650.0,
+    "temperature": 22.5,
+    "humidity": 45.0,
+    "lux": 420.0,
+    "noise_db": 41.0,
+}
+
 _WINDOW_RE = re.compile(r"^\s*(\d+)\s*([mhd])\s*$", re.IGNORECASE)
 _UNIT = {"m": "minutes", "h": "hours", "d": "days"}
 
@@ -123,3 +135,19 @@ def recent(sensor: str, since: timedelta, limit: int = 500) -> list[tuple[str, f
         )
         rows = cur.fetchall()
     return [(r["ts"].isoformat(), float(r["v"])) for r in rows]
+
+
+def latest_reading() -> dict[str, float]:
+    """The most recent sensor_readings row as a {sensor: value} dict — the hardware source
+    for read_sensors under sensor_source=='hardware'. An empty table or a NULL column falls
+    back to the in-band safe default for that sensor, so the Monitor reads a complete, valid
+    frame even before the first ingest message or while a channel is still uncalibrated."""
+    cols = ", ".join(SENSOR_COLUMNS)
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(f"SELECT {cols} FROM sensor_readings ORDER BY ts DESC LIMIT 1")
+        row = cur.fetchone()
+    out: dict[str, float] = {}
+    for c in SENSOR_COLUMNS:
+        v = row.get(c) if row else None
+        out[c] = float(v) if v is not None else _SAFE_DEFAULTS[c]
+    return out

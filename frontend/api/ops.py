@@ -31,6 +31,7 @@ from core.suspend import thread_for_incident
 from mcp_servers.client import call_tool
 from mcp_servers.ticket.server import get_last_scan, list_steps
 from mcp_servers.ticket.server import mcp as ticket_server
+from sensing import override
 from sensing.simulator.scenarios import SCENARIOS, arm
 from sensing.thresholds import THRESHOLDS
 
@@ -42,7 +43,15 @@ _templates = Jinja2Templates(directory=str(_APP_DIR))
 
 # Non-terminal statuses — summed into the header's "active" count (everything the loop
 # is still working on, vs. the closed/failed terminals).
-_ACTIVE_STATUSES = ("open", "planning", "diagnosing", "acting", "awaiting_approval", "verifying")
+_ACTIVE_STATUSES = (
+    "open",
+    "planning",
+    "diagnosing",
+    "acting",
+    "awaiting_approval",
+    "verifying",
+    "observing",
+)
 
 # One scan at a time. A presenter mashing the inject button must not spawn several
 # concurrent graph compiles (each pulls the RAG stack + cloud calls); the Monitor's
@@ -163,6 +172,7 @@ def inject(scenario: str = Form(...)) -> JSONResponse:
             status_code=403,
         )
     arm(scenario)
+    override.activate(sc.expected_sensor)  # enter injection-override → read_sensors uses the sim
     threading.Thread(target=_scan_now, name=f"inject-{scenario}", daemon=True).start()
     log.info("ops_inject", scenario=scenario)
     return JSONResponse(
@@ -207,6 +217,7 @@ def decide(incident_id: str, decision: str = Form(...)) -> JSONResponse:
         except Exception as exc:  # noqa: BLE001 — checkpoint cleanup is best-effort
             log.warning("ops_checkpoint_delete_failed", thread_id=tid, error=str(exc))
         discard_thread(tid)
+    override.deactivate()  # injected Tier-3 demo resolved → return the exhibit to real data
     log.info("ops_tier3_decision", incident_id=incident_id, decision=decision, thread_id=tid)
     return JSONResponse({"ok": True, "incident_id": incident_id, "status": new_status.value})
 

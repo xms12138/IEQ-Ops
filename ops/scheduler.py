@@ -50,6 +50,7 @@ from core.logging import configure_logging, get_logger
 from core.state import MainIncidentState
 from core.suspend import discard, due, register
 from mcp_servers.ticket.server import init_schema, record_scan
+from sensing.override import clear_if_resolved
 from sensing.simulator.room import reload_room, save_room
 
 log = get_logger("scheduler")
@@ -144,6 +145,7 @@ def scan_tick(wait: bool = False) -> None:
                 log.info("scan_suspended", thread_id=tid, incident_id=incident_id)
             else:  # terminal (no anomaly / dedup / critic END) → checkpoint no longer needed
                 cp.delete_thread(tid)
+                clear_if_resolved()  # if this ended an injected demo, return to real data
                 log.info("scan_terminal", thread_id=tid, status=str(snap.values.get("status")))
 
 
@@ -187,6 +189,7 @@ def resume_tick() -> None:
                 log.info("resume_skip_gone", thread_id=tid, incident_id=incident_id)
             discard(tid)
             cp.delete_thread(tid)  # incident now terminal → purge checkpoint (#10)
+            clear_if_resolved()  # if this closed an injected demo, return to real data
 
 
 def main() -> None:

@@ -1,0 +1,27 @@
+# IEQ-Ops hardware ingest — MQTT → calibrated sensor_readings writer (systemd template).
+# The bridge from the Arduino MKR1010 sensor node to the system: subscribes to the local
+# Mosquitto broker, calibrates each frame (sensing.calibration), and appends a sensor_readings
+# row. On the exhibit it REPLACES ieq-sampler — the firmware publishes denser, real data — so
+# run one or the other, never both, or sensor_readings gets duplicate rows. Only meaningful
+# when .env sets SENSOR_SOURCE=hardware; harmless otherwise (it just fills the history table).
+#
+# Needs the broker (mosquitto) and Postgres. Wants= pulls them up at boot; After= orders us
+# after them; a frame that races a cold DB is dropped and the next publish (every 5 s) retries.
+# Adjust WorkingDirectory and the uv path to the deployment host (Pi: `which uv`). Install:
+#   sudo cp ieq-ingest.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ieq-ingest
+[Unit]
+Description=IEQ-Ops hardware ingest - MQTT sensor node -> sensor_readings
+After=network-online.target postgresql.service mosquitto.service
+Wants=network-online.target postgresql.service mosquitto.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/xms/projects/dissertation
+EnvironmentFile=/home/xms/projects/dissertation/.env
+ExecStart=/home/xms/.local/bin/uv run python -m sensing.ingest
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

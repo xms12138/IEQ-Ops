@@ -81,6 +81,7 @@ class IncidentStatus(StrEnum):
     AWAITING_APPROVAL = "awaiting_approval"  # Tier 3 — blocked on interrupt()
     ACTING = "acting"
     VERIFYING = "verifying"
+    OBSERVING = "observing"  # live-world real anomaly: diagnosed, no actuator, watched to recovery
     CLOSED = "closed"
     FAILED = "failed"
 
