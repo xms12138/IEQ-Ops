@@ -8,11 +8,11 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 ---
 
-## 当前进度快照（截至 2026-06-08）
+## 当前进度快照（截至 2026-06-26）
 
 > 一眼全局视图(给作者自学 / 答辩 / 求职)。每个 session 收尾更新本节;细节见下方各 Phase。
 
-**Phase 0–3 全部完成(早于目标窗口);Phase 4 进行中:**
+**Phase 0–3 全部完成(早于目标窗口);Phase 4 评测进行中(卡 key);Phase 5 对话入口 + 展台实物大幅推进(本地完全体近收尾、远程问答待接):**
 
 | Phase | 核心成果(一句话) |
 |---|---|
@@ -21,6 +21,7 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 | 2 Agentic RAG + DAG ✅ | 检索栈(BM25+BGE-M3+reranker,51ms) + `SpecialistSubgraph` 五节点 + 🔴**子图状态隔离**;Planner 完整 ReWOO DAG + 波次 fan-out;CriticAgent(方案 B) |
 | 3 三层记忆 + 反思 ✅ | episodic/semantic/procedural 三层 + `ReflectionGraph` 按 type fan-out;周反思产 fact + pending SOP(人工签核);planner 召回 episodic 影响规划 |
 | 4 评测 🔧 进行中 | IEQ-Bench 24 种子(六 capability 全绿)+ **generate/v4**(co2 自洽 0.70→1.00)+ **记忆消融 `--ablate-memory` +1.00**(planner/v4,Week8>Week1 离线铁证)+ e2e `--compare`(`arm_value` 公平)。**❗诚实结论:≥10pp-vs-ReAct 当前立不住**(强基座下简单任务两臂趋同、自相矛盾陷阱不咬 P-011,原 +10pp 系 n5 噪声);稳健 ≥10pp 留 Phase5 真 corpus 误导检索难题 + GPT-4o baseline;`DEVLOG` P-001..P-012 |
+| 5 对话+展台 🔧 进行中 | 问答管家(两步式按需取数、多轮+流式、真语音级联 Qwen3-TTS/ASR)+ 运维面板/Tier3 审批 + scheduler/kiosk systemd + Pi 单机 CPU 检索闭环 + 闭环 replan + 断电韧性 + 自启 kiosk;**展台本地完全体近收尾**(只差插屏肉眼验);**远程问答待接**(cloudflared,见 Phase 5 末块)|
 
 > **🆕 2026-06-06:** airquality **真 PDF corpus 接入**(WELL v2 Air)+ **contextual prefix**(节点 #10,**v4-flash**)+ PDF 去重(commit `84feee0`)。真 corpus 改变 airquality 知识形状:召回命中 WELL 真实阈值(CO2 500/750ppm above outdoor、PM2.5 MERV),取代占位 1000ppm——为 Phase 4「扩 200 判别性难题 / ≥10pp」提供原料。详见 Phase 4 进度 + DEVLOG P-013。
 >
@@ -48,6 +49,8 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 
 > **🆕 2026-06-14(续²·展台 A 类纯软件三连):** 清掉三个不依赖麦/喇叭/屏的项(见 memory `project-exhibit-remaining-abc`)。**① 运维面板**(`/ops`,挂既有问答网关,无 LLM):incident 实时流(轮询3s)+ 状态计数 + drill-down + **异常注入**(arm 场景 + 后台 `scan_tick`,现场按需触发闭环);坑:404 经 MCP client 变 `ToolError` 需改抓、`nohup` 后台被 harness 收割改用原生 run_in_background。dev 注入 `co2_spike` 跑通完整一条龙。**② scheduler systemd**:`ieq-scheduler.service`(常驻 scan+resume 心跳)+ `ieq-reflection.{service,timer}`(Sun 03:00、Persistent 补跑),补上 run_reflection 留的 cron 缺口;面板无需新 web unit。**③ 云 API 韧性**:OpenAI client 默认 timeout=600s 会堵死无人值守 scan → 加 `LLM_TIMEOUT_S=120`+`LLM_MAX_RETRIES=2`(SDK 退避重试),429 改判可兜底(`_status_is_retryable`)。`mypy --strict core/` 过。提交 `0d610e1`/`98e63bc`/`0a63671`,详见 DEVLOG **P-025**。**④ Tier3 审批**(`0913e48`,P-026):作者拍板**登记式**(非 graph-resume)——无 actuator 域 approved 即「人工已处置关单」,端点 patch ticket + 丢挂起线程 + 删 checkpoint(防 scheduler 覆盖),诚实标注范围限制;注入 overheating→awaiting_approval→approve→closed 实测通。**A 类剩**:72h dry-run(待全栈稳)、语音/kiosk(半依赖硬件)。
 
+> **🆕 2026-06-15~16(Phase 5·展台实物成品收尾 P-027~P-032):** 把 Pi 从"一套在跑的服务"做成"开机即用 appliance"。**P-029**:`scheduler` 上 Pi 常驻 + **命门修复**(sim 模式 resume 前 `advance_minutes` 推进模拟器过验证窗,否则 verifier 读到没演化的旧值误判 missed→误触发 replan)+ 跨进程 Postgres advisory lock(防 scheduler 心跳与 web 注入双拉 RAG 撑爆 8GB)+ 合并 `/kiosk` 大屏(incident 流+注入+审批+语音问答一屏)+ **Pi 端 Tier1(co2_spike 关单)/ Tier3(overheating 人批关单)双闭环实测**。**P-030**:展示透明化——自主巡检可见(heartbeat 倒计时)+ How-it-works 面板显示 plan→RAG 检索证据→诊断(走 `incident_steps` 旁路写 DB,**不破坏子图状态隔离**)。**P-031**:断电韧性——sim 状态挪出 `/tmp`(reboot 不丢)+ systemd `Wants` 拉起 DB。**P-032**:**Pi 自启 kiosk(cage Wayland 合成器 + chromium 全屏)** + managed policy 预授权 localhost 麦克风(免隧道,secure context)——**头号成品缺口①落地,无显示器下已验证服务全活、「插屏即亮」,只差一块屏**。另:展示路径隔离 replan(P-027,co2_overcrowded 移出面板)+ grade v2 职责归位 + MAX_REWRITES=1 给闭环时长上界(P-028)。
+
 **两条架构红线风险已坐实闭环:** ① 15min 跨重启恢复(Phase 1) ② 子图状态隔离(Phase 2)——全系统最大的两个技术不确定性已排除。
 
 **🔜 下一步(Phase 4 续,优先级序):** ✅已清:P-009、grade/rewrite 入 runner、记忆消融 +1.00、自相矛盾陷阱(P-011)、ablate 条件验证(`--ablate-check`)、**真 corpus 切换回归(P-014,co2→WELL 900)**、**runner 并行化(P-015,3.3x + 修 reranker 并发不安全)**。**剩:** ① **GPT-4o 跨模型 baseline + GPT-4o/Claude 双裁判**(卡 key,去主场嫌疑)② ✅ **三 domain 真 corpus 已接入**(WELL v2 同一 PDF 的 Light/Thermal/Sound concept,824 chunks,弃付费 ASHRAE/EN/WHO,P-016)+ ✅ **三域 thresholds/bench 纵向对齐完成**(thermal 21-25/lighting 320/acoustic 50 dBA,实跑三域 generate 全 grounded 到 WELL 真值,P-019);剩可选 contextual 全量重 embed ③ 扩 200 + 判别性误导检索难题——**作者拍板等 Phase 5 真 PDF corpus**(强基座下简单任务无法判别,硬凑无意义,P-011)。"无数字不立论"的关口:架构价值现由**记忆消融 +1.00** 承载,≥10pp-vs-baseline 待真 corpus/GPT-4o。
@@ -62,6 +65,22 @@ IEQ-Ops 的权威实施进度清单。`CLAUDE.md` 引用本文件作为分阶段
 > 4. **[Phase 4] GPT-4o baseline + 双裁判**(卡 key)+ **扩 200 判别性误导检索难题**(真 corpus 已就位,P-011 等的就是它)。
 > 5. **[dissertation discussion] 度量范式 limitation** —— 「数值度量 vs 感知型干预」:masking 不降 dBA、风扇不降干球温,系统闭环只认数值→认不了「改善感知」型正当手段(v5 实证,已回滚)。是真实约束,写进论文 discussion。
 > 6. **[Phase 5] 其余** —— ✅ 真语音级联(P-021)· ✅ incident 常驻调度(`ops/scheduler.py`)· ✅ 长期运行加固 #1/#2/#9/#10(2026-06-09)· ✅ 运维面板只读流+注入 + systemd 模板(P-025);**剩** Tier3 审批(graph-resume)/ 长期加固续(#3/#4/#7/#8)/ 硬件落码。
+
+**📌 最新接力(2026-06-26 收尾 — 下次会话从这接):**
+
+**✅ 本 session(2026-06-26)已完成:**
+> ① **展台本地完全体收口** —— 显示屏/麦克风/喇叭到货,Pi 装 PipeWire 音频栈 + emoji 字体(Lite OS 原缺),**真语音级联在 Pi 真机端到端跑通**(push-to-talk→DashScope STT→DeepSeek→TTS→扬声器,录放电平 RMS 0.21),固化 `ops/deployment/setup-audio.sh`(**DEVLOG P-033**)。
+> ② **冷启动预热** —— `frontend/api/main.py` lifespan 后台预热 RAG,实测 `rag_prewarmed 107s`,首个 incident 不再吃 ~240s 冷启动(展台模式自动开,best-effort)。
+> ③ **72h dry-run 监控已启动**(🔧 需连跑观察)—— `ops/scripts/dry_run_monitor.sh`(transient service `ieq-drymon`,每 10min 采样内存/RSS/restart/err → `var/dry_run.log`),基线健康(零 swap、全 active、零 restart)。
+> ④ CO2 注入"没降"答疑 = **正常**(sim 模式 verifier 前一次性快进 15min,闭环 4-7min,非渐变;`sensor_source='sim'` 用默认值正确)。
+
+**🔜 下次从这接(按优先级):**
+> 1. **[展台稳健性] 判读 dry-run** —— `column -t -s, ~/dissertation/var/dry_run.log` 看趋势:`*_rss` 单调涨=泄漏 / `*_restarts` 跳=崩溃 / `err_window` 持续 >0=反复报错。凑够 ~72h 才判"能放心连展一整天"。停:`sudo systemctl stop ieq-drymon`。
+> 2. **[Phase 5·新增] 远程问答接入(阶段 B)** —— cloudflared quick tunnel(免费 HTTPS,解 secure-context + AP 隔离)+ kiosk 动态二维码 + 新 `ieq-tunnel.service`;**先开发机验**手机麦克风在 https 隧道下解锁 + 流式不被 buffer,再上 Pi。详见本 Phase 末「🆕 远程问答接入」块 + 两处共享小修(`voice_stream` 阻塞 `transcribe()` 丢线程池 / 控制端点对非 kiosk 隐藏)。
+> 3. **[展台·体验打磨,可选]** CO2 处理中进度提示(别让观众以为卡住)+ 隐藏 cage 停留光标。
+> 4. **[Phase 4] GPT-4o 跨模型 baseline + 双裁判 + 扩 200 判别性难题**(卡 key / 等真 corpus,P-011;架构价值现由记忆消融 +1.00 承载)。
+> 5. **[Phase 5·硬件] Arduino 落码** —— MKR1010 固件 + `sensing/ingest` writer + `read_sensors` sim/hardware 切换(等 Arduino 到货,C 档,两空目录待写)。
+> 6. **[Phase 5·收尾] 长期加固** #3 审批超时 / #4 monitor 纯确定性 / #7 语音清理 / #8 web auth · acoustic 真闭环 / 三域 contextual(见上方 06-08 接力 2/3)。
 
 **剩余路线:** Phase 4 评测 → Phase 5 对话+前端+硬件+上线稳定化 →(代码冻结 ~09-12)→ Phase 6 自主长跑 ≥8 周(Week8>Week1) → Phase 7 论文 + IEQ-Bench 开源。
 
@@ -218,16 +237,16 @@ retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/
 **目标:** 补齐人机入口和真实硬件,进入可上线状态。
 
 - [~] `ConversationalGraph`:**问答管家 MVP 落地(2026-06-08)**——`ConversationalAgent` 两步式(意图分类→按需取数→合成),收 thresholds/读数/stats/incident/facts/SOP;**免 RAG/embedding**(范围判定靠 thresholds=corpus 蒸馏值,与 monitor 同款真值,自洽)。**多轮 + 流式已落地(2026-06-08 续)**:history 由前端维护、每轮带上(后端无状态、滑窗最近 6 条),dispatch+respond 均吃历史(追问 "what about humidity?" 实测接住上轮、答湿度);`respond_stream` 流式吐 token(实测首 token ~2s、33 块),`respond` 保留非流式供语音级联;对话全英文。**遗留**:非完整 LangGraph(函数式,遵 memory.py 先例)、不升 V3(作者拍板对话全 deepseek-v4-flash)、RAG 标准条款问答留后。**2026-06-09**:respond bump **v3**(禁 markdown/纯口语、TTS 不念星号 + 每答简短 + 列表只说最相关一条);`list_facts` 改**取最近 5 条**(纯 scroll、不引 embedding)防上下文随 facts 膨胀
-- [~] `frontend/`:**对话页落地(2026-06-08)**——FastAPI 网关 + Jinja2/HTMX 单页(聊天 + 录音 Web Speech STT + 浏览器 TTS)+ 级联语音 mock(`voice/provider.py`,STT→文本 LLM→TTS,零 key)。**多轮+流式(2026-06-08 续)**:`/api/chat` 改 `StreamingResponse`、前端 `ReadableStream` 边收边渲染;客户端持有 history、每轮带最近 6 条;STT/TTS + 界面改 en-US;加 "New conversation" 清空历史。**遗留**:运维面板(看 incident、审批 Tier3)、真语音 API + RPi kiosk Web Speech 验证
+- [~] `frontend/`:**对话页落地(2026-06-08)**——FastAPI 网关 + Jinja2/HTMX 单页(聊天 + 录音 Web Speech STT + 浏览器 TTS)+ 级联语音 mock(`voice/provider.py`,STT→文本 LLM→TTS,零 key)。**多轮+流式(2026-06-08 续)**:`/api/chat` 改 `StreamingResponse`、前端 `ReadableStream` 边收边渲染;客户端持有 history、每轮带最近 6 条;STT/TTS + 界面改 en-US;加 "New conversation" 清空历史。**已补齐(2026-06)**:运维面板 `/ops`(P-025)+ Tier3 审批(P-026,登记式)+ **真语音级联**(P-021,阿里云百炼 Qwen3-TTS-Flash realtime / Qwen3-ASR)+ **Pi 自启 kiosk**(P-032,cage+chromium,`/kiosk` 合并面板与语音)+ 展示透明化(P-030,plan/RAG 证据/诊断上屏)。**遗留**:手机远程访问(见 Phase 5 末「🆕 远程问答接入」块)、web auth(加固 #8)
 - [ ] **真实硬件接入(方案 2026-06-08 定稿,见下「硬件接入方案」)**:
   - [ ] **Arduino 固件**(MKR WiFi 1010,C++):SCD40(CO2,I2C `0x62`)+ BH1750(光照,I2C `0x23`)挂同一 I2C 总线 + DHT22(温湿,单总线)→ WiFiNINA + ArduinoMqttClient 发 JSON 到 MQTT topic(板为 3.3V 逻辑,三传感器天然匹配)
   - [ ] **RPi 网关**:装 Mosquitto broker;`sensing/ingest/` 新写 MQTT 订阅 writer(paho)→ `sensing.history.record_reading()` 写**现有 Postgres `sensor_readings` 表**(**弃 InfluxDB**,理由见下)
   - [ ] **`read_sensors` 切换**:`mcp-sensor-server.read_sensors` 加 `SENSOR_SOURCE=sim|hardware` env 开关——hardware 读 `sensor_readings` 最新行、sim 仍读模拟器(**两者并存**:demo 既展示真实感知、又靠注入场景演 incident 闭环);**工具名+输出形状不变 → 上层 multi-agent 零改动**(这是接入最干净的切入点)
   - [ ] **麦克风留 RPi**:USB mic + Python 端算响度(dB)并入同一帧(Arduino 算力不适合持续声学采样;acoustic thresholds 本就待 P-016 对齐,噪声这块暂粗)
-- [~] `ops/deployment/`:**问答管家两 systemd 模板落地**(`ieq-web`/`ieq-sampler`,2026-06-08)。**2026-06-09:`ops/scheduler.py` 落地**——APScheduler 两 job:scan 5min(监控扫描+建单,已含去重)、resume 1min(复活到期挂起→verifier,终态 purge checkpoint);取代手动 `run_incident.py`、是系统心跳,**跑开发机**(scan 可达 specialist RAG)。**遗留**:scheduler / sampler / 周日反思的 systemd+cron 模板(scheduler 现可 `python -m ops.scheduler` 手动起)
-- [~] 稳定化:**长期运行加固(2026-06-09,排查 13 项问题、补 4 项上线前必修)**——✅ #1 建单去重(持续异常不再每 5min 刷单)· ✅ #2 常驻 resume 调度(`scheduler.py` + `suspended_threads` 登记表,挂起必被复活)· ✅ #10 checkpoint 清理(`delete_thread`,不堆积)· ✅ #9 连接池(`core/db.py`,四处 `_conn` 走池)。**之后要做(按严重度)**:#3 Tier3 审批超时、#4 monitor 改纯确定性(省 ~8640 次/月云调用 + 合规硬约束 #1)、#6 incidents 也降量(同 facts)、#7 语音线程/WS 复用与断开清理、#8 web auth/限流、#5 云 API 故障韧性、#11 日志 rotation、#13 sim/真传感器异常密度(方法论)。**最后**:72 小时无人值守 dry-run,修崩溃/泄漏
+- [~] `ops/deployment/`:**问答管家两 systemd 模板落地**(`ieq-web`/`ieq-sampler`,2026-06-08)。**2026-06-09:`ops/scheduler.py` 落地**——APScheduler 两 job:scan 5min(监控扫描+建单,已含去重)、resume 1min(复活到期挂起→verifier,终态 purge checkpoint);取代手动 `run_incident.py`、是系统心跳,**跑开发机**(scan 可达 specialist RAG)。**已补齐(2026-06)**:`ieq-scheduler.service` + `ieq-reflection.{service,timer}`(P-025,周日 03:00 Persistent 补跑)+ **Pi 版 scheduler unit 常驻**(P-029,跨进程 advisory lock 防双拉 RAG OOM)+ **`ieq-kiosk.service`**(P-032,cage+chromium 自启)+ **断电韧性**(P-031,sim 状态出 /tmp + systemd `Wants` 拉起 DB)。三服务 Pi 上 `enabled` 共存。**遗留**:新 `ieq-tunnel.service`(远程问答,见 Phase 5 末块)、72h 无人值守 dry-run
+- [~] 稳定化:**长期运行加固(2026-06-09,排查 13 项问题、补 4 项上线前必修)**——✅ #1 建单去重(持续异常不再每 5min 刷单)· ✅ #2 常驻 resume 调度(`scheduler.py` + `suspended_threads` 登记表,挂起必被复活)· ✅ #10 checkpoint 清理(`delete_thread`,不堆积)· ✅ #9 连接池(`core/db.py`,四处 `_conn` 走池)· ✅ **闭环 replan**(P-024,critic 否决/verifier missed 接回 planner 重试,`MAX_REPLANS=2` 耗尽才 FAILED)· ✅ **云 API 韧性**(P-025,`LLM_TIMEOUT_S=120`+重试,无人值守不被 600s 默认超时堵死)· ✅ **跨进程一致性**(P-029,advisory lock + `reload_room`)。**之后要做(按严重度)**:#3 Tier3 审批超时、#4 monitor 改纯确定性(省 ~8640 次/月云调用 + 合规硬约束 #1)、#6 incidents 也降量(同 facts)、#7 语音线程/WS 复用与断开清理、#8 web auth/限流、#5 云 API 故障韧性、#11 日志 rotation、#13 sim/真传感器异常密度(方法论)。**最后**:72 小时无人值守 dry-run,修崩溃/泄漏
 
-**验收:** 真实传感器数据驱动一个真实 incident 端到端关单;面板能审批 Tier3;systemd 重启后自恢复。
+**验收:** 真实传感器数据驱动一个真实 incident 端到端关单(待 Arduino 到货);面板能审批 Tier3 ✅;systemd 重启后自恢复 ✅(P-029/P-031,Pi 实测)。
 
 **📍 进度(2026-06-08 session):** **问答优先 MVP 落地并端到端实测**(作者拍板暂搁论文、先做可部署成品)。新增:`sensing/history.py`+`sensor_readings` 表(采样器写、统计读)、`ops/sampler.py`(APScheduler 轻量采样,**不跑 incident graph**)、ticket `list_incidents`、semantic `list_facts`(Qdrant scroll 全量、**免 embedding key**)、`agents/conversational.py`(两步式:`conversational.dispatch` flash 出 `RetrievalPlan`→按需取数→`conversational.respond` flash 合成;router 加 `conversational.dispatch`=FAST;失败退化拉核心源)、`voice/provider.py`(级联 mock)、`frontend/`(FastAPI+HTMX+Web Speech)。两 prompt 版本化(`conversational/{dispatch,respond}/v1`)。**实测**:ruff+mypy clean;数据层采样+`query_stats` 正确;5 类问题端到端真 LLM 通过,**按需取数核验通过**(A/A+ sources=[]、B=['stats']、C=['incidents']、E 拒答);web `/` 200 + `/api/sensors/current` JSON。**范围/取舍**:免 RAG(范围判定靠 thresholds)、对话全 flash、语音 mock(浏览器 Web Speech)、**RPi 友好**(零本地模型/无 torch)。**本期不做**(留后):incident 5min 常驻调度 + 进度面板、embedding 远端化、真语音 API、真硬件、72h dry-run。详见 DEVLOG P-017。
 
@@ -241,6 +260,37 @@ retrieval/critic/planner 满分(critic 对 good 批准、incoherent/implausible/
 **📍 进度(2026-06-08 续·对话多轮+流式):** 把问答管家从单轮无状态升级为**多轮 + 流式**(作者拍板英文对话)。① **多轮**:history 由**前端持有**、每轮随请求带上(后端无状态、免 session 管理、多 worker 不怕),后端滑窗截最近 6 条;**dispatch 与 respond 都吃历史**(指代/追问才解析得了)。prompt bump v2(system 指令风格 + 多轮说明 + 全英文)。② **流式**:`core/router.py` 加 `stream()`(fallback 只在**未吐字前**切换,中途失败不重试以免重复输出);`/api/chat` 改 `StreamingResponse` 吐纯文本 token,前端 `ReadableStream` 边收边渲染;语音路径保留**非流式**(浏览器 TTS 要完整文本)。③ **实测**(真 LLM,Postgres/Qdrant 起):"is the temperature ok?"→sources=[]、流式 33 块、首 token 1.9s、答 22.5℃∈19-26;裸追问 "what about humidity?"→turns=1、接住上轮、答 45%RH∈30-60。ruff + mypy(core 严格)全绿。详见 DEVLOG P-018。
 
 **📍 进度(2026-06-09 续·butler 输出修整 + 长期运行加固):** 浏览器实测问答管家后定两项 butler 修整 + 补长期无人值守工程缺口,详见快照 🆕 2026-06-09(续)。**改动文件**:butler——`ops/prompts/conversational/respond/v3.md`(禁 markdown+简短+列表概括)、`frontend/app/index.html`(`stripMarkdown` 兜底)、`memory/semantic.py`(`list_facts` 最近 5 条)+`agents/conversational.py`(传 `limit=5`);加固——`agents/monitor.py`+`mcp_servers/ticket/server.py`(`active_incident_for_sensor` 工具 + `suspended_threads` DDL)+`core/graph.py`(route 改判 `incident_id`)、新 `core/suspend.py`+`ops/scheduler.py`、新 `core/db.py`(连接池)+`sensing/history.py`/`memory/procedural.py`(走池)。**实测**:ruff+mypy(strict core)全绿;scan_tick 去重→END→purge、登记表 due/discard、`delete_thread` 均通过。**待**:写 DEVLOG P-022、整理提交(连同 P-021 语音)、scheduler 的 systemd 模板。
+
+---
+
+**🆕 远程问答接入(2026-06-26 规划 — 接 Phase 5 对话/硬件线;下次直接按此清单做完):**
+
+> **目标:** 不动系统本体,给 Pi 开一扇**可选的远程门**——管理者用手机扫码(自带 4G 即可),用手机麦克风/扬声器与系统**语音问答**,并只读访问实时读数 / incident。**Pi 仍是系统本体**(7×24 自主闭环 + 物理 IO + 本地数据);cloudflared 只是远程窗口,门关了 Pi 照常自治(CLAUDE.md 原则 #1「autonomy over chat」,chat 是最轻的 facade,能远程正因它 RAG-free/无状态)。
+
+**作者已拍板决策(2026-06-26):** ① 手机端做**全套语音**(麦克风+扬声器),不退纯文字;② Pi 展台**能稳定联外网** → 走**公网隧道**而非 Pi 热点;③ 手机权限**只读+对话**(注入 / Tier3 审批留 kiosk);④ 路线 = **cloudflared quick tunnel**(免费、自带浏览器原生信任的 HTTPS、零域名零账号),**不用 GitHub Pages**(静态托管跑不了 FastAPI 后端;且 https 页面 fetch Pi 的 http 后端会被 **mixed-content** 拦,绕一圈 Pi 仍得上 HTTPS)。
+
+**核心约束（为什么必须 HTTPS）:** 手机浏览器的 `getUserMedia`(麦克风)**只在 secure context 下可用**。kiosk 在 Pi 本机访问 `localhost` 天然是 secure context(P-032),但**手机访问 `http://<pi-ip>` 既非 localhost 又非 https → 麦克风被禁**。cloudflared 的 https 域名补上这一环,顺带绕开家用路由器 **AP/client 隔离**(见 memory `project-pi-bringup`)。注意:**只有麦克风输入被卡**,文字问答 + TTS 播放在 http 下本就能用。
+
+**排序铁律 = 一次只引入一个未验证变量(先本地完全体、再叠远程):** 本地链路与远程链路共享同一后端 / 同一 `/api/voice/stream` / 同一 `index.html`,唯一差别是麦克风 secure-context 的来源。先把本地焊成「已知好基线」,远程再出问题就 100% 锁定在隧道层,排查面砍半。
+
+**阶段 A — 本地完全体收口(外设已到,先做;承接 P-032 kiosk 自启的最后一公里):**
+- [x] 插显示器 / 喇叭 / 麦克风开机,验 P-032「插屏即亮」✅(2026-06-26:HDMI-A-1 connected、cage+chromium active、`/kiosk` 200)
+- [x] **真语音级联在 Pi 上首次端到端真机跑通** ✅(2026-06-26,**P-033**):补装 PipeWire 音频栈 + emoji 字体(Lite OS 原本缺),chromium 重启后接上音频;录放电平 RMS 0.21(真信号),push-to-talk → DashScope STT → DeepSeek → DashScope TTS → 扬声器朗读全链路通;固化为 `ops/deployment/setup-audio.sh`
+- [ ] 两处**共享小修**(本地远程都受益,一次做):① `voice_stream` 内的阻塞 `transcribe()` 丢线程池(`async def` 内同步阻塞会卡事件循环,多人并发必崩,`frontend/api/main.py:125`)② 控制端点(inject / Tier3 approve)对非 kiosk 访问隐藏
+
+**阶段 B — 叠远程(基于已验证基线):**
+- [ ] **先在开发机验 cloudflared**(开发机亦可联网):quick tunnel → https URL → 手机扫码 →(a)验**手机麦克风在真 https 隧道下解锁**(远程唯一真不确定性)(b)验**流式转发不被 buffer**(NDJSON token + PCM 音频边出边播,cloudflared 一般支持 streaming 但需实测首包延迟 / 是否卡顿)
+- [ ] 部署 Pi:新 `ops/deployment/ieq-tunnel.service`(cloudflared 常驻,`After/Wants=ieq-web`,`enabled` 开机自启)
+- [ ] kiosk 屏上**动态二维码**:quick tunnel URL 随机且重启会变 → 启动时把当前 URL 渲染成二维码显示在大屏,观众看屏扫码(零域名零账号)。**可选**:买域名 + named tunnel 固定 URL → 二维码可印死贴展台
+- [ ] 手机端页面复用现成 `index.html`(已具 push-to-talk + 语音流);控制端点鉴权/隐藏坐实(对齐长期加固 #8 web auth)
+
+**待核实 / 风险:**
+- **DashScope(阿里云百炼)账号的并发 / QPS 上限**——多手机同时语音 = 多条云 TTS WS + 多路云 STT/LLM,需查百炼配额(作者比我清楚或一起查文档)
+- **成本**:每路手机一份云 DeepSeek + 云 TTS,公众展台并发要算账
+- **利好**:butler **RAG-free**(P-017),并发**不碰 Pi reranker 命门**(那是闭环/检索才有的瓶颈),主要压云端、Pi 很轻 → 多人并发语音在 Pi 上可行
+- cloudflared quick tunnel URL **临时性**(重启变);要固定 URL 需 named tunnel(免费账号 + 自有域名)
+
+**关联:** `frontend/api/main.py`(voice_stream 线程池 + 控制端点 gate)· `frontend/app/{index,kiosk}.html`(手机端复用 index + kiosk 二维码块)· `voice/provider.py`(DashScope 级联,P-021)· 新 `ops/deployment/ieq-tunnel.service` · CLAUDE.md 原则 #1 · 长期加固 #8(web auth)· memory `project-pi-bringup` / `project-voice-cascade` / `project-exhibit-remaining-abc`
 
 ---
 

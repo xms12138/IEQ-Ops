@@ -13,6 +13,7 @@ import base64
 import json
 import queue
 import threading
+import time
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,6 +24,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from agents.conversational import ConversationalAgent
+from core.config import get_settings
 from core.logging import get_logger
 from frontend.api import ops
 from mcp_servers.client import call_tool
@@ -61,9 +63,26 @@ def _parse_history(raw: str) -> list[dict[str, str]]:
     return turns[-_MAX_TURNS:]
 
 
+def _prewarm_rag() -> None:
+    """Load the RAG stack (BGE-M3 + reranker + BM25) in the background at startup so the
+    FIRST injected incident doesn't pay the ~100 s cold load on the Pi CPU (P-028/P-030).
+    Best-effort: a failure just means the first incident pays the cold start, never a crash."""
+    try:
+        from mcp_servers.rag.server import mcp as rag_server
+
+        t0 = time.monotonic()
+        call_tool(rag_server, "retrieve", query="ventilation co2", domain="airquality", top_k=1)
+        log.info("rag_prewarmed", seconds=round(time.monotonic() - t0, 1))
+    except Exception as exc:  # noqa: BLE001 — warmup is best-effort, never block/crash the web
+        log.warning("rag_prewarm_failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     init_schema()  # ensure tables exist (incidents + sensor_readings)
+    if get_settings().exhibit_mode:  # exhibit: warm RAG so the first incident isn't slow
+        threading.Thread(target=_prewarm_rag, name="rag-prewarm", daemon=True).start()
+        log.info("rag_prewarm_started")
     log.info("frontend_ready")
     yield
 
