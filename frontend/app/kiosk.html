@@ -220,6 +220,25 @@ function bandText(k){
 function inBand(k, v){ const t = THRESH[k]; if (!t) return true;
   if (t.low!=null && v < t.low) return false; if (t.high!=null && v > t.high) return false; return true; }
 
+// Hysteresis so a sensor sitting right on its limit (e.g. real CO2 ~900) does not flicker
+// red/green every poll: once it trips it stays tripped until it recovers a margin (5%) BACK
+// INSIDE the band, and vice versa. Pure display — the Monitor's 900 ppm judgement is unchanged,
+// so this de-bounces the gauge without touching the WELL threshold. To go green for good the
+// real value must drop below limit-margin (ventilate); to stop flickering it just needs this.
+const HYST_FRAC = 0.05;
+const _alert = {};  // sensor key -> currently tripped (red)?
+function bandOk(k, v){
+  const t = THRESH[k]; if (!t) { _alert[k] = false; return true; }
+  if (_alert[k]) {  // tripped: clear only once clearly back inside the band
+    const okHigh = t.high == null || v <= t.high * (1 - HYST_FRAC);
+    const okLow  = t.low  == null || v >= t.low  * (1 + HYST_FRAC);
+    _alert[k] = !(okHigh && okLow);
+  } else {  // ok: trip only on an actual breach
+    _alert[k] = (t.high != null && v > t.high) || (t.low != null && v < t.low);
+  }
+  return !_alert[k];
+}
+
 async function loadSensors(){
   let d; try { d = await fetch('/api/sensors/current').then(r=>r.json()); } catch(e){ return; }
   document.getElementById('sensors').innerHTML = SENSORS.map(s => {
@@ -228,7 +247,7 @@ async function loadSensors(){
     const pct = x => Math.max(0, Math.min(100, (x - lo) / span * 100));
     const t = THRESH[s.k] || {};
     const bL = pct(t.low!=null ? t.low : lo), bR = pct(t.high!=null ? t.high : hi);
-    const ok = inBand(s.k, v);
+    const ok = bandOk(s.k, v);
     const shown = (s.k==='co2') ? Math.round(v) : v;
     return `<div class="sx ${ok?'ok':'bad'}">
       <div class="nm">${s.name} ${ok?'✓':'⚠'}</div>

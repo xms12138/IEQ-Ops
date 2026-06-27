@@ -21,13 +21,15 @@ Qdrant, and the CPU RAG. Two consequences shape the code here:
     no-anomaly heartbeat scan releases in seconds (Monitor judges and ends before RAG), so
     the web inject path blocks on the lock (never dropping a presenter's click) while the
     heartbeat skips a contended tick (dedup means it loses nothing).
-  * Simulator stands in for the world. On the exhibit (sensor_source == "sim") the room only
-    evolves via advance_minutes(), never wall-clock — so resume fast-forwards the room across
-    the verify window before the Verifier reads, else it sees the injected value unchanged →
-    a false "missed" → a needless replan. With real hardware (sensor_source == "hardware")
-    the world moves on its own and resume must NOT touch the simulator. exhibit_mode also
-    compresses the wall-clock resume wait to verify_window_seconds so a visitor sees the
-    incident close in ~90 s instead of the real 15 min.
+  * Simulator stands in for the world whenever the world is simulated — the pure-sim exhibit
+    AND an injection-override demo on the hardware exhibit (read_sensors falls back to the
+    simulator while the override is armed). The room only evolves via advance_minutes(), never
+    wall-clock — so resume fast-forwards the room across the verify window before the Verifier
+    reads, else it sees the injected value unchanged → a false "missed" → a needless replan.
+    The gate is `not is_live_world()`; with real (un-injected) hardware the world moves on its
+    own and resume must NOT touch the simulator. exhibit_mode also compresses the wall-clock
+    resume wait to verify_window_seconds so a visitor sees the incident close in ~90 s instead
+    of the real 15 min.
 """
 
 from __future__ import annotations
@@ -50,7 +52,7 @@ from core.logging import configure_logging, get_logger
 from core.state import MainIncidentState
 from core.suspend import discard, due, register
 from mcp_servers.ticket.server import init_schema, record_scan
-from sensing.override import clear_if_resolved
+from sensing.override import clear_if_resolved, is_live_world
 from sensing.simulator.room import reload_room, save_room
 
 log = get_logger("scheduler")
@@ -113,8 +115,9 @@ def _advance_sim_before_verify(minutes: int) -> None:
     """Sim-only: fast-forward the room across the verify window so the Verifier reads the
     post-action recovery, not the injected anomaly value. The web process persisted the
     post-action room (raised ventilation); reload_room() pulls that state into this separate
-    scheduler process before integrating the CO2 ODE forward. Gated by sensor_source == 'sim'
-    at the call site — with real hardware the world moves on its own."""
+    scheduler process before integrating the CO2 ODE forward. Gated by `not is_live_world()`
+    at the call site — true for the pure-sim exhibit and for an injection-override demo on the
+    hardware exhibit; with real (un-injected) hardware the world moves on its own."""
     room = reload_room()
     room.advance_minutes(minutes)
     save_room()
@@ -159,18 +162,21 @@ def resume_tick() -> None:
     pending = due()
     if not pending:
         return
-    sim = get_settings().sensor_source == "sim"
     with open_checkpointer() as cp:
         graph = build_main_graph().compile(checkpointer=cp, interrupt_before=INTERRUPT_BEFORE)
         for tid, incident_id in pending:
             snap = graph.get_state(_config(tid))
             if snap.next:
-                # A verifier-suspended thread on the sim exhibit: fast-forward the room so the
-                # Verifier reads the post-action recovery, not the injected value (else a false
-                # "missed" → replan). A Tier-3 thread parked at autonomy_gate (awaiting a human)
-                # is NOT advanced — it resumes via the dashboard decision, not the clock — so
-                # gate on the verifier being the actual suspend point.
-                if sim and "verifier" in snap.next:
+                # A verifier-suspended thread whose world is simulated: fast-forward the room so
+                # the Verifier reads the post-action recovery, not the injected value (else a
+                # false "missed" → replan). "World is simulated" is `not is_live_world()` — true
+                # for the pure-sim exhibit AND for an injection-override demo on the hardware
+                # exhibit (read_sensors falls back to the simulator while the override is armed).
+                # Gating on sensor_source=="sim" alone missed the latter, so injected CO2 demos
+                # on the live exhibit always read the frozen value and falsely replanned. A Tier-3
+                # thread parked at autonomy_gate (awaiting a human) resumes via the dashboard
+                # decision, not the clock — so also gate on the verifier being the suspend point.
+                if not is_live_world() and "verifier" in snap.next:
                     _advance_sim_before_verify(_target_minutes(snap.values))
                 graph.invoke(None, _config(tid))  # verifier → (close/fail | replan → re-suspend)
                 final = graph.get_state(_config(tid))

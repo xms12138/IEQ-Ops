@@ -20,6 +20,9 @@ code change. No LLM here — pure arithmetic.
 from __future__ import annotations
 
 from core.config import Settings, get_settings
+from core.logging import get_logger
+
+log = get_logger("calibration")
 
 # In-band stand-ins for an uncalibrated light/sound channel. They match the simulator's
 # RoomState defaults (lux band is >= 320, noise band is <= 50), so they never trip the
@@ -28,6 +31,17 @@ SAFE_LUX = 420.0
 SAFE_NOISE_DB = 41.0
 
 _EPS = 1e-6
+
+# Physical sanity bounds. A value outside these is a sensor/I2C glitch — the SCD-30 emits 0
+# on cold start and the occasional absurd spike (e.g. 12509 ppm) on an I2C hiccup — not a real
+# reading, so drop it rather than let it flash the gauge red, fire a phantom incident, or skew
+# the history average. The next frame (every 5 s) replaces it. lux/noise come from a bounded
+# 0–1023 ADC map with an uncalibrated safe fallback, so they need no extra guard here.
+_PLAUSIBLE: dict[str, tuple[float, float]] = {
+    "co2": (250.0, 5000.0),
+    "temperature": (-10.0, 60.0),
+    "humidity": (0.0, 100.0),
+}
 
 
 def _two_point(
@@ -72,4 +86,11 @@ def calibrate(frame: dict[str, float], settings: Settings | None = None) -> dict
             s.sound_db_loud,
             SAFE_NOISE_DB,
         )
+    # Drop any glitch field so it is recorded NULL (held to the last good value by
+    # latest_reading) instead of polluting the gauge / monitor / history.
+    dropped = [k for k, (lo, hi) in _PLAUSIBLE.items() if k in out and not lo <= out[k] <= hi]
+    for k in dropped:
+        del out[k]
+    if dropped:
+        log.warning("calibrate_dropped_implausible", fields={k: frame.get(k) for k in dropped})
     return out

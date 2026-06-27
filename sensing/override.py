@@ -32,6 +32,14 @@ _PATH = Path(os.getenv("IEQ_OVERRIDE_STATE", str(_DEFAULT_PATH)))
 # data if a terminal-state clear is ever missed.
 _DEFAULT_TTL_S = 600.0
 
+# Grace window before clear_if_resolved() may deactivate a freshly-armed override. Injection
+# arms the override and THEN its scan creates the incident; in that gap active_incident_for_
+# sensor() is still None, so a concurrent terminal scan calling clear_if_resolved() would wrongly
+# deactivate the just-armed override and the demo would silently fall back to real data. The
+# incident is created within ~2 s of arming, so 30 s closes the race with wide margin while the
+# real demo (≥90 s) clears normally afterward. The TTL above is still the ultimate backstop.
+_CLEAR_GRACE_S = 30.0
+
 
 def activate(sensor: str, ttl_s: float = _DEFAULT_TTL_S) -> None:
     """Enter injection-override for `sensor` — the demo world is simulated until cleared."""
@@ -90,6 +98,14 @@ def clear_if_resolved() -> None:
     5-min heartbeat that merely dedups against an in-flight injection leaves the incident
     active, so this never clears mid-demo. Idempotent and TTL-backed. The ticket import is
     deferred so this module stays import-light on read_sensors' hot path."""
+    data = _read()
+    if data is None:
+        return
+    # Within the grace window the injected demo's incident may not exist yet (the inject's scan
+    # is still creating it). Clearing here would race that scan and silently drop the demo back
+    # to real data — so hold off; the incident will be active well before the grace elapses.
+    if time.time() - float(data.get("armed_at", 0.0)) < _CLEAR_GRACE_S:
+        return
     sensor = active_sensor()
     if sensor is None:
         return

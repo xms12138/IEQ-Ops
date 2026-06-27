@@ -138,13 +138,19 @@ def recent(sensor: str, since: timedelta, limit: int = 500) -> list[tuple[str, f
 
 
 def latest_reading() -> dict[str, float]:
-    """The most recent sensor_readings row as a {sensor: value} dict — the hardware source
-    for read_sensors under sensor_source=='hardware'. An empty table or a NULL column falls
-    back to the in-band safe default for that sensor, so the Monitor reads a complete, valid
-    frame even before the first ingest message or while a channel is still uncalibrated."""
-    cols = ", ".join(SENSOR_COLUMNS)
+    """The latest valid value of each sensor as a {sensor: value} dict — the hardware source
+    for read_sensors under sensor_source=='hardware'. Each column is taken from its most recent
+    NON-NULL row independently, so a glitch frame that calibration dropped (recorded NULL) holds
+    the last good value instead of resetting the channel to its safe default. A channel with no
+    reading yet (cold start, or still uncalibrated) falls back to the in-band safe default, so
+    the Monitor always reads a complete, valid frame. SENSOR_COLUMNS is a fixed allow-list, so
+    interpolating the column names here is injection-safe."""
+    selects = ", ".join(
+        f"(SELECT {c} FROM sensor_readings WHERE {c} IS NOT NULL ORDER BY ts DESC LIMIT 1) AS {c}"
+        for c in SENSOR_COLUMNS
+    )
     with _conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SELECT {cols} FROM sensor_readings ORDER BY ts DESC LIMIT 1")
+        cur.execute(f"SELECT {selects}")
         row = cur.fetchone()
     out: dict[str, float] = {}
     for c in SENSOR_COLUMNS:
