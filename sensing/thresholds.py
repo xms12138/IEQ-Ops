@@ -28,10 +28,12 @@ THRESHOLDS: dict[str, Threshold] = {
     "temperature": {
         "unit": "degC",
         "low": 21.0,
-        "high": 25.0,
+        "high": 32.0,
         "rule": (
-            "temperature must stay within 21-25 degC "
-            "(WELL v2 Thermal Comfort T01 dry-bulb range; per ASHRAE 55-2013)"
+            "temperature must stay within 21-32 degC (exhibit summer band: comfort "
+            "standards cap at ~25 degC per WELL v2 Thermal Comfort T01 / ASHRAE 55-2013, "
+            "but the unconditioned exhibit room sits ~30 degC in a European summer, so the "
+            "alert ceiling is raised to 32 degC to flag only genuine overheating)"
         ),
     },
     "humidity": {

@@ -542,6 +542,7 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
 loadThresholds().then(loadSensors); loadScenarios(); refresh(); loadScheduler();
 setInterval(refresh, 3000);
 setInterval(loadSensors, 5000);
+setInterval(loadThresholds, 30000);  // re-pull bands so a threshold change shows without a kiosk restart
 setInterval(loadScheduler, 10000);
 setInterval(tickPatrol, 1000);
 </script>

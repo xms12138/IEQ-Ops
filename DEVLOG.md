@@ -344,3 +344,14 @@
 - **光声标定(2026-06-27 现场采,作者配合制造极值我读+填)**:① ✅ 四极值已填 Pi `.env` 上线——`light_raw` 4(遮黑)/667(手电照)→ 0/600 lux、`sound_raw` 380(安静)/863(拍手)→ 40/75 dBA;实测 read_sensors `lux 400 / noise_db 40`(真实两点线性映射,均在 band 不误报)。判定逻辑:lux<320(raw≲358)才报 dim、noise>50(raw≳540)才报 noisy。**这组值是该传感器/该摆位特定的,重装 Pi 或挪动传感器需重采**(.env 不在 repo,gitignore)。
 - **仍待续(不阻塞长跑)**:② 温度偏移精调(待温度计,现用 9.4);③ 可选湿度修正(SCD30 温高致 RH 偏低);④ 完整真实注入闭环现场点 kiosk 注入按钮验一次(override 闭环路径未改,P-033 已验过 co2_spike 完整关单)。
 - **关联**:`sensing/ingest/`·`sensing/calibration.py`·`sensing/override.py`(新)· `mcp_servers/sensor/server.py::read_sensors`·`sensing/history.py::latest_reading`·`agents/monitor.py::_reconcile_recovered`·`core/graph.py::advisory_close`·`core/state.py::OBSERVING`·`frontend/api/ops.py`(inject 接 override)·`ops/scheduler.py`(终态 clear)·`ops/deployment/ieq-ingest.service`(新)· Pi `.env`(SENSOR_SOURCE=hardware/TEMP_OFFSET_C=9.4)· memory [[project-hardware-deployment]] [[project-exhibit-remaining-abc]]
+
+### P-036 · Phase 5 · 真实数据上线后的调优、踩坑与韧性实测  🔧
+承接 P-035,真实数据跑起来后一轮现场调优 + 暴露并处理几个真问题:
+- **温度阈值放宽 + 偏移修正**:作者反馈欧洲夏天无空调室内 ~30°C、WELL 上限 25→真实环境持续超标。① 阈值 high 25→32(`thresholds.py`,rule 文本诚实标注「展台夏季放宽、标准仍 25」);② 温度偏移 9.4 是基于早先误估的「室温 27」算的,实际 ~30→真实 offset≈4(SCD30 raw 33.97−30;9.4 偏大把显示压低 5°C),改 **9.4→4**,显示回真实(随昼夜:凌晨 ~27、午后 ~30)。Pi `.env` TEMP_OFFSET_C 9.4→4。
+- **前端阈值缓存 bug**(`kiosk.html`):改阈值后屏幕仍把 28.7 标红。根因 `loadThresholds()` 只在 page load 拉一次存 `THRESH`,定时刷新只刷读数→chromium 缓存旧 25。修:加 `setInterval(loadThresholds, 30000)`,阈值变更自动反映、免重启 kiosk。
+- **transformers 回归(uv run 副作用)**:一句 `uv run python -c "import paho"` 触发 uv 按 lock sync,把 transformers 升回 5.10.2→`PreTrainedModel` 崩→specialist 诊断 + 注入闭环全废。降回 5.9.0(`uv pip install`)。**固化进 memory [[project-pi-bringup]]:Pi 别敲 uv run/sync,服务用 `.venv/bin/python` 正为绕开它**。
+- **注入孤儿单(发现,未修)**:注入闭环若中途失败(单卡 open 未到终态),`clear_if_resolved` 因该 sensor 仍有 active 单而永不清 override→read_sensors 持续读 sim 假值直到 TTL 600s 兜底。实测撞上一次(co2 单卡 open 约 1h、override 盖住真实数据);已手动清,防御性兜底待补。
+- **历史 backfill**(`ops/scripts/backfill_history.py`):合成两周历史(基线 + 日夜周期)+ 清掉切换早期 offset=0 的 3072 行脏温度,使「过去一周平均」等统计有真实感料。
+- **韧性实测(作者主动拔插 MKR)**:作者拔掉 MKR 测鲁棒性——掉线 40min 期间 read_sensors 静默读 40min 前旧值(stale,无新鲜度检测,作者决定不补);插回后 **ingest 自动重连、数据流自愈**,零干预。✓
+- **A–E 问答真实数据下实测全通**:当前读数 / 历史统计 / 异常历史 / 记忆建议(靠 incident 历史归纳,reflection 产的 fact/SOP 仍空)/ 越界拒答。
+- 关联:`sensing/thresholds.py`·`frontend/app/kiosk.html`·`ops/scripts/backfill_history.py`·[[project-pi-bringup]]·[[project-exhibit-remaining-abc]]
