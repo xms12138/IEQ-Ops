@@ -35,10 +35,25 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 OUTDOOR_CO2 = 420.0  # ppm, typical outdoor baseline
 CO2_PER_PERSON_M3H = 0.018  # pure CO2 exhaled by a seated adult (~0.005 L/s)
+
+
+def _ambient_active() -> bool:
+    """True when read_all() should report the ambient model rather than this frozen state:
+    the exhibit switch is on AND no injected demo owns the room. Imports are deferred to
+    keep this module importable from the bench without dragging in config/override."""
+    from core.config import get_settings
+
+    if not get_settings().sim_ambient:
+        return False
+    from sensing.override import is_active
+
+    return not is_active()
+
 
 # Default on durable disk (repo var/), not /tmp — see the module docstring: /tmp does
 # not survive a reboot, which would strand a resumed mid-loop incident. IEQ_SIM_STATE
@@ -87,7 +102,18 @@ class RoomState:
         self.ventilation_m3h = m3h
 
     def read_all(self) -> dict[str, float]:
-        """Every sensor's current reading, keyed to match sensing/thresholds.py."""
+        """Every sensor's current reading, keyed to match sensing/thresholds.py.
+
+        Under settings.sim_ambient (the exhibit) an idle room reads from sensing/ambient
+        instead of this frozen state: RoomState only moves when advance_minutes() is called,
+        so the gauges would otherwise sit on one dead number all day. An injected demo takes
+        the room back — while its override is armed the real state is returned, so arm(),
+        the actuator and the Verifier operate on the physics exactly as before. Off by
+        default: IEQ-Bench reads this too and must stay deterministic."""
+        if _ambient_active():
+            from sensing.ambient import sample
+
+            return sample(datetime.now(UTC))
         return {
             "co2": self.read_co2(),
             "temperature": round(self.temperature, 1),

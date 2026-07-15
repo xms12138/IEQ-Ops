@@ -49,6 +49,12 @@ _TERMINAL_EVENTS = frozenset(
 # (safety net in case the SDK uses a terminal event name we don't recognise).
 _SILENCE_TIMEOUT_S = 3.0
 
+# STT transport retries. Recognition is already slow (the SDK uploads the wav to OSS first),
+# so the exhibit trades a few more seconds for not losing the visitor's question to one blip.
+_STT_ATTEMPTS = 3
+_STT_BACKOFF_S = 0.8
+_TTS_DIAL_ATTEMPTS = 3
+
 
 class VoiceProvider(Protocol):
     """STT/TTS edges of the cascade. Implementations must be swappable by config."""
@@ -128,17 +134,35 @@ class DashScopeVoiceProvider:
             wav_path = f.name
         try:
             messages = [{"role": "user", "content": [{"audio": f"file://{wav_path}"}]}]
-            resp = MultiModalConversation.call(
-                model=self._asr_model,
-                messages=messages,
-                result_format="message",
-                asr_options={"language": "en", "enable_lid": False},  # force English
-            )
-            text = self._extract_asr_text(resp)
-            log.info("dashscope_transcribe", n_bytes=len(audio), text=text[:60])
-            return text
-        except Exception as exc:  # noqa: BLE001 — degrade to empty, caller handles
-            log.warning("dashscope_transcribe_failed", error=str(exc))
+            # Retry transport failures. The SDK uploads the wav to OSS before the model runs,
+            # so one recognition is several round trips to Singapore and a single DNS or TCP
+            # blip on the venue wifi surfaces to the visitor as "Sorry, I didn't catch that"
+            # — they blame the microphone and give up. An empty transcript is NOT retried:
+            # that is a real answer (silence), and a retry would cost seconds for nothing.
+            last_exc: Exception | None = None
+            for attempt in range(1, _STT_ATTEMPTS + 1):
+                try:
+                    resp = MultiModalConversation.call(
+                        model=self._asr_model,
+                        messages=messages,
+                        result_format="message",
+                        asr_options={"language": "en", "enable_lid": False},  # force English
+                    )
+                except Exception as exc:  # noqa: BLE001 — transport; retry below
+                    last_exc = exc
+                    log.warning(
+                        "dashscope_transcribe_retry",
+                        attempt=attempt,
+                        of=_STT_ATTEMPTS,
+                        error=str(exc)[:120],
+                    )
+                    if attempt < _STT_ATTEMPTS:
+                        time.sleep(_STT_BACKOFF_S * attempt)
+                    continue
+                text = self._extract_asr_text(resp)
+                log.info("dashscope_transcribe", n_bytes=len(audio), text=text[:60])
+                return text
+            log.warning("dashscope_transcribe_failed", error=str(last_exc), attempts=_STT_ATTEMPTS)
             return ""
         finally:
             Path(wav_path).unlink(missing_ok=True)
@@ -192,12 +216,42 @@ class DashScopeVoiceProvider:
             def on_close(self, code: object = None, reason: object = None) -> None:
                 _signal_done()
 
-        try:
-            tts = QwenTtsRealtime(model=self._tts_model, callback=_Callback(), url=self._ws_url)
-            tts.connect()
-            tts.update_session(voice=self._tts_voice, language_type=self._tts_language)
-        except Exception as exc:  # noqa: BLE001 — surface, yield nothing
-            log.warning("qwen_tts_init_failed", error=str(exc))
+        # Block for the LLM's FIRST token before dialing the WS. The realtime session is
+        # closed by the server if it sits idle ("websocket closed due to Connection timed
+        # out"), and the first token can take seconds — 1.9 s on a good link, 3.5 s over a
+        # phone hotspot. Connecting first meant that wait happened on an open, silent
+        # session, which died before any text arrived and yielded zero frames. Pulling the
+        # token first makes the session's very first act a send, so the idle window is gone
+        # and the cascade no longer depends on how fast the LLM starts talking.
+        head = iter(text_iter)
+        first_chunk = next((c for c in head if c), None)
+        if first_chunk is None:  # LLM produced nothing — no session to open
+            self.last_first_package_ms = None
+            log.warning("qwen_tts_no_text")
+            return
+
+        # Retry the dial: a refused/timed-out websocket on the venue wifi would otherwise mean
+        # a silent butler (text on screen, no voice) with nothing for the visitor to act on.
+        # Safe to retry — nothing has been sent yet, so no audio can be duplicated.
+        tts = None
+        for attempt in range(1, _TTS_DIAL_ATTEMPTS + 1):
+            try:
+                tts = QwenTtsRealtime(model=self._tts_model, callback=_Callback(), url=self._ws_url)
+                tts.connect()
+                tts.update_session(voice=self._tts_voice, language_type=self._tts_language)
+                break
+            except Exception as exc:  # noqa: BLE001 — transport; retry below
+                log.warning(
+                    "qwen_tts_dial_retry",
+                    attempt=attempt,
+                    of=_TTS_DIAL_ATTEMPTS,
+                    error=str(exc)[:120],
+                )
+                tts = None
+                if attempt < _TTS_DIAL_ATTEMPTS:
+                    time.sleep(_STT_BACKOFF_S * attempt)
+        if tts is None:
+            log.warning("qwen_tts_init_failed", attempts=_TTS_DIAL_ATTEMPTS)
             self.last_first_package_ms = None
             return
 
@@ -208,7 +262,8 @@ class DashScopeVoiceProvider:
             main generator can yield audio that arrives while the LLM is still going."""
             try:
                 timing["t0"] = time.monotonic()
-                for chunk in text_iter:
+                tts.append_text(first_chunk)
+                for chunk in head:
                     if chunk:
                         tts.append_text(chunk)
                 tts.finish()

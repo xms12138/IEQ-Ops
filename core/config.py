@@ -91,6 +91,14 @@ class Settings(BaseSettings):
         default="sim", validation_alias=AliasChoices("sensor_source", "ieq_sensor_source")
     )
 
+    #   sim_ambient — exhibit only. An idle simulated room reads from sensing/ambient (a
+    #     diurnal + drift model, held inside every threshold) so the gauges live instead of
+    #     sitting on one frozen number; an injected demo still gets the real physics. Off by
+    #     default because IEQ-Bench reads the same simulator and must stay deterministic.
+    sim_ambient: bool = Field(
+        default=False, validation_alias=AliasChoices("sim_ambient", "ieq_sim_ambient")
+    )
+
     # ── Hardware sensor node (Arduino MKR1010 → MQTT → sensing/ingest → sensor_readings) ──
     # Consumed only when sensor_source == "hardware". The ingest writer subscribes to the
     # broker and runs sensing/calibration on each raw frame before record_reading().

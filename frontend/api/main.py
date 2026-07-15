@@ -141,7 +141,18 @@ async def voice_stream(
     while the rest is still being generated."""
     turns = _parse_history(history)
     raw = await audio.read() if audio is not None else b""
+    # Telemetry only (for now): the page runs the browser's own recogniser while recording and
+    # posts the result as debug_text. Cloud STT costs ~8 s on a 3 s clip (the SDK uploads the
+    # wav to OSS before the model even runs), so if the browser transcript proves reliable on
+    # this box it is worth 8 s a turn — log both and compare before changing behaviour.
+    _t0 = time.monotonic()
     query = _voice.transcribe(raw, debug_text=debug_text)
+    log.info(
+        "voice_stt",
+        seconds=round(time.monotonic() - _t0, 2),
+        browser_text=(debug_text or "")[:60],
+        cloud_text=query[:60],
+    )
 
     def _events() -> Iterator[str]:
         if not query:

@@ -113,15 +113,18 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
   word-break:break-word; font-size:14px; }
 .bubble.user { align-self:flex-end; background:#0f766e; color:#fff; border-bottom-right-radius:4px; }
 .bubble.bot { align-self:flex-start; background:#f1f5f9; border-bottom-left-radius:4px; }
-.inputbar { display:flex; gap:7px; padding-top:10px; border-top:1px solid #e2e8f0; align-items:center; }
-.inputbar input#q { flex:1; padding:9px 11px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; }
-.inputbar button { padding:9px 14px; border:0; border-radius:10px; background:#0f766e; color:#fff;
-  font-size:14px; cursor:pointer; }
-.inputbar button#mic { background:#e2e8f0; color:#0f172a; }
-.inputbar button#mic.on { background:#dc2626; color:#fff; }
-.inputbar button#stop { background:#fee2e2; color:#dc2626; }
-.inputbar button#stop:hover { background:#dc2626; color:#fff; }
-.tts { font-size:12px; color:#475569; display:flex; align-items:center; gap:4px; white-space:nowrap; }
+/* Two touch targets only, no keyboard: a visitor must be able to see what to press without
+   being told (the text box made the mic look like a secondary option, so nobody pressed it). */
+.inputbar { display:flex; gap:10px; padding-top:10px; border-top:1px solid #e2e8f0; align-items:center; }
+.inputbar button { flex:1; padding:16px 14px; border:0; border-radius:12px; font-size:17px;
+  font-weight:700; cursor:pointer; letter-spacing:.2px; }
+.inputbar button#mic { background:#0f766e; color:#fff; }
+.inputbar button#mic.on { background:#dc2626; color:#fff; animation:pulse 1.3s ease-in-out infinite; }
+.inputbar button#mic:disabled { background:#cbd5e1; color:#64748b; cursor:not-allowed; animation:none; }
+.inputbar button#stop { flex:0 0 34%; background:#f1f5f9; color:#475569; }
+.inputbar button#stop:hover { background:#e2e8f0; color:#0f172a; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.72; } }
+.hint { padding-top:7px; text-align:center; font-size:12.5px; color:#94a3b8; }
 .empty { padding:30px; text-align:center; color:#94a3b8; font-size:14px; }
 
 #toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff;
@@ -171,13 +174,11 @@ main { flex:1; display:flex; gap:14px; padding:14px; overflow:hidden; }
     <div class="card qa">
       <h2>💬 Ask the room butler</h2>
       <div class="chat" id="chat"></div>
-      <form id="form" class="inputbar">
-        <input id="q" autocomplete="off" placeholder="Ask… e.g. what's the CO₂ now?">
-        <button type="submit">Send</button>
-        <button type="button" id="mic" title="Ask by voice">🎤</button>
-        <button type="button" id="stop" title="Stop / interrupt the answer">⏹</button>
-        <label class="tts"><input type="checkbox" id="ttsToggle" checked> Speak</label>
-      </form>
+      <div class="inputbar">
+        <button type="button" id="mic">🎤&nbsp; Start conversation</button>
+        <button type="button" id="stop">✋&nbsp; Interrupt</button>
+      </div>
+      <div class="hint" id="hint">Tap <b>Start conversation</b>, ask out loud, then tap again to send.</div>
     </div>
   </div>
 </main>
@@ -444,9 +445,7 @@ function tickPatrol(){
 // ── Q&A butler — text + cascade voice (unchanged behaviour) ──
 const MAX_TURNS = 6;
 const chat = document.getElementById('chat');
-const qInput = document.getElementById('q');
 const micBtn = document.getElementById('mic');
-const ttsToggle = document.getElementById('ttsToggle');
 let history = [];
 // Interrupt: the Stop button aborts the in-flight stream and kills any audio — the Pi
 // cascade PCM (PcmPlayer) and the browser-TTS fallback — so a long answer can be cut short.
@@ -462,7 +461,8 @@ document.getElementById('stop').addEventListener('click', interruptPlayback);
 function addBubble(role, text){ const b = document.createElement('div'); b.className = 'bubble '+role;
   b.innerHTML = esc(text); chat.appendChild(b); chat.scrollTop = chat.scrollHeight; return b; }
 function stripMarkdown(s){ return s.replace(/[*_`#]+/g,'').replace(/^\s*[-•]\s+/gm,'').replace(/\s{2,}/g,' ').trim(); }
-function speak(text){ if (!ttsToggle.checked || !('speechSynthesis' in window)) return;
+// Browser-speech fallback: only ever reached when the server cascade sent no audio frames.
+function speak(text){ if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(stripMarkdown(text)); u.lang='en-US';
   window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
 class PcmPlayer {
@@ -499,22 +499,6 @@ class WavRecorder {
     w(36,'data'); view.setUint32(40,samples.length*2,true);
     let o=44; for (let i=0;i<samples.length;i++){ const x=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,x<0?x*32768:x*32767,true); o+=2; } return new Blob([view], { type:'audio/wav' }); }
 }
-async function askText(query){
-  addBubble('user', query); const bot = addBubble('bot', '…'); let full='';
-  const ac = new AbortController(); currentAbort = ac;
-  try {
-    const r = await fetch('/api/chat', { method:'POST', signal:ac.signal, headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({ query, history: JSON.stringify(history.slice(-MAX_TURNS)) }) });
-    if (!r.ok || !r.body) throw new Error('HTTP '+r.status);
-    const reader = r.body.getReader(), dec = new TextDecoder();
-    for (;;){ const {value,done} = await reader.read(); if (done) break;
-      full += dec.decode(value,{stream:true}); bot.innerHTML = esc(full); chat.scrollTop = chat.scrollHeight; }
-    full = (full + dec.decode()).trim(); bot.innerHTML = esc(full);
-    if (full){ speak(full); history.push({role:'user',content:query},{role:'assistant',content:full}); }
-  } catch(e){ if (e.name !== 'AbortError') bot.innerHTML = 'Request failed: ' + esc(String(e)); }
-  if (currentAbort === ac) currentAbort = null;
-  chat.scrollTop = chat.scrollHeight;
-}
 async function askVoiceStream(transcript, wavBlob){
   const player = new PcmPlayer(24000); let bot=null, full='', queryText=transcript||'', gotAudio=false;
   const ac = new AbortController(); currentAbort = ac; currentPlayer = player;
@@ -540,23 +524,36 @@ async function askVoiceStream(transcript, wavBlob){
   if (currentAbort === ac) currentAbort = null;
   chat.scrollTop = chat.scrollHeight;
 }
-document.getElementById('form').addEventListener('submit', (e) => {
-  e.preventDefault(); const q = qInput.value.trim(); if (!q) return; qInput.value=''; askText(q); });
 const recorder = new WavRecorder(16000);
 let recording = false, sttTranscript = '';
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let sr = null;
 if (SR){ sr = new SR(); sr.lang='en-US'; sr.interimResults=false; sr.maxAlternatives=1;
   sr.onresult = (ev)=>{ const t = ev.results[0][0].transcript.trim(); if (t) sttTranscript=t; }; sr.onerror=()=>{}; }
+// One button, two states — the label always says what the NEXT tap does, so a visitor who
+// never read an instruction still knows where they are. The hint line under it echoes that.
+const MIC_IDLE = '🎤  Start conversation', MIC_REC = '⏹  Tap to send';
+const hintEl = document.getElementById('hint');
+const HINT_IDLE = 'Tap <b>Start conversation</b>, ask out loud, then tap again to send.';
+const HINT_REC  = 'Listening… ask your question, then tap <b>Tap to send</b>.';
+function setRecordingUI(on){
+  recording = on;
+  micBtn.classList.toggle('on', on);
+  micBtn.textContent = on ? MIC_REC : MIC_IDLE;
+  hintEl.innerHTML = on ? HINT_REC : HINT_IDLE;
+}
 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
   micBtn.addEventListener('click', async () => {
     if (!recording){ sttTranscript = '';
       try { await recorder.start(); } catch(e){ addBubble('bot','Mic error: '+esc(String(e))); return; }
-      if (sr){ try{ sr.start(); }catch(e){} } recording = true; micBtn.classList.add('on'); micBtn.textContent = '⏺';
-    } else { recording = false; micBtn.classList.remove('on'); micBtn.textContent = '🎤';
+      if (sr){ try{ sr.start(); }catch(e){} } setRecordingUI(true);
+    } else { setRecordingUI(false);
       if (sr){ try{ sr.stop(); }catch(e){} } let wav = null; try { wav = recorder.stop(); } catch(e){}
       setTimeout(() => askVoiceStream(sttTranscript, wav), 250); }
   });
-} else { micBtn.disabled = true; micBtn.title = 'This browser cannot capture audio (try Chrome)'; }
+} else {
+  micBtn.disabled = true; micBtn.textContent = '🎤  Voice unavailable';
+  hintEl.textContent = 'This browser cannot capture audio (try Chrome).';
+}
 
 loadThresholds().then(loadSensors); loadScenarios(); refresh(); loadScheduler();
 setInterval(refresh, 3000);
