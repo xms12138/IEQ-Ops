@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="792pt" height="259.2pt" viewBox="0 0 792 259.2" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-08-19T14:45:51.091870</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 259.2 
+L 792 259.2 
+L 792 0 
+L 0 0 
+z
+" style="fill: #fcfcfb"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 33.383351 216.100734 
+L 190.919351 216.100734 
+Q 195.177081 216.100734 195.177081 213.309421 
+L 195.177081 105.378629 
+Q 195.177081 102.587315 190.919351 102.587315 
+L 33.383351 102.587315 
+Q 29.125622 102.587315 29.125622 105.378629 
+L 29.125622 213.309421 
+Q 29.125622 216.100734 33.383351 216.100734 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #2a78d6"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 246.269838 113.752569 
+L 453.479351 113.752569 
+Q 457.737081 113.752569 457.737081 110.961256 
+L 457.737081 44.900168 
+Q 457.737081 42.108854 453.479351 42.108854 
+L 246.269838 42.108854 
+Q 242.012108 42.108854 242.012108 44.900168 
+L 242.012108 110.961256 
+Q 242.012108 113.752569 246.269838 113.752569 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #008300"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 246.269838 225.405113 
+L 453.479351 225.405113 
+Q 457.737081 225.405113 457.737081 222.613799 
+L 457.737081 156.552711 
+Q 457.737081 153.761397 453.479351 153.761397 
+L 246.269838 153.761397 
+Q 242.012108 153.761397 242.012108 156.552711 
+L 242.012108 222.613799 
+Q 242.012108 225.405113 246.269838 225.405113 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #eb6834"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 501.733622 178.88322 
+L 737.328 178.88322 
+Q 741.58573 178.88322 741.58573 176.091906 
+L 741.58573 105.378629 
+Q 741.58573 102.587315 737.328 102.587315 
+L 501.733622 102.587315 
+Q 497.475892 102.587315 497.475892 105.378629 
+L 497.475892 176.091906 
+Q 497.475892 178.88322 501.733622 178.88322 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #4a3aa7"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 193.757838 140.735267 
+Q 218.594595 112.822132 242.242231 86.245406 
+" clip-path="url(#pcf3484da4c)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 236.01257 88.733645 
+L 242.242231 86.245406 
+L 240.495026 92.722077 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 193.757838 177.952782 
+Q 218.594595 184.931066 241.709182 191.425479 
+" clip-path="url(#pcf3484da4c)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 236.744325 186.914359 
+L 241.709182 191.425479 
+L 235.121372 192.690692 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 456.317838 84.908996 
+Q 477.606486 105.843848 497.61967 125.524431 
+" clip-path="url(#pcf3484da4c)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 495.445101 119.178468 
+L 497.61967 125.524431 
+L 491.238158 123.456508 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 456.317838 191.90935 
+Q 477.606486 173.300593 497.548295 155.86913 
+" clip-path="url(#pcf3484da4c)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 491.056474 157.559178 
+L 497.548295 155.86913 
+L 495.005241 162.076615 
+z
+" clip-path="url(#pcf3484da4c)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 8.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(80.34882 146.094482)">H1 / H2a / H3</text>
+    <text style="font-weight: 700; font-size: 8.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(94.116211 156.416833)">tasks +</text>
+    <text style="font-weight: 700; font-size: 8.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(89.070429 166.739185)">simulator</text>
+    <text style="font-weight: 700; font-size: 8.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(77.018336 177.061536)">(ground truth)</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 8.3px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(298.80236 75.105956)">deterministic anchors</text>
+    <text style="font-weight: 700; font-size: 8.3px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(288.18679 85.068226)">(numbers, sim root cause)</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 8.3px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(314.00822 186.758499)">dual LLM-judge</text>
+    <text style="font-weight: 700; font-size: 8.3px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(297.143009 196.720769)">(cross-family, H1 only)</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 8.3px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(583.300662 137.910187)">McNemar exact</text>
+    <text style="font-weight: 700; font-size: 8.3px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(564.42724 147.872457)">(paired) + κ agreement</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 11.8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #121211" x="396" y="11.126156" transform="rotate(-0 396 11.126156)">Evaluation protocol: deterministic anchors, checked by a validated dual judge</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pcf3484da4c">
+   <rect x="2.16" y="15.126156" width="787.68" height="241.913844"/>
+  </clipPath>
+ </defs>
+</svg>

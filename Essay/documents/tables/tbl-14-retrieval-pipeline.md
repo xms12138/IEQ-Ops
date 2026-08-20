@@ -1,0 +1,15 @@
+**Table 14. Retrieval-quality ablation across pipeline stages (T1.1/T1.2 -> fig-11, fig-12).**
+For 32 of the 37 H1 questions (4 excluded — the automated gold-chunk labeller requires ALL of a question's required numeric tokens to co-occur in a SINGLE chunk, which fails when adjacent tier values are split across chunk boundaries: `co2-well`, `co2-2pt-stricter`, `thermal-well`, `lighting-glare-2pt` — a labelling-method limitation, not a retrieval failure, disclosed rather than patched), gold chunk_idx were located automatically (numeric token + topic-anchor co-occurrence) and each pipeline stage's ranking was checked against them.
+Source: `eval/reports/retrieval-pipeline-ablation-20260818T080651Z.json`; `ops/scripts/retrieval_pipeline_ablation.py`.
+
+| Stage | R@1 | R@3 | R@5 | R@10 | MRR | nDCG@5 |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| BM25 only | 0.47 | 0.62 | 0.78 | 0.81 | 0.57 | 0.62 |
+| Dense only (BGE-M3) | 0.69 | 0.91 | 0.94 | 1.00 | 0.80 | 0.83 |
+| RRF hybrid (pre-rerank) | 0.53 | 0.84 | 0.94 | 1.00 | 0.69 | 0.74 |
+| **+reranker (production)** | **0.94** | **1.00** | **1.00** | 1.00 | **0.96** | **0.97** |
+| +contextual prefix (side collection) | 0.75 | 0.97 | 1.00 | 1.00 | 0.85 | 0.89 |
+
+**Reading — the reranker is not a marginal add-on, it recovers from fusion noise.** RRF hybrid fusion *without* the reranker (R@1=0.53) is actually *worse* at rank-1 than dense retrieval alone (R@1=0.69): merging in BM25's weaker sparse ranks by position (not score) pulls some correct chunks off the top spot before reranking corrects it. The production pipeline's final stage (+reranker) recovers to R@1=0.94, R@5=1.00 — the single largest jump in the table, and the strongest justification in this dissertation for why bge-reranker-v2-m3 is in the architecture at all (CLAUDE.md's RAG stack), not just BM25+dense.
+
+**A genuine negative result — contextual prefixing did not help on this corpus.** Anthropic Contextual Retrieval (ops/llm_routing.md node #10) was tested by re-ingesting the full 824-chunk corpus into a separate side collection (`ieq_standards_ctx`, never touching production) with LLM-generated contextual prefixes, then running the identical dense+BM25+RRF+reranker pipeline. Result: **R@1 dropped from 0.94 to 0.75** relative to the no-contextual production pipeline, though R@5/R@10 both still reach 1.00. A plausible explanation: WELL v2's chunks are already short, self-contained regulatory clauses (feature code + threshold table), so a generated situating sentence adds noise to the embedding rather than resolving genuine ambiguity — contextual retrieval's benefit is best documented on long narrative documents (e.g. Anthropic's own reporting on technical manuals with heavy cross-references), which this corpus is not. **This is disclosed as a real ablation result, not a design endorsement**: the production system does not currently use `--contextual` (confirmed live: `ieq_standards`'s `embed_text == text` for every sampled chunk), so this result validates that decision rather than contradicting deployed behaviour.

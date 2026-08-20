@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="835.2pt" height="187.2pt" viewBox="0 0 835.2 187.2" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-08-19T14:45:49.478661</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 187.2 
+L 835.2 187.2 
+L 835.2 0 
+L 0 0 
+z
+" style="fill: #fcfcfb"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 22.932 165.595223 
+L 137.536138 165.595223 
+Q 141.833793 165.595223 141.833793 163.164626 
+L 141.833793 36.773577 
+Q 141.833793 34.34298 137.536138 34.34298 
+L 22.932 34.34298 
+Q 18.634345 34.34298 18.634345 36.773577 
+L 18.634345 163.164626 
+Q 18.634345 165.595223 22.932 165.595223 
+z
+" clip-path="url(#p330252ffca)" style="fill: #008300"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 140.401241 99.969102 
+Q 148.996552 99.969102 155.803008 99.969102 
+" clip-path="url(#p330252ffca)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 149.803008 96.969102 
+L 155.803008 99.969102 
+L 149.803008 102.969102 
+z
+" clip-path="url(#p330252ffca)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 160.456966 165.595223 
+L 275.061103 165.595223 
+Q 279.358759 165.595223 279.358759 163.164626 
+L 279.358759 36.773577 
+Q 279.358759 34.34298 275.061103 34.34298 
+L 160.456966 34.34298 
+Q 156.15931 34.34298 156.15931 36.773577 
+L 156.15931 163.164626 
+Q 156.15931 165.595223 160.456966 165.595223 
+z
+" clip-path="url(#p330252ffca)" style="fill: #2a78d6"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 277.926207 99.969102 
+Q 286.521517 99.969102 293.327973 99.969102 
+" clip-path="url(#p330252ffca)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 287.327973 96.969102 
+L 293.327973 99.969102 
+L 287.327973 102.969102 
+z
+" clip-path="url(#p330252ffca)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 297.981931 165.595223 
+L 412.586069 165.595223 
+Q 416.883724 165.595223 416.883724 163.164626 
+L 416.883724 36.773577 
+Q 416.883724 34.34298 412.586069 34.34298 
+L 297.981931 34.34298 
+Q 293.684276 34.34298 293.684276 36.773577 
+L 293.684276 163.164626 
+Q 293.684276 165.595223 297.981931 165.595223 
+z
+" clip-path="url(#p330252ffca)" style="fill: #1baf7a"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 415.451172 99.969102 
+Q 424.046483 99.969102 430.852939 99.969102 
+" clip-path="url(#p330252ffca)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 424.852939 96.969102 
+L 430.852939 99.969102 
+L 424.852939 102.969102 
+z
+" clip-path="url(#p330252ffca)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 435.506897 165.595223 
+L 550.111034 165.595223 
+Q 554.40869 165.595223 554.40869 163.164626 
+L 554.40869 36.773577 
+Q 554.40869 34.34298 550.111034 34.34298 
+L 435.506897 34.34298 
+Q 431.209241 34.34298 431.209241 36.773577 
+L 431.209241 163.164626 
+Q 431.209241 165.595223 435.506897 165.595223 
+z
+" clip-path="url(#p330252ffca)" style="fill: #c07a09"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 552.976138 99.969102 
+Q 561.571448 99.969102 568.377904 99.969102 
+" clip-path="url(#p330252ffca)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 562.377904 96.969102 
+L 568.377904 99.969102 
+L 562.377904 102.969102 
+z
+" clip-path="url(#p330252ffca)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 573.031862 165.595223 
+L 687.636 165.595223 
+Q 691.933655 165.595223 691.933655 163.164626 
+L 691.933655 36.773577 
+Q 691.933655 34.34298 687.636 34.34298 
+L 573.031862 34.34298 
+Q 568.734207 34.34298 568.734207 36.773577 
+L 568.734207 163.164626 
+Q 568.734207 165.595223 573.031862 165.595223 
+z
+" clip-path="url(#p330252ffca)" style="fill: #4a3aa7"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 690.501103 99.969102 
+Q 699.096414 99.969102 705.90287 99.969102 
+" clip-path="url(#p330252ffca)" style="fill: none; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+    <path d="M 699.90287 96.969102 
+L 705.90287 99.969102 
+L 699.90287 102.969102 
+z
+" clip-path="url(#p330252ffca)" style="fill: #86847e; stroke: #86847e; stroke-width: 1.6; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 710.556828 165.595223 
+L 825.160966 165.595223 
+Q 829.458621 165.595223 829.458621 163.164626 
+L 829.458621 36.773577 
+Q 829.458621 34.34298 825.160966 34.34298 
+L 710.556828 34.34298 
+Q 706.259172 34.34298 706.259172 36.773577 
+L 706.259172 163.164626 
+Q 706.259172 165.595223 710.556828 165.595223 
+z
+" clip-path="url(#p330252ffca)" style="fill: #cf6a2a"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(39.847975 96.905762)">SCD-30 + Grove</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(48.398678 107.708223)">light / sound</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(184.798644 96.906113)">Arduino MKR</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(192.545675 107.708574)">WiFi 1010</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(335.399625 96.905762)">MQTT →</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(329.675484 107.708223)">Mosquitto</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(465.200184 92.821539)">Bounds filter</text>
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(445.285216 101.943617)">(reject 0 / 12,509 ppm</text>
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(442.625809 111.065695)">→ null, not substituted)</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(607.944322 96.905762)">Postgres</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(597.695572 107.708223)">(time-series)</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(748.081397 96.906113)">Monitor</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans'; fill: #ffffff" transform="translate(736.159209 107.708574)">(5-min scan)</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #121211" x="417.6" y="10.898203" transform="rotate(-0 417.6 10.898203)">Sensing pipeline: sensor node → MQTT → bounds filter → Postgres → Monitor</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p330252ffca">
+   <rect x="2.16" y="14.898203" width="830.88" height="170.141797"/>
+  </clipPath>
+ </defs>
+</svg>

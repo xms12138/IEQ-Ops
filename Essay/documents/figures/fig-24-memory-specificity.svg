@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="468pt" height="512.64pt" viewBox="0 0 468 512.64" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-08-20T03:24:47.990041</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 512.64 
+L 468 512.64 
+L 468 0 
+L 0 0 
+z
+" style="fill: #fcfcfb"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 119.34 128.53809 
+L 241.02 128.53809 
+Q 250.38 128.53809 250.38 126.49173 
+L 250.38 57.42708 
+Q 250.38 55.38072 241.02 55.38072 
+L 119.34 55.38072 
+Q 109.98 55.38072 109.98 57.42708 
+L 109.98 126.49173 
+Q 109.98 128.53809 119.34 128.53809 
+z
+" clip-path="url(#p6dd3223c51)" style="fill: #f4f3ef; stroke: #d5d4cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 300.456 128.53809 
+L 457.704 128.53809 
+Q 467.064 128.53809 467.064 126.49173 
+L 467.064 57.42708 
+Q 467.064 55.38072 457.704 55.38072 
+L 300.456 55.38072 
+Q 291.096 55.38072 291.096 57.42708 
+L 291.096 126.49173 
+Q 291.096 128.53809 300.456 128.53809 
+z
+" clip-path="url(#p6dd3223c51)" style="fill: #f9ebe9; stroke: #b8322e; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 1.404 133.1424 
+L 1.404 56.4039 
+" clip-path="url(#p6dd3223c51)" style="fill: none; stroke: #2a78d6; stroke-width: 3"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="6.552" y="62.48265" transform="rotate(-0 6.552 62.48265)">co2-window</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #2a78d6" x="6.552" y="79.476488" transform="rotate(-0 6.552 79.476488)">airquality</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="6.552" y="94.216312" transform="rotate(-0 6.552 94.216312)">true cause (not in memory)</text>
+   </g>
+   <g id="text_4">
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 107.316203)">windows sealed shut</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 115.586828)">trapping stale air at</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 124.496827)">low occupancy</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4f4e4a" x="117.468" y="64.71707" transform="rotate(-0 117.468 64.71707)">MEMORY OFF</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #86847e" x="242.892" y="64.665359" transform="rotate(-0 242.892 64.665359)">generic · safe</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="117.468" y="83.257473" transform="rotate(-0 117.468 83.257473)">“inadequate ventilation”</text>
+   </g>
+   <g id="patch_4">
+    <path d="M 257.993512 92.2152 
+Q 270.735204 92.2152 281.464434 92.2152 
+" style="fill: none; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 278.264434 90.6152 
+L 281.464434 92.2152 
+L 278.264434 93.8152 
+z
+" style="fill: #b8322e; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #b8322e" x="270.738" y="85.56453" transform="rotate(-0 270.738 85.56453)">replaced</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="298.584" y="64.71707" transform="rotate(-0 298.584 64.71707)">MEMORY ON</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #b8322e" x="459.576" y="64.665359" transform="rotate(-0 459.576 64.665359)">specific · WRONG ✗</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 83.257473)">“a stuck or jammed outdoor-air damper</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 93.197473)">causing recirculation of stale air”</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="109.98" y="141.07494" transform="rotate(-0 109.98 141.07494)">borrowed token(s):</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="185.796" y="141.07494" transform="rotate(-0 185.796 141.07494)">damper</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 142.29794)">recalled episodes: co2-damper,</text>
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 150.93794)">co2-allhands, co2-damper-R3</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_5">
+    <path d="M 119.34 230.85609 
+L 241.02 230.85609 
+Q 250.38 230.85609 250.38 228.80973 
+L 250.38 159.74508 
+Q 250.38 157.69872 241.02 157.69872 
+L 119.34 157.69872 
+Q 109.98 157.69872 109.98 159.74508 
+L 109.98 228.80973 
+Q 109.98 230.85609 119.34 230.85609 
+z
+" clip-path="url(#p9520babc9a)" style="fill: #f4f3ef; stroke: #d5d4cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 300.456 230.85609 
+L 457.704 230.85609 
+Q 467.064 230.85609 467.064 228.80973 
+L 467.064 159.74508 
+Q 467.064 157.69872 457.704 157.69872 
+L 300.456 157.69872 
+Q 291.096 157.69872 291.096 159.74508 
+L 291.096 228.80973 
+Q 291.096 230.85609 300.456 230.85609 
+z
+" clip-path="url(#p9520babc9a)" style="fill: #f9ebe9; stroke: #b8322e; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 1.404 235.4604 
+L 1.404 158.7219 
+" clip-path="url(#p9520babc9a)" style="fill: none; stroke: #eb6834; stroke-width: 3"/>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="6.552" y="164.80065" transform="rotate(-0 6.552 164.80065)">thermal-setback</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #eb6834" x="6.552" y="181.794488" transform="rotate(-0 6.552 181.794488)">thermal</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="6.552" y="196.534312" transform="rotate(-0 6.552 196.534312)">true cause (not in memory)</text>
+   </g>
+   <g id="text_18">
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 208.994827)">night HVAC setback</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 218.544202)">failed to reset before</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 226.814827)">opening hours</text>
+   </g>
+   <g id="text_19">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4f4e4a" x="117.468" y="167.03507" transform="rotate(-0 117.468 167.03507)">MEMORY OFF</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #86847e" x="242.892" y="166.983359" transform="rotate(-0 242.892 166.983359)">generic · safe</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 185.575472)">“adjust the HVAC system to cool</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 195.515472)">the space until the</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 205.455472)">temperature is within the…”</text>
+   </g>
+   <g id="patch_7">
+    <path d="M 257.993512 194.5332 
+Q 270.735204 194.5332 281.464434 194.5332 
+" style="fill: none; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 278.264434 192.9332 
+L 281.464434 194.5332 
+L 278.264434 196.1332 
+z
+" style="fill: #b8322e; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_22">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #b8322e" x="270.738" y="187.88253" transform="rotate(-0 270.738 187.88253)">replaced</text>
+   </g>
+   <g id="text_23">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="298.584" y="167.03507" transform="rotate(-0 298.584 167.03507)">MEMORY ON</text>
+   </g>
+   <g id="text_24">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #b8322e" x="459.576" y="166.983359" transform="rotate(-0 459.576 166.983359)">specific · WRONG ✗</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 185.575472)">“solar gain through unshaded east/west</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 195.515472)">glazing”</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="109.98" y="243.39294" transform="rotate(-0 109.98 243.39294)">borrowed token(s):</text>
+   </g>
+   <g id="text_27">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="185.796" y="243.39294" transform="rotate(-0 185.796 243.39294)">blind, solar</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 244.61594)">recalled episodes: thermal-solar-east,</text>
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 253.54944)">thermal-solar, thermal-reheat</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_8">
+    <path d="M 119.34 333.17409 
+L 241.02 333.17409 
+Q 250.38 333.17409 250.38 331.12773 
+L 250.38 262.06308 
+Q 250.38 260.01672 241.02 260.01672 
+L 119.34 260.01672 
+Q 109.98 260.01672 109.98 262.06308 
+L 109.98 331.12773 
+Q 109.98 333.17409 119.34 333.17409 
+z
+" clip-path="url(#p161b529afe)" style="fill: #f4f3ef; stroke: #d5d4cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 300.456 333.17409 
+L 457.704 333.17409 
+Q 467.064 333.17409 467.064 331.12773 
+L 467.064 262.06308 
+Q 467.064 260.01672 457.704 260.01672 
+L 300.456 260.01672 
+Q 291.096 260.01672 291.096 262.06308 
+L 291.096 331.12773 
+Q 291.096 333.17409 300.456 333.17409 
+z
+" clip-path="url(#p161b529afe)" style="fill: #f9ebe9; stroke: #b8322e; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 1.404 337.7784 
+L 1.404 261.0399 
+" clip-path="url(#p161b529afe)" style="fill: none; stroke: #eda100; stroke-width: 3"/>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="6.552" y="267.11865" transform="rotate(-0 6.552 267.11865)">lighting-sensor</text>
+   </g>
+   <g id="text_30">
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #eda100" x="6.552" y="284.112487" transform="rotate(-0 6.552 284.112487)">lighting</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="6.552" y="298.852312" transform="rotate(-0 6.552 298.852312)">true cause (not in memory)</text>
+   </g>
+   <g id="text_32">
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 311.312827)">daylight sensor</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 320.862202)">miscalibration over-</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 329.132827)">dimming the LED</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 338.682202)">fixtures</text>
+   </g>
+   <g id="text_33">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4f4e4a" x="117.468" y="269.35307" transform="rotate(-0 117.468 269.35307)">MEMORY OFF</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #86847e" x="242.892" y="269.301359" transform="rotate(-0 242.892 269.301359)">generic · safe</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 287.893472)">“insufficient electric lighting</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 297.833472)">output or improper lighting</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 307.773472)">design”</text>
+   </g>
+   <g id="patch_10">
+    <path d="M 257.993512 296.8512 
+Q 270.735204 296.8512 281.464434 296.8512 
+" style="fill: none; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 278.264434 295.2512 
+L 281.464434 296.8512 
+L 278.264434 298.4512 
+z
+" style="fill: #b8322e; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_36">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #b8322e" x="270.738" y="290.20053" transform="rotate(-0 270.738 290.20053)">replaced</text>
+   </g>
+   <g id="text_37">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="298.584" y="269.35307" transform="rotate(-0 298.584 269.35307)">MEMORY ON</text>
+   </g>
+   <g id="text_38">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #b8322e" x="459.576" y="269.301359" transform="rotate(-0 459.576 269.301359)">specific · WRONG ✗</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 288.571597)">“a combination of stuck motorised</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 297.833472)">blinds blocking daylight and aged LED</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(298.584 307.773472)">fixtures with reduced light output”</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="109.98" y="345.71094" transform="rotate(-0 109.98 345.71094)">borrowed token(s):</text>
+   </g>
+   <g id="text_41">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="185.796" y="345.71094" transform="rotate(-0 185.796 345.71094)">blind, replace</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 346.93394)">recalled episodes: lighting-blind,</text>
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 355.57394)">lighting-lamp, thermal-solar-east</text>
+   </g>
+  </g>
+  <g id="axes_4">
+   <g id="patch_11">
+    <path d="M 119.34 435.49209 
+L 241.02 435.49209 
+Q 250.38 435.49209 250.38 433.44573 
+L 250.38 364.38108 
+Q 250.38 362.33472 241.02 362.33472 
+L 119.34 362.33472 
+Q 109.98 362.33472 109.98 364.38108 
+L 109.98 433.44573 
+Q 109.98 435.49209 119.34 435.49209 
+z
+" clip-path="url(#p0d9d96c3dc)" style="fill: #f4f3ef; stroke: #d5d4cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 300.456 435.49209 
+L 457.704 435.49209 
+Q 467.064 435.49209 467.064 433.44573 
+L 467.064 364.38108 
+Q 467.064 362.33472 457.704 362.33472 
+L 300.456 362.33472 
+Q 291.096 362.33472 291.096 364.38108 
+L 291.096 433.44573 
+Q 291.096 435.49209 300.456 435.49209 
+z
+" clip-path="url(#p0d9d96c3dc)" style="fill: #f9ebe9; stroke: #b8322e; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 1.404 440.0964 
+L 1.404 363.3579 
+" clip-path="url(#p0d9d96c3dc)" style="fill: none; stroke: #4a3aa7; stroke-width: 3"/>
+   </g>
+   <g id="text_43">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="6.552" y="369.43665" transform="rotate(-0 6.552 369.43665)">acoustic-door</text>
+   </g>
+   <g id="text_44">
+    <text style="font-weight: 700; font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4a3aa7" x="6.552" y="386.430487" transform="rotate(-0 6.552 386.430487)">acoustic</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="6.552" y="401.170312" transform="rotate(-0 6.552 401.170312)">true cause (not in memory)</text>
+   </g>
+   <g id="text_46">
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 414.270202)">a corridor fire door</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 422.540827)">propped open letting</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 431.450827)">hallway chatter</text>
+    <text style="font-style: italic; font-size: 6.6px; font-family: 'DejaVu Sans'; fill: #4f4e4a" transform="translate(6.552 440.360827)">through</text>
+   </g>
+   <g id="text_47">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4f4e4a" x="117.468" y="371.67107" transform="rotate(-0 117.468 371.67107)">MEMORY OFF</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #86847e" x="242.892" y="371.619359" transform="rotate(-0 242.892 371.619359)">generic · safe</text>
+   </g>
+   <g id="text_49">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 390.211472)">“HVAC equipment or exterior</text>
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; fill: #121211" transform="translate(117.468 400.829597)">noise intrusion”</text>
+   </g>
+   <g id="patch_13">
+    <path d="M 257.993512 399.1692 
+Q 270.735204 399.1692 281.464434 399.1692 
+" style="fill: none; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+    <path d="M 278.264434 397.5692 
+L 281.464434 399.1692 
+L 278.264434 400.7692 
+z
+" style="fill: #b8322e; stroke: #b8322e; stroke-width: 1.8; stroke-linecap: round"/>
+   </g>
+   <g id="text_50">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #b8322e" x="270.738" y="392.51853" transform="rotate(-0 270.738 392.51853)">replaced</text>
+   </g>
+   <g id="text_51">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="298.584" y="371.67107" transform="rotate(-0 298.584 371.67107)">MEMORY ON</text>
+   </g>
+   <g id="text_52">
+    <text style="font-weight: 700; font-size: 6.2px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #b8322e" x="459.576" y="371.619359" transform="rotate(-0 459.576 371.619359)">specific · WRONG ✗</text>
+   </g>
+   <g id="text_53">
+    <text style="font-size: 7px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="298.584" y="390.211472" transform="rotate(-0 298.584 390.211472)">“HVAC supply fan imbalance”</text>
+   </g>
+   <g id="text_54">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="109.98" y="448.02894" transform="rotate(-0 109.98 448.02894)">borrowed token(s):</text>
+   </g>
+   <g id="text_55">
+    <text style="font-weight: 700; font-size: 6.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #b8322e" x="185.796" y="448.02894" transform="rotate(-0 185.796 448.02894)">fan, imbalanc, rebalanc</text>
+   </g>
+   <g id="text_56">
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 449.25194)">recalled episodes: acoustic-fan, acoustic-</text>
+    <text style="font-size: 6.4px; font-family: 'DejaVu Sans'; fill: #86847e" transform="translate(291.096 457.89194)">partition, acoustic-fan-bearing</text>
+   </g>
+  </g>
+  <g id="text_57">
+   <text style="font-weight: 700; font-size: 9.6px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #121211" x="0" y="10.5345" transform="rotate(-0 0 10.5345)">Memory replaces a safe generic diagnosis with a borrowed, wrong specific cause</text>
+  </g>
+  <g id="text_58">
+   <text style="font-size: 7.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4f4e4a" x="0" y="22.830844" transform="rotate(-0 0 22.830844)">Four novel anomalies — one per domain — whose real cause matches NO seeded episode. Contamination rate</text>
+  </g>
+  <g id="text_59">
+   <text style="font-size: 7.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4f4e4a" x="0" y="32.598844" transform="rotate(-0 0 32.598844)">1.00 (4/4): in every case recall did not add a caveat alongside the generic diagnosis, it overwrote it.</text>
+  </g>
+  <g id="text_60">
+   <text style="font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="0" y="507.046406" transform="rotate(-0 0 507.046406)">precision cost of the same mechanism Figure E2 and Figure 14 credit for the recall lift.</text>
+  </g>
+  <g id="text_61">
+   <text style="font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="0" y="498.070406" transform="rotate(-0 0 498.070406)">diagnosis naming a recalled term only to rule it out would still count (none of these four did). This is the</text>
+  </g>
+  <g id="text_62">
+   <text style="font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="0" y="489.094406" transform="rotate(-0 0 489.094406)">hand-authored to differ from every seeded cause, and contamination is scored by literal keyword presence, so a</text>
+  </g>
+  <g id="text_63">
+   <text style="font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="0" y="480.118406" transform="rotate(-0 0 480.118406)">diagnosis text and truncated at a word boundary. n = 4 — a first probe, not a precision study; the anomalies were</text>
+  </g>
+  <g id="text_64">
+   <text style="font-size: 6.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #86847e" x="0" y="471.142406" transform="rotate(-0 0 471.142406)">Source: eval/reports/h2a-specificity-*.json (Table 10). Quoted phrases are extracted verbatim from the stored</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p6dd3223c51">
+   <rect x="0" y="51.288" width="468" height="102.318"/>
+  </clipPath>
+  <clipPath id="p9520babc9a">
+   <rect x="0" y="153.606" width="468" height="102.318"/>
+  </clipPath>
+  <clipPath id="p161b529afe">
+   <rect x="0" y="255.924" width="468" height="102.318"/>
+  </clipPath>
+  <clipPath id="p0d9d96c3dc">
+   <rect x="0" y="358.242" width="468" height="102.318"/>
+  </clipPath>
+ </defs>
+</svg>
