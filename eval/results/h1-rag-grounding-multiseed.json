@@ -1,0 +1,411 @@
+{
+  "n_seeds": 2,
+  "n_questions": 37,
+  "cb_accuracy_per_seed": [
+    0.405,
+    0.405
+  ],
+  "rag_accuracy_per_seed": [
+    0.73,
+    0.784
+  ],
+  "cb_majority_accuracy": 0.486,
+  "rag_majority_accuracy": 0.811,
+  "mcnemar_b_rag_better": 16,
+  "mcnemar_d_rag_worse": 4,
+  "mcnemar_p": 0.0118,
+  "n_unstable_cb": 6,
+  "n_unstable_rag": 4,
+  "unstable_cb_ids": [
+    "thermal-well",
+    "no2-enhanced",
+    "thermal-kitchen-cap",
+    "lighting-vlt",
+    "lighting-glare-min",
+    "acoustic-lmax-cat3"
+  ],
+  "unstable_rag_ids": [
+    "ashrae-myth",
+    "noise-well",
+    "air-filtration-merv",
+    "lighting-cri-base"
+  ],
+  "cb_mean_by_id": {
+    "co2-well": 0.0,
+    "ashrae-myth": 1.0,
+    "thermal-well": 0.5,
+    "lux-office": 0.0,
+    "noise-well": 0.0,
+    "co2-2pt-stricter": 0.0,
+    "pm25": 0.0,
+    "pm10": 0.0,
+    "pm25-enhanced": 1.0,
+    "pm10-enhanced": 1.0,
+    "formaldehyde": 1.0,
+    "formaldehyde-enhanced": 0.0,
+    "benzene": 0.0,
+    "benzene-enhanced": 1.0,
+    "acetaldehyde-enhanced": 0.0,
+    "caprolactam-enhanced": 0.0,
+    "naphthalene-enhanced": 0.0,
+    "ozone": 1.0,
+    "co-office": 1.0,
+    "co": 0.0,
+    "co-enhanced": 1.0,
+    "no2-enhanced": 0.5,
+    "air-filtration-merv": 0.0,
+    "tvoc": 1.0,
+    "toluene": 1.0,
+    "humidity": 1.0,
+    "thermal-zone-size": 0.0,
+    "thermal-air-velocity": 0.0,
+    "thermal-kitchen-cap": 0.5,
+    "lobby-lux": 0.0,
+    "lighting-vlt": 0.5,
+    "lighting-glare-2pt": 0.0,
+    "lighting-glare-min": 0.5,
+    "lighting-cri-base": 0.0,
+    "reverb": 1.0,
+    "acoustic-lmax-cat3": 0.5,
+    "acoustic-cat3-dbc-1pt": 0.0
+  },
+  "rag_mean_by_id": {
+    "co2-well": 1.0,
+    "ashrae-myth": 0.5,
+    "thermal-well": 1.0,
+    "lux-office": 1.0,
+    "noise-well": 0.5,
+    "co2-2pt-stricter": 1.0,
+    "pm25": 1.0,
+    "pm10": 1.0,
+    "pm25-enhanced": 0.0,
+    "pm10-enhanced": 0.0,
+    "formaldehyde": 1.0,
+    "formaldehyde-enhanced": 0.0,
+    "benzene": 1.0,
+    "benzene-enhanced": 0.0,
+    "acetaldehyde-enhanced": 1.0,
+    "caprolactam-enhanced": 1.0,
+    "naphthalene-enhanced": 1.0,
+    "ozone": 1.0,
+    "co-office": 1.0,
+    "co": 1.0,
+    "co-enhanced": 1.0,
+    "no2-enhanced": 1.0,
+    "air-filtration-merv": 0.5,
+    "tvoc": 1.0,
+    "toluene": 1.0,
+    "humidity": 1.0,
+    "thermal-zone-size": 1.0,
+    "thermal-air-velocity": 1.0,
+    "thermal-kitchen-cap": 1.0,
+    "lobby-lux": 1.0,
+    "lighting-vlt": 1.0,
+    "lighting-glare-2pt": 0.0,
+    "lighting-glare-min": 1.0,
+    "lighting-cri-base": 0.5,
+    "reverb": 1.0,
+    "acoustic-lmax-cat3": 0.0,
+    "acoustic-cat3-dbc-1pt": 0.0
+  },
+  "cb_raw": {
+    "co2-well": [
+      false,
+      false
+    ],
+    "ashrae-myth": [
+      true,
+      true
+    ],
+    "thermal-well": [
+      true,
+      false
+    ],
+    "lux-office": [
+      false,
+      false
+    ],
+    "noise-well": [
+      false,
+      false
+    ],
+    "co2-2pt-stricter": [
+      false,
+      false
+    ],
+    "pm25": [
+      false,
+      false
+    ],
+    "pm10": [
+      false,
+      false
+    ],
+    "pm25-enhanced": [
+      true,
+      true
+    ],
+    "pm10-enhanced": [
+      true,
+      true
+    ],
+    "formaldehyde": [
+      true,
+      true
+    ],
+    "formaldehyde-enhanced": [
+      false,
+      false
+    ],
+    "benzene": [
+      false,
+      false
+    ],
+    "benzene-enhanced": [
+      true,
+      true
+    ],
+    "acetaldehyde-enhanced": [
+      false,
+      false
+    ],
+    "caprolactam-enhanced": [
+      false,
+      false
+    ],
+    "naphthalene-enhanced": [
+      false,
+      false
+    ],
+    "ozone": [
+      true,
+      true
+    ],
+    "co-office": [
+      true,
+      true
+    ],
+    "co": [
+      false,
+      false
+    ],
+    "co-enhanced": [
+      true,
+      true
+    ],
+    "no2-enhanced": [
+      false,
+      true
+    ],
+    "air-filtration-merv": [
+      false,
+      false
+    ],
+    "tvoc": [
+      true,
+      true
+    ],
+    "toluene": [
+      true,
+      true
+    ],
+    "humidity": [
+      true,
+      true
+    ],
+    "thermal-zone-size": [
+      false,
+      false
+    ],
+    "thermal-air-velocity": [
+      false,
+      false
+    ],
+    "thermal-kitchen-cap": [
+      true,
+      false
+    ],
+    "lobby-lux": [
+      false,
+      false
+    ],
+    "lighting-vlt": [
+      false,
+      true
+    ],
+    "lighting-glare-2pt": [
+      false,
+      false
+    ],
+    "lighting-glare-min": [
+      false,
+      true
+    ],
+    "lighting-cri-base": [
+      false,
+      false
+    ],
+    "reverb": [
+      true,
+      true
+    ],
+    "acoustic-lmax-cat3": [
+      true,
+      false
+    ],
+    "acoustic-cat3-dbc-1pt": [
+      false,
+      false
+    ]
+  },
+  "rag_raw": {
+    "co2-well": [
+      true,
+      true
+    ],
+    "ashrae-myth": [
+      false,
+      true
+    ],
+    "thermal-well": [
+      true,
+      true
+    ],
+    "lux-office": [
+      true,
+      true
+    ],
+    "noise-well": [
+      false,
+      true
+    ],
+    "co2-2pt-stricter": [
+      true,
+      true
+    ],
+    "pm25": [
+      true,
+      true
+    ],
+    "pm10": [
+      true,
+      true
+    ],
+    "pm25-enhanced": [
+      false,
+      false
+    ],
+    "pm10-enhanced": [
+      false,
+      false
+    ],
+    "formaldehyde": [
+      true,
+      true
+    ],
+    "formaldehyde-enhanced": [
+      false,
+      false
+    ],
+    "benzene": [
+      true,
+      true
+    ],
+    "benzene-enhanced": [
+      false,
+      false
+    ],
+    "acetaldehyde-enhanced": [
+      true,
+      true
+    ],
+    "caprolactam-enhanced": [
+      true,
+      true
+    ],
+    "naphthalene-enhanced": [
+      true,
+      true
+    ],
+    "ozone": [
+      true,
+      true
+    ],
+    "co-office": [
+      true,
+      true
+    ],
+    "co": [
+      true,
+      true
+    ],
+    "co-enhanced": [
+      true,
+      true
+    ],
+    "no2-enhanced": [
+      true,
+      true
+    ],
+    "air-filtration-merv": [
+      false,
+      true
+    ],
+    "tvoc": [
+      true,
+      true
+    ],
+    "toluene": [
+      true,
+      true
+    ],
+    "humidity": [
+      true,
+      true
+    ],
+    "thermal-zone-size": [
+      true,
+      true
+    ],
+    "thermal-air-velocity": [
+      true,
+      true
+    ],
+    "thermal-kitchen-cap": [
+      true,
+      true
+    ],
+    "lobby-lux": [
+      true,
+      true
+    ],
+    "lighting-vlt": [
+      true,
+      true
+    ],
+    "lighting-glare-2pt": [
+      false,
+      false
+    ],
+    "lighting-glare-min": [
+      true,
+      true
+    ],
+    "lighting-cri-base": [
+      true,
+      false
+    ],
+    "reverb": [
+      true,
+      true
+    ],
+    "acoustic-lmax-cat3": [
+      false,
+      false
+    ],
+    "acoustic-cat3-dbc-1pt": [
+      false,
+      false
+    ]
+  }
+}

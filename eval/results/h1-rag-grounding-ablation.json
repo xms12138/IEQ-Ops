@@ -1,0 +1,340 @@
+{
+ "model": "deepseek-v4-flash",
+ "no_rag_accuracy": 0.43243243243243246,
+ "rag_accuracy": 0.7567567567567568,
+ "rows": [
+  {
+   "id": "co2-well",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "1-point threshold: **900 ppm** (or 500 ppm above outdoor levels).  \n2-point threshold: **750 ppm** (or 350 ppm above outdoor levels).\n\nFrom excerpt [1]:  \n\"900 ppm OR 500 ppm above outdoor levels 1(2 )\" and \"750 ppm OR 350 ppm above outdoor levels 2(3)\"."
+  },
+  {
+   "id": "ashrae-myth",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "No. The provided excerpts mention reducing CO2 below 800 ppm to decrease symptoms, but they do not state that ASHRAE 62.1 sets a 1000 ppm maximum indoor CO2 limit."
+  },
+  {
+   "id": "thermal-well",
+   "domain": "thermal",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "21\u201325 \u00b0C.\n\nFrom excerpt [1]: \u201cDry bulb temperature is between 70-77 \u00b0F(21-25 \u00b0C) for at least 90% of standard occupied hours.\u201d"
+  },
+  {
+   "id": "lux-office",
+   "domain": "lighting",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "320 lux.\n\nFrom excerpt [1]: \"Offices and classrooms: minimum 30 fc(320 lux) at task surface.\""
+  },
+  {
+   "id": "noise-well",
+   "domain": "acoustic",
+   "no_rag_grounded": false,
+   "rag_grounded": false,
+   "why": "gold_all=True myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "50 dBA (Leq).\n\nFrom excerpt [1], the 1-point tier row states:  \n\u201cAverage SPL (Leq) dBA 50 45 40 1(0.5)\u201d  \nIn that row, the Category 3 column is **50 dBA**."
+  },
+  {
+   "id": "co2-2pt-stricter",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "Yes. The 2-point CO\u2082 threshold is stricter (lower) than the 1-point threshold.\n\nFrom excerpt [3]:\n- 1-point threshold: **900 ppm** (or 500 ppm above outdoor levels)\n- 2-point threshold: **750 ppm** (or 350 ppm above outdoor levels)\n\nQuote: \u201cThreshold Points 900 ppm OR 500 ppm above outdoor levels 1(2 ) 750 ppm OR 350 ppm above outdoor levels 2(3)\u201d"
+  },
+  {
+   "id": "pm25",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "12 \u00b5g/m\u00b3.\n\nQuote from excerpt [1]: \"PM: 12 \u00b5g/m\u00b3 or lower.\" and \"1\" (indicating the 1-point threshold)."
+  },
+  {
+   "id": "pm10",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "30 \u00b5g/m\u00b3.\n\nQuote from excerpt [1]: \"PM 30 \u00b5g/m\u00b3 or lower. 1\" (referring to the 1-point threshold in the Particulate Matter Thresholds table)."
+  },
+  {
+   "id": "pm25-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": false,
+   "why": "gold_all=True myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "Under WELL v2 A08 Part 1, the enhanced PM2.5 thresholds are:\n\n- **12 \u00b5g/m\u00b3 or lower** for 1 point  \n- **10 \u00b5g/m\u00b3 or lower** for 2 points  \n\nThis comes from excerpt [1]:  \n**\u201cPM : 12 \u00b5g/m\u00b3 or lower. PM 30 \u00b5g/m\u00b3 or lower. 1 PM 10 \u00b5g/m\u00b3 or lower. PM 20 \u00b5g/m\u00b3 or lower. 2\u201d**\n\nSo the maximum PM2.5 concentration allowed under the enhanced threshold is **12 \u00b5g/m\u00b3** for the 1-point level, or **10 \u00b5g/m\u00b3** if targeting the 2-point level."
+  },
+  {
+   "id": "pm10-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": false,
+   "why": "gold_all=True myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "The maximum PM10 concentration is **30 \u00b5g/m\u00b3 or lower**.\n\nQuote from excerpt [1]:  \n**\u201cPM \u2026 30 \u00b5g/m\u00b3 or lower.\u201d**  \n\nThis appears in the A08 enhanced particulate matter thresholds table. A stricter 2-point threshold of **20 \u00b5g/m\u00b3 or lower** is also listed, but the maximum allowable PM10 concentration under the enhanced thresholds is **30 \u00b5g/m\u00b3**."
+  },
+  {
+   "id": "formaldehyde",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "50 \u00b5g/m\u00b3 or lower.\n\nExcerpt [1] states:  \n\"b. Formaldehyde (CAS 50-00-0): 50 \u00b5g/m\u00b3 or lower.\""
+  },
+  {
+   "id": "formaldehyde-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "50 \u00b5g/m\u00b3\n\nFrom excerpt [3]:  \n\u201cb. Formaldehyde (CAS 50-00-0): 50 \u00b5g/m\u00b3 or lower.\u201d"
+  },
+  {
+   "id": "benzene",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum benzene concentration is **10 \u00b5g/m\u00b3**.\n\nQuote from excerpt [1]: \"Benzene (CAS 71-43-2): 10 \u00b5g/m\u00b3 or lower.\""
+  },
+  {
+   "id": "benzene-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": false,
+   "why": "gold_all=True myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "10 \u00b5g/m\u00b3.\n\nFrom the provided excerpts:\n\n[2] \"Part 2 Meet Enhanced Thresholds for Organic Gases\"\n\n[3] \"a. Benzene (CAS 71-43-2): 10 \u00b5g/m\u00b3 or lower.\""
+  },
+  {
+   "id": "acetaldehyde-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum acetaldehyde concentration is **140 \u00b5g/m\u00b3**.\n\nQuote from excerpt [1]:  \n**\"a. Acetaldehyde: 140 \u00b5g/m\u00b3 or lower.\"**"
+  },
+  {
+   "id": "caprolactam-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "Not in the provided excerpts. The only caprolactam value shown is **2.2 \u00b5g/m\u00b3** in excerpt [1], which states \u201cCaprolactam: 2.2 \u00b5g/m\u00b3 or lower,\u201d but that excerpt is not identified as **A08 Part 2 (Enhanced Thresholds for Organic Gases)**. The Part 2 text in the provided excerpts refers to total VOC levels of 500 \u00b5g/m\u00b3, not a caprolactam limit."
+  },
+  {
+   "id": "naphthalene-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum naphthalene concentration is **9 \u00b5g/m\u00b3**.\n\nThis is stated in excerpt [1] under \"For All Spaces\": \"f. Naphthalene: 9 \u00b5g/m\u00b3 or lower.\""
+  },
+  {
+   "id": "ozone",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum ozone concentration is **100 \u00b5g/m\u00b3 [51 ppb]**.\n\nQuote from excerpt [2]:  \n\"*For All Spaces except Commercial Kitchen Spaces & Industrial: The following thresholds are met in occupiable spaces: ... b. Ozone: 100 \u00b5g/m\u00b3 [51 ppb] or lower.*\""
+  },
+  {
+   "id": "co-office",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "10 mg/m\u00b3 [9 ppm] or lower.\n\nFrom excerpt [1]: \"For All Spaces except Commercial Kitchen Spaces & Industrial: The following thresholds are met in occupiable spaces: a. Carbon monoxide: 10 mg/m\u00b3 [9 ppm] or lower.\""
+  },
+  {
+   "id": "co",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "34 mg/m\u00b3 (30 ppm) or lower.\n\nQuote from excerpt [3]:  \n\"Carbon monoxide: 34 mg/m\u00b3 [30 ppm] or lower.\"\n\nThis corresponds to the \u201cCommercial Kitchen Spaces & Industrial\u201d thresholds begun in excerpt [1] under \u201cPart 3 Meet Thresholds for Inorganic Gases.\u201d"
+  },
+  {
+   "id": "co-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "7 mg/m\u00b3 [6 ppm] or lower.\n\nExcerpt [1] states:  \n\"Part 3 Meet Enhanced Thresholds for Inorganic Gases ... For All Spaces: The following thresholds are met: a. Carbon monoxide: 7 mg/m\u00b3 [6 ppm] or lower.\""
+  },
+  {
+   "id": "no2-enhanced",
+   "domain": "airquality",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "40 \u00b5g/m\u00b3 [21 ppb] or lower.\n\nExcerpt: \"Carbon monoxide: 7 mg/m\u00b3 [6 ppm] or lower. b. Nitrogen dioxide: 40 \u00b5g/m\u00b3 [21 ppb] or lower.\""
+  },
+  {
+   "id": "air-filtration-merv",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "Not in the provided excerpts. The Option 2 (Filter maintenance) text in the excerpts only requires evidence of filter replacement according to manufacturer\u2019s recommendation; it does not specify a minimum PM removal rating. The 70% / MERV 8 statement appears elsewhere in the excerpts, not under A12 Part 1 Option 2."
+  },
+  {
+   "id": "tvoc",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum total VOC (TVOC) concentration is **500 \u00b5g/m\u00b3**.\n\nFrom excerpt [1]:  \n\"Data covering at least the previous one month demonstrate total VOC levels of 500 \u00b5g/m\u00b3 or lower for at least 90% of regularly occupied hours for all sensors.\""
+  },
+  {
+   "id": "toluene",
+   "domain": "airquality",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "300 \u00b5g/m\u00b3\n\nFrom excerpt [2]: \"g. Toluene: 300 \u00b5g/m\u00b3 or lower.\"\n\nAlso from excerpt [3]: \"c. Toluene (CAS 108-88-3): 300 \u00b5g/m\u00b3 or lower.\""
+  },
+  {
+   "id": "humidity",
+   "domain": "thermal",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "30% and 60%.\n\nFrom excerpt [1]:\n\u201cThe mechanical system has the capability of maintaining relative humidity between 30% and 60% at all times by adding or removing moisture from the air.\u201d"
+  },
+  {
+   "id": "thermal-zone-size",
+   "domain": "thermal",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum size is **60 m\u00b2** (or 10 occupants, whichever is larger).\n\nExcerpt [1]:  \n\"b. The maximum size of each thermal zone is 650 ft\u00b2(60 m\u00b2) or 10 occupants, whichever is larger.\""
+  },
+  {
+   "id": "thermal-air-velocity",
+   "domain": "thermal",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "not in the provided excerpts\n\nThe only designed air velocity given in the excerpts is a general limit of \"40 fpm (0.2 m/s) at 5.6 ft (1.7 m) above the floor\" [1]. However, the provision allowing occupant-controlled elevated air speed to extend the maximum comfort temperature [3] does not specify a maximum air velocity for that elevated air speed condition."
+  },
+  {
+   "id": "thermal-kitchen-cap",
+   "domain": "thermal",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum operative temperature permitted is **27 \u00b0C**.\n\nExcerpt [1] states:  \n\u201cThe operative temperature in the kitchen does not exceed 80 \u00b0F(27 \u00b0C).\u201d"
+  },
+  {
+   "id": "lobby-lux",
+   "domain": "lighting",
+   "no_rag_grounded": false,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "110 lux (10 fc) at floor level.\n\nExcerpt: \"Lobby, atrium and transition (including corridor and outdoor pathways): minimum 10 fc(110 lux) at floor level.\""
+  },
+  {
+   "id": "lighting-vlt",
+   "domain": "lighting",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "Minimum VLT required is **greater than 40%**.\n\nExcerpt [1] states:  \n\"Visible light transmittance (VLT) is greater than 40%.\""
+  },
+  {
+   "id": "lighting-glare-2pt",
+   "domain": "lighting",
+   "no_rag_grounded": false,
+   "rag_grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum luminaire luminance permitted under the higher (2-point) compliance option is **6,000 cd/m\u00b2**.\n\nQuote from Excerpt [1]:  \n**\"c. Luminance that does not exceed 6,000 cd/m at any angle between 45 and 90 degrees from nadir.\"**"
+  },
+  {
+   "id": "lighting-glare-min",
+   "domain": "lighting",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The maximum UGR required under the WELL Core compliance floor is **19** or lower.\n\nFrom excerpt [1]:  \n**\"a. Unified Glare Rating (UGR) of 19 or lower.\"**  \nAnd the accompanying WELL Core Guidance: **\"Meet these requirements in non-leased spaces.\"**"
+  },
+  {
+   "id": "lighting-cri-base",
+   "domain": "lighting",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "The minimum CRI (Ra) required is **80**.\n\nFrom excerpt [2], for **All Spaces except Circulation Areas**:\n> \"b. CRI \u2265 80 with R9 \u2265 50.\"\n\nFrom excerpt [1], for **Circulation Areas**:\n> \"a. CRI \u2265 80.\"\n\nTherefore, the base color-rendering compliance allows a minimum CRI (Ra) of **80**."
+  },
+  {
+   "id": "reverb",
+   "domain": "acoustic",
+   "no_rag_grounded": true,
+   "rag_grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "n_chunks": 5,
+   "answer": "0.6 seconds.\n\nExcerpt [1] states: \"Areas for learning and conferencing \u2014 v < 10,000 ft (280 m) \u2014 t \u2264 0.6\""
+  },
+  {
+   "id": "acoustic-lmax-cat3",
+   "domain": "acoustic",
+   "no_rag_grounded": false,
+   "rag_grounded": false,
+   "why": "gold_all=True myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "Under the higher (3-point / 1.5-point) achievement tier, the maximum instantaneous Max SPL (LMax, dBA) for Category 3 is **55 dBA**.\n\nThis comes from excerpt [1], which lists for the \u201c3(1.5)\u201d points tier:\n\u201cMax SPL (LMax)  \ndBA  \n55  50  45\u201d  \nwith the three columns corresponding to Category 3, Category 2, and Category 1 respectively.\n\nExcerpt [2] clarifies that \u201cCategory 3 - Open areas for concentration, spaces with PA systems, and areas for dining.\u201d"
+  },
+  {
+   "id": "acoustic-cat3-dbc-1pt",
+   "domain": "acoustic",
+   "no_rag_grounded": false,
+   "rag_grounded": false,
+   "why": "gold_all=True myth_asserted=True",
+   "n_chunks": 5,
+   "answer": "The maximum Average SPL (Leq) in dBC for Category 3 at the 1-point tier is **70 dBC**.\n\nFrom the table in Excerpt [1], under the \u201c1(0.5)\u201d point tier:\n- \u201cAverage SPL (Leq) \u2026 dBC\u201d values are listed as **70** for Category 3, 65 for Category 2, and 60 for Category 1.\n\nExcerpt [2] defines Category 3 as \u201cOpen areas for concentration, spaces with PA systems, and areas for dining.\u201d"
+  }
+ ]
+}

@@ -123,13 +123,15 @@ void loop() {
   int light = readLight();
   int sound = readSoundPeak();
 
-  // Build the JSON with Arduino String — float formatting that works on the SAMD
-  // core without dtostrf (an AVR libc helper the Cortex-M0+ core does not expose).
-  String payload = "{\"co2\":" + String(lastCo2, 1)
-                 + ",\"temperature\":" + String(lastTemp, 2)
-                 + ",\"humidity\":" + String(lastHum, 1)
-                 + ",\"light_raw\":" + String(light)
-                 + ",\"sound_raw\":" + String(sound) + "}";
+  char co2Str[12], tStr[12], hStr[12];
+  dtostrf(lastCo2,  0, 1, co2Str);
+  dtostrf(lastTemp, 0, 2, tStr);
+  dtostrf(lastHum,  0, 1, hStr);
+
+  char payload[160];
+  snprintf(payload, sizeof(payload),
+    "{\"co2\":%s,\"temperature\":%s,\"humidity\":%s,\"light_raw\":%d,\"sound_raw\":%d}",
+    co2Str, tStr, hStr, light, sound);
 
   mqttClient.beginMessage(MQTT_TOPIC);
   mqttClient.print(payload);

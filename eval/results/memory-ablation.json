@@ -1,0 +1,334 @@
+{
+  "macro_lift": 1.0,
+  "rows": [
+    {
+      "task_id": "L3-recur-co2-damper",
+      "domain": "airquality",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1",
+        "S2"
+      ],
+      "shape_on": [
+        "S1",
+        "S2"
+      ],
+      "detail": {
+        "gold": [
+          "damper"
+        ],
+        "verdict": "missed",
+        "goals_off": [
+          "Diagnose why CO2 is at 1300 ppm against the 900 ppm WELL v2 limit and propose a concrete remediation to restore acceptable indoor air quality.",
+          "Assess whether the ventilation remediation proposed in #{S1.diagnosis} would push room temperature or draught conditions outside the thermal comfort band."
+        ],
+        "goals_on": [
+          "Diagnose the elevated CO2 of 1300 ppm in R1, explicitly investigating whether the outdoor-air damper is stuck and recirculating stale air rather than occupant load, and propose a concrete remediation to restore CO2 below 900 ppm.",
+          "Assess whether the ventilation remediation proposed in #S1.diagnosis would push R1 out of the thermal comfort band or create cold draughts."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-thermal-solar",
+      "domain": "thermal",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1",
+        "S2"
+      ],
+      "detail": {
+        "gold": [
+          "solar",
+          "blind"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of the reported 29.0°C indoor temperature exceeding the 21-25°C WELL v2 Thermal Comfort T01 / ASHRAE 55-2013 comfort range and propose a concrete remediation to restore compliant thermal conditions."
+        ],
+        "goals_on": [
+          "Diagnose the 29.0°C temperature exceedance against the 21–25°C comfort band, explicitly investigating west-facing solar gain and whether blinds or glazing are failing to reject the afternoon solar load, and propose a concrete remediation.",
+          "Assess whether the proposed solar-gain mitigation from #S1.diagnosis (e.g., closing blinds to reduce west-facing solar load) would reduce daylight illuminance below the lighting comfort band."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-acoustic-fan",
+      "domain": "acoustic",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1"
+      ],
+      "detail": {
+        "gold": [
+          "fan",
+          "imbalanc",
+          "unbalanc",
+          "rebalanc"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of the background noise level of 68 dBA exceeding the 50 dBA WELL v2 Sound S02 maximum and propose a concrete remediation to reduce it to within the limit."
+        ],
+        "goals_on": [
+          "Diagnose the elevated background noise of 68 dBA against the WELL v2 S02 maximum noise level, investigate an unbalanced HVAC supply fan inside the room as the likely source, and propose concrete acoustic remediation to bring levels back under 50 dBA."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-co2-allhands",
+      "domain": "airquality",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1",
+        "S2"
+      ],
+      "shape_on": [
+        "S1",
+        "S2"
+      ],
+      "detail": {
+        "gold": [
+          "all-hands",
+          "pre-empt"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of the CO2 level at 1250 ppm versus the 900 ppm limit and propose a concrete ventilation remediation to restore compliance.",
+          "Assess whether the ventilation remediation proposed in #S1.diagnosis would cause unacceptable thermal discomfort (e.g., temperature drop or cold draughts)."
+        ],
+        "goals_on": [
+          "Diagnose the CO2 elevation to 1250 ppm in R3, specifically whether the recurring 14:00 all-hands meeting drives occupancy beyond design causing the spike, and propose a concrete remediation leveraging pre-emptive ventilation 30 minutes before the meeting to maintain CO2 <= 900 ppm.",
+          "Assess whether the ventilation remediation proposed in #{S1.diagnosis} would drive room temperature outside the thermal comfort band and create cold draughts during the pre-emptive ventilation period."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-co2-damper-R3",
+      "domain": "airquality",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1",
+        "S2"
+      ],
+      "shape_on": [
+        "S1",
+        "S2"
+      ],
+      "detail": {
+        "gold": [
+          "damper"
+        ],
+        "verdict": "missed",
+        "goals_off": [
+          "Diagnose the cause of the elevated CO2 level (1500 ppm vs the 900 ppm WELL threshold) and propose a concrete ventilation remediation to restore compliance.",
+          "Assess whether the ventilation remediation proposed in #S1.diagnosis would push the zone outside thermal comfort limits through temperature drop or draught."
+        ],
+        "goals_on": [
+          "Diagnose the elevated CO2 in zone R3 (1500 ppm vs the 900 ppm WELL limit), explicitly investigate the outdoor-air damper for a stuck or jammed linkage as the prior similar case found, and propose a concrete remediation to restore adequate outdoor-air ventilation.",
+          "Assess whether the remediation proposed in #S1.diagnosis (restoring outdoor-air ventilation) would drive zone R3 temperature outside the thermal comfort band or create cold draughts."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-co2-dcv",
+      "domain": "airquality",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1",
+        "S2"
+      ],
+      "shape_on": [
+        "S1",
+        "S2"
+      ],
+      "detail": {
+        "gold": [
+          "sensor",
+          "drift"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of elevated CO2 (1420 ppm exceeding the WELL v2 900 ppm threshold) and propose a concrete remediation to restore CO2 compliance.",
+          "Assess whether the ventilation remediation proposed in #S1.diagnosis would cause indoor temperature to fall outside the thermal comfort band or create cold draughts."
+        ],
+        "goals_on": [
+          "Diagnose the high CO2 as likely caused by a drifted CO2 sensor in the demand-controlled ventilation loop that under-reads and throttles outdoor air, and propose recalibrating or correcting that sensor to restore CO2 to ≤900 ppm.",
+          "Assess whether the ventilation changes proposed in #S1.diagnosis (increased outdoor air) could cause unacceptable thermal discomfort, such as cold draughts or temperature excursions outside the comfort band."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-thermal-solar-east",
+      "domain": "thermal",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1",
+        "S2"
+      ],
+      "detail": {
+        "gold": [
+          "solar"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of the 28°C operative temperature and recommend a remediation to bring it back within the 21-25°C comfort band."
+        ],
+        "goals_on": [
+          "Diagnose the 28.0°C operative temperature violation, explicitly investigating whether direct solar gain through unshaded east-facing glazing is the driver, and recommend closing the east-facing blinds as remediation.",
+          "Assess whether the east-facing blind closure recommended in #{S1}.diagnosis causes illuminance to fall below WELL lighting thresholds in the affected zone."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-thermal-reheat",
+      "domain": "thermal",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1"
+      ],
+      "detail": {
+        "gold": [
+          "reheat",
+          "valve"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of the 27.0°C operative temperature violation and propose a concrete remediation to restore conditions within the 21–25°C comfort band."
+        ],
+        "goals_on": [
+          "Diagnose the overheating against the 21-25 C operative temperature band, explicitly checking the VAV box reheat valve for a stuck-open condition, and propose a concrete remediation."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-lighting-blind",
+      "domain": "lighting",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1"
+      ],
+      "detail": {
+        "gold": [
+          "blind"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the low work-plane illuminance (180 lux vs 300 lux minimum) and propose a concrete lighting remediation to restore compliance."
+        ],
+        "goals_on": [
+          "Diagnose the low work-plane illuminance (180 lux against the required >=300 lux), specifically whether motorised blinds are stuck closed after a controller fault and blocking daylight, and propose a concrete remediation."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-lighting-lamp",
+      "domain": "lighting",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1"
+      ],
+      "detail": {
+        "gold": [
+          "lamp",
+          "replace"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the cause of low illuminance (210 lux) at the work plane and propose a concrete remediation to restore illuminance to at least 300 lux."
+        ],
+        "goals_on": [
+          "Diagnose the low illuminance (210 lux vs. required 300 lux) at the work plane, specifically determining whether aged LED fixtures with lamp lumen depreciation are the cause, and propose a concrete remediation."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-acoustic-fan-bearing",
+      "domain": "acoustic",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1"
+      ],
+      "detail": {
+        "gold": [
+          "fan",
+          "bearing"
+        ],
+        "verdict": "missed",
+        "goals_off": [
+          "Diagnose the source of the elevated background noise level (58 dBA measured against a 45 dBA limit) and recommend a concrete acoustic remediation to restore compliance with WELL v2 S02."
+        ],
+        "goals_on": [
+          "Diagnose elevated background noise (58 dBA vs 45 dBA limit) with specific attention to the previously identified worn AHU fan bearing tonal rumble, and determine a remediation that achieves the ≤45 dBA target."
+        ]
+      }
+    },
+    {
+      "task_id": "L3-recur-acoustic-partition",
+      "domain": "acoustic",
+      "recall_off": false,
+      "recall_on": true,
+      "lift": 1,
+      "shape_off": [
+        "S1"
+      ],
+      "shape_on": [
+        "S1"
+      ],
+      "detail": {
+        "gold": [
+          "partition"
+        ],
+        "verdict": "met",
+        "goals_off": [
+          "Diagnose the source of the elevated background noise (55 dBA vs the 45 dBA limit) and propose a concrete remediation to restore compliance with WELL v2 S02 Cat 3."
+        ],
+        "goals_on": [
+          "Diagnose the reported background noise exceedance (55 dBA vs <=45 dBA) and propose a concrete remediation, specifically investigating whether speech intrusion through a demountable partition with a low STC rating is the source."
+        ]
+      }
+    }
+  ]
+}

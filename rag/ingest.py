@@ -214,7 +214,9 @@ def apply_contextual_prefixes(chunks: list[dict], doc_by_source: dict[str, str])
     log.info("contextual_prefixes", targets=len(targets), applied=applied)
 
 
-def ingest(device: str, fp16: bool, source_mode: str, contextual: bool) -> None:
+def ingest(
+    device: str, fp16: bool, source_mode: str, contextual: bool, collection: str = COLLECTION
+) -> None:
     from qdrant_client import QdrantClient
     from qdrant_client.models import Distance, PointStruct, VectorParams
 
@@ -231,14 +233,14 @@ def ingest(device: str, fp16: bool, source_mode: str, contextual: bool) -> None:
     )
 
     client = QdrantClient(url=settings.qdrant_url)
-    if client.collection_exists(COLLECTION):
-        client.delete_collection(COLLECTION)
+    if client.collection_exists(collection):
+        client.delete_collection(collection)
     client.create_collection(
-        collection_name=COLLECTION,
+        collection_name=collection,
         vectors_config=VectorParams(size=EMBED_DIM, distance=Distance.COSINE),
     )
     client.upsert(
-        collection_name=COLLECTION,
+        collection_name=collection,
         points=[
             PointStruct(
                 id=c["chunk_idx"],
@@ -254,9 +256,9 @@ def ingest(device: str, fp16: bool, source_mode: str, contextual: bool) -> None:
             for i, c in enumerate(chunks)
         ],
     )
-    count = client.count(COLLECTION).count
-    log.info("ingest_done", collection=COLLECTION, points=count)
-    print(f"ingested {count} chunks into '{COLLECTION}'  (dim={EMBED_DIM}, cosine)")
+    count = client.count(collection).count
+    log.info("ingest_done", collection=collection, points=count)
+    print(f"ingested {count} chunks into '{collection}'  (dim={EMBED_DIM}, cosine)")
 
 
 def main() -> None:
@@ -275,8 +277,21 @@ def main() -> None:
         action="store_true",
         help="add contextual-retrieval prefixes to real-corpus chunks (node #10, v4-flash)",
     )
+    ap.add_argument(
+        "--collection",
+        default=COLLECTION,
+        help="Qdrant collection name (default: the production collection). Use a side "
+        "collection (e.g. ieq_standards_ctx) to build a contextual-prefix variant for "
+        "an eval ablation without touching the production corpus.",
+    )
     args = ap.parse_args()
-    ingest(args.device, fp16=not args.no_fp16, source_mode=args.source, contextual=args.contextual)
+    ingest(
+        args.device,
+        fp16=not args.no_fp16,
+        source_mode=args.source,
+        contextual=args.contextual,
+        collection=args.collection,
+    )
 
 
 if __name__ == "__main__":

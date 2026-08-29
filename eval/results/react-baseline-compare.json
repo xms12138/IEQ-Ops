@@ -1,0 +1,78 @@
+{
+  "n_per_task": 5,
+  "macro_gap_pp": 6.7,
+  "rows": [
+    {
+      "task_id": "L3-e2e-co2",
+      "domain": "airquality",
+      "n": 5,
+      "system_success": 1.0,
+      "baseline_success": 1.0,
+      "gap_pp": 0.0,
+      "system_hit": 1.0,
+      "baseline_hit": 1.0,
+      "baseline_no_finish": 0,
+      "detail": {}
+    },
+    {
+      "task_id": "L3-e2e-thermal",
+      "domain": "thermal",
+      "n": 5,
+      "system_success": 1.0,
+      "baseline_success": 1.0,
+      "gap_pp": 0.0,
+      "system_hit": null,
+      "baseline_hit": null,
+      "baseline_no_finish": 0,
+      "detail": {}
+    },
+    {
+      "task_id": "L3-e2e-lighting",
+      "domain": "lighting",
+      "n": 5,
+      "system_success": 1.0,
+      "baseline_success": 0.6,
+      "gap_pp": 40.0,
+      "system_hit": 1.0,
+      "baseline_hit": 1.0,
+      "baseline_no_finish": 0,
+      "detail": {}
+    },
+    {
+      "task_id": "L3-e2e-acoustic",
+      "domain": "acoustic",
+      "n": 5,
+      "system_success": 1.0,
+      "baseline_success": 0.8,
+      "gap_pp": 20.0,
+      "system_hit": null,
+      "baseline_hit": null,
+      "baseline_no_finish": 0,
+      "detail": {}
+    },
+    {
+      "task_id": "L3-e2e-co2-hard1600",
+      "domain": "airquality",
+      "n": 5,
+      "system_success": 1.0,
+      "baseline_success": 1.0,
+      "gap_pp": 0.0,
+      "system_hit": 1.0,
+      "baseline_hit": 1.0,
+      "baseline_no_finish": 0,
+      "detail": {}
+    },
+    {
+      "task_id": "L3-e2e-co2-hardwell",
+      "domain": "airquality",
+      "n": 5,
+      "system_success": 0.8,
+      "baseline_success": 1.0,
+      "gap_pp": -20.0,
+      "system_hit": 0.6,
+      "baseline_hit": 1.0,
+      "baseline_no_finish": 0,
+      "detail": {}
+    }
+  ]
+}

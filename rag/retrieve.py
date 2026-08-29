@@ -216,6 +216,64 @@ class RetrievalStack:
             ).to(self.device)
             return self._rr_model(**inp).logits.view(-1).float().tolist()  # type: ignore[no-any-return]
 
+    def retrieve_with_stages(
+        self, query: str, domain: str, final_k: int = FINAL_TOP_K
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Eval-only instrumentation (never called from mcp-rag-server / production):
+        exposes the SAME pipeline as retrieve() but returns each stage's ranked
+        candidate list (as chunk_idx/source dicts), so a bench script can compute
+        recall@k / MRR / nDCG@k per stage without re-implementing the fusion/rerank
+        internals — the RAG pipeline-ablation experiment (dissertation fig-11/fig-12).
+        Stages: 'dense' (BGE-M3 + Qdrant alone), 'sparse' (BM25 alone), 'hybrid'
+        (RRF fusion of the two, pre-rerank), 'reranked' (the production final output).
+        No LLM; identical retrieval math to retrieve(), just with the intermediate
+        rankings surfaced instead of discarded."""
+        if not self._docs or self._bm25 is None:
+            return {"dense": [], "sparse": [], "hybrid": [], "reranked": []}
+
+        def _rows(positions: list[int]) -> list[dict[str, Any]]:
+            return [
+                {"source": self._docs[p]["source"], "chunk_idx": self._docs[p]["chunk_idx"]}
+                for p in positions
+            ]
+
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+        domain_filter = Filter(must=[FieldCondition(key="domain", match=MatchValue(value=domain))])
+        q_vec = self._embed(query)
+        hits = self._client.query_points(
+            collection_name=self.collection,
+            query=q_vec,
+            query_filter=domain_filter,
+            limit=DENSE_TOP_K,
+            with_payload=False,
+        ).points
+        dense_pos = [self._pos_by_id[h.id] for h in hits if h.id in self._pos_by_id]
+
+        bm_scores = self._bm25.get_scores(tokenize(query))
+        domain_pos = [i for i, d in enumerate(self._docs) if d["domain"] == domain]
+        sparse_pos = sorted(domain_pos, key=lambda i: bm_scores[i], reverse=True)[:SPARSE_TOP_K]
+
+        fused = rrf(dense_pos, sparse_pos)
+        cand_pos = sorted(fused, key=lambda i: fused[i], reverse=True)[: self.candidate_top_k]
+
+        reranked_pos: list[int] = []
+        if cand_pos:
+            scores = self._rerank_scores(query, [self._docs[i]["embed_text"] for i in cand_pos])
+            reranked_pos = [
+                p
+                for p, _ in sorted(
+                    zip(cand_pos, scores, strict=True), key=lambda t: t[1], reverse=True
+                )
+            ]
+
+        return {
+            "dense": _rows(dense_pos[:final_k]),
+            "sparse": _rows(sparse_pos[:final_k]),
+            "hybrid": _rows(cand_pos[:final_k]),
+            "reranked": _rows(reranked_pos[:final_k]),
+        }
+
     def retrieve(self, query: str, domain: str, final_k: int = FINAL_TOP_K) -> list[RetrievedChunk]:
         """Dual-path recall + rerank, restricted to one domain slice."""
         if not self._docs or self._bm25 is None:

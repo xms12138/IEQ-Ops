@@ -13,8 +13,8 @@ instead — the scenario would silently test the wrong domain. Keeping CO2 (and
 every other sensor) at its in-band default isolates the domain under test.
 
 Phase 2 scope: only SUDDEN-SPIKE scenarios (a value already past the threshold
-at t=0). Gradual degradation and recurring patterns (which need Phase 3 memory
-to be meaningful) come later — see EXECUTION_PLAN.md.
+at t=0). Gradual degradation and recurring patterns (which need the memory
+layer to be meaningful) are a later addition.
 
 Only the airquality scenario runs the full closed loop (actuator + Verifier);
 the other three have no actuator until Phase 5, so the demo runner shows them

@@ -1,0 +1,59 @@
+{
+  "rows": [
+    {
+      "node": "specialist.grade",
+      "cap": "grade",
+      "metric": "error_rate",
+      "thresh": 0.15,
+      "cmp": ">",
+      "action": "escalate→V3",
+      "n_tasks": 6,
+      "value": 0.0,
+      "escalate": false
+    },
+    {
+      "node": "specialist.generate",
+      "cap": "generate",
+      "metric": "hit_only",
+      "thresh": 0.85,
+      "cmp": "<",
+      "action": "escalate→V3",
+      "n_tasks": 2,
+      "value": 1.0,
+      "escalate": false
+    },
+    {
+      "node": "specialist.rewrite",
+      "cap": "rewrite",
+      "metric": "gold_mrr_after",
+      "thresh": 0.7,
+      "cmp": "<",
+      "action": "escalate→flash",
+      "n_tasks": 2,
+      "value": 1.0,
+      "escalate": false
+    },
+    {
+      "node": "critic.validate",
+      "cap": "critic",
+      "metric": "error_rate",
+      "thresh": 0.15,
+      "cmp": ">",
+      "action": "escalate→flash",
+      "n_tasks": 5,
+      "value": 0.0,
+      "escalate": false
+    },
+    {
+      "node": "planner.plan",
+      "cap": "planner",
+      "metric": "dag_validity",
+      "thresh": 0.9,
+      "cmp": "<",
+      "action": "keep V3 (downgrade only if well above)",
+      "n_tasks": 4,
+      "value": 1.0,
+      "escalate": false
+    }
+  ]
+}

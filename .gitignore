@@ -1,15 +1,41 @@
-# ---- Project-specific (per CLAUDE.md hard constraints) ----
+# ---- Project-specific ----
 .env
 .env.*
 !.env.example
 rag/corpus/
 eval/reports/
 
+# Author-only working docs (session notes, roadmap, personal dev log) — not part
+# of the public repo. eval/results/ is the curated, tracked subset of eval/reports/.
+CLAUDE.md
+DEVLOG.md
+EXECUTION_PLAN.md
+project.md
+.claude/
+
+# Dissertation text and figures — published separately, not in this repo.
+/Essay/
+/Essay.zip
+/dissertation.zip
+
+# Ad-hoc dissertation experiment scripts — the reusable harness lives in eval/;
+# these one-off analysis scripts stay local. See eval/results/README.md for the
+# result data they produced.
+ops/scripts/autonomy_experiment.py
+ops/scripts/closedbook_prescreen.py
+ops/scripts/e2e_closed_loop_experiment.py
+ops/scripts/episodic_recall_experiment.py
+ops/scripts/h1_multiseed_experiment.py
+ops/scripts/h1_rag_ablation.py
+ops/scripts/h2a_diagnosis_accuracy.py
+ops/scripts/h2a_specificity_experiment.py
+ops/scripts/ieq_bench_aggregate.py
+ops/scripts/judge_validity_experiment.py
+ops/scripts/retrieval_pipeline_ablation.py
+
 # ---- Secrets / local config ----
 *.key
 *.pem
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
 # WiFi password — fill locally, never commit (.gitignore has no inline comments)
 sensing/hardware/mkr1010_node/arduino_secrets.h
 
@@ -52,7 +78,8 @@ htmlcov/
 data/
 postgres_data/
 qdrant_data/
-var/            # simulator state (sim_state.json) + other runtime files — never committed
+# simulator state (sim_state.json) + other runtime files — never committed
+var/
 
 # ---- OS / editor ----
 .DS_Store
@@ -61,3 +88,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.wav
+
+# 论文出稿构建产物（见 Essay/build/README.md）
+Essay/build/.venv/
+Essay/build/out/

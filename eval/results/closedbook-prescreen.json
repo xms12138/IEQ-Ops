@@ -1,0 +1,302 @@
+{
+ "model": "deepseek-v4-flash",
+ "closed_book_accuracy": 0.43243243243243246,
+ "rows": [
+  {
+   "id": "co2-well",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "950 ppm (1 point) and 750 ppm (2 points), under WELL v2 Air, Feature A03 Ventilation Design.",
+   "finish": "stop"
+  },
+  {
+   "id": "ashrae-myth",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "No. ASHRAE Standard 62.1 does not set a maximum indoor CO2 concentration limit of 1000 ppm; it sets ventilation rates for acceptable indoor air quality, and CO2 is used only as a surrogate for occupant-generated bioeffluents, not as a compliance limit.",
+   "finish": "stop"
+  },
+  {
+   "id": "thermal-well",
+   "domain": "thermal",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "21\u201325 \u00b0C.\n\n**Clause:** WELL v2 Feature T01 Thermal Comfort, Part 1: Thermal Performance, Option 2 (Long-term Thermal Data).",
+   "finish": "stop"
+  },
+  {
+   "id": "lux-office",
+   "domain": "lighting",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "500 lux, per EN 12464-1:2021, Table 5.26 (general office tasks \u2014 writing, typing, reading).",
+   "finish": "stop"
+  },
+  {
+   "id": "noise-well",
+   "domain": "acoustic",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "**40 Leq, dBA.**\n\nPer WELL v2, Feature S02 (Limit Background Noise Levels), Table S02-1, Part 1: Background Noise Levels. Category 3 (open areas for concentration) is limited to \u2264 40 Leq (dBA) for the base 1-point achievement tier.",
+   "finish": "stop"
+  },
+  {
+   "id": "co2-2pt-stricter",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "Yes. Under WELL v2 Feature A03: Ventilation Design, the 2-point achievement requires a stricter CO2 threshold of \u2264 550 ppm, while the 1-point requires \u2264 800 ppm.",
+   "finish": "stop"
+  },
+  {
+   "id": "pm25",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "12 \u03bcg/m\u00b3. This is specified in WELL v2 Feature A01 (Air Quality), Part 2: Enhanced Air Quality (Optimisation), 1-point threshold.",
+   "finish": "stop"
+  },
+  {
+   "id": "pm10",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "50 \u00b5g/m\u00b3. This is specified in WELL v2 A01 Part 1: Base Particulate Matter Thresholds.",
+   "finish": "stop"
+  },
+  {
+   "id": "pm25-enhanced",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "10 \u00b5g/m\u00b3.\n\nThis is specified in WELL v2 feature A08 Part 1 (Enhanced Air Quality), which sets the maximum PM2.5 threshold at 10 \u00b5g/m\u00b3.",
+   "finish": "stop"
+  },
+  {
+   "id": "pm10-enhanced",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "30 \u00b5g/m\u00b3. This is required by WELL v2 A08 Part 1, which mandates meeting the enhanced PM thresholds listed in A01 Part 1 (Table A01-1).",
+   "finish": "stop"
+  },
+  {
+   "id": "formaldehyde",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "50 \u00b5g/m\u00b3.\n\nClause: WELL v2 A04 Part 2, Option 1 (Base Laboratory-Based VOC Test), Table \"Maximum Allowable VOC Concentrations.\"",
+   "finish": "stop"
+  },
+  {
+   "id": "formaldehyde-enhanced",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "",
+   "finish": "length"
+  },
+  {
+   "id": "benzene",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "30 \u00b5g/m\u00b3 \u2014 per WELL v2 A04 Part 2 Option 1, Base Laboratory-Based VOC Test limits.",
+   "finish": "stop"
+  },
+  {
+   "id": "benzene-enhanced",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "3 \u00b5g/m\u00b3. This is stated in WELL v2, Feature A08 (Enhanced Air Quality), Part 2 (Meet Enhanced Thresholds for Organic Gases).",
+   "finish": "stop"
+  },
+  {
+   "id": "acetaldehyde-enhanced",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "50 \u00b5g/m\u00b3. This is specified in WELL v2 Feature A08 (Organic Gases), Part 2 (Enhanced Thresholds for Organic Gases).",
+   "finish": "stop"
+  },
+  {
+   "id": "caprolactam-enhanced",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "70 \u00b5g/m\u00b3 (WELL v2 A08 Part 2, Table 2).",
+   "finish": "stop"
+  },
+  {
+   "id": "naphthalene-enhanced",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "9 \u00b5g/m\u00b3. \n\nThis is specified in WELL v2, Feature A08 (Organic Gases), Part 2 (Enhanced Thresholds for Organic Gases), Table A08-2.",
+   "finish": "stop"
+  },
+  {
+   "id": "ozone",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "100 \u00b5g/m\u00b3 (WELL v2 A01 Fundamental Air Quality).",
+   "finish": "stop"
+  },
+  {
+   "id": "co-office",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "9 ppm (10 mg/m3) \u2014 WELL v2 A01 Part 3.",
+   "finish": "stop"
+  },
+  {
+   "id": "co",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "29 ppm (35 mg/m3) \u2014 per WELL v2 A01 Part 3, Commercial Kitchen and Industrial Spaces threshold for carbon monoxide.",
+   "finish": "stop"
+  },
+  {
+   "id": "co-enhanced",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "9 ppm (10 mg/m\u00b3), per WELL v2 Feature A08 Part 3 (Enhanced Thresholds for Inorganic Gases).",
+   "finish": "stop"
+  },
+  {
+   "id": "no2-enhanced",
+   "domain": "airquality",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "",
+   "finish": "length"
+  },
+  {
+   "id": "air-filtration-merv",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "70%.\n\nWELL v2 A12 Part 1 Option 2 requires media filters to achieve a minimum reporting efficiency of **MERV 8** (or ISO 7), which per ASHRAE 52.2 mandates a minimum average removal efficiency of **70%** for particles in the 3\u201310 \u00b5m range.",
+   "finish": "stop"
+  },
+  {
+   "id": "tvoc",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "500 \u00b5g/m\u00b3 (micrograms per cubic meter).\n\nThis is the mandatory threshold in **WELL v2, Feature A01: Air Quality, Part 1 (Meet Volatile Organic Compound Thresholds)**, per Table A1 (Air Quality Thresholds).",
+   "finish": "stop"
+  },
+  {
+   "id": "toluene",
+   "domain": "airquality",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "300 \u03bcg/m\u00b3. This is specified in WELL v2 Feature A04 (Volatile Organic Compound reductions), Table A1, and the same value is referenced for the enhanced conditions under Feature A08 (Enhanced Material Safety).",
+   "finish": "stop"
+  },
+  {
+   "id": "humidity",
+   "domain": "thermal",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "30% to 50%.\n\nThis is required under WELL v2 Feature T01: Thermal Performance (a precondition within the Thermal Comfort concept).",
+   "finish": "stop"
+  },
+  {
+   "id": "thermal-zone-size",
+   "domain": "thermal",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "70 m\u00b2, per WELL v2 T06 Thermostat Control Part 1 (thermal zones no larger than 70 m\u00b2 or 10 occupants, whichever is greater).",
+   "finish": "stop"
+  },
+  {
+   "id": "thermal-air-velocity",
+   "domain": "thermal",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "0.8 m/s (160 fpm) at 1.7 m above the floor.\n\nThis is specified in **WELL v2 Feature T01: Thermal Performance, Part 2, Option 3 (Elevated Air Speed)**, which allows occupant-controlled elevated air speed to extend the maximum comfort temperature up to this maximum design air velocity at 1.7 m height.",
+   "finish": "stop"
+  },
+  {
+   "id": "thermal-kitchen-cap",
+   "domain": "thermal",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "32\u00b0C.",
+   "finish": "stop"
+  },
+  {
+   "id": "lobby-lux",
+   "domain": "lighting",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "150 lux \u2014 under WELL v2, Feature L02: Visual Acuity, \"Minimum Illuminance Levels\" for lobby, atrium and transition spaces at floor level.",
+   "finish": "stop"
+  },
+  {
+   "id": "lighting-vlt",
+   "domain": "lighting",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "40% (0.40).\n\nClause: WELL v2 Feature L05, \"Daylight Design Strategies,\" requires qualifying windows to have a Visible Light Transmittance (VLT) of at least 40%.",
+   "finish": "stop"
+  },
+  {
+   "id": "lighting-glare-2pt",
+   "domain": "lighting",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "3,000 cd/m\u00b2 \u2014 WELL v2 L04, Part 1 (Interior Lighting Glare Control), Option 1: Luminaire Luminance Limit, 2-point condition.",
+   "finish": "stop"
+  },
+  {
+   "id": "lighting-glare-min",
+   "domain": "lighting",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "19. This is required by WELL v2 Feature L04, Part 1: Glare Control for Regularly Occupied Spaces.",
+   "finish": "stop"
+  },
+  {
+   "id": "lighting-cri-base",
+   "domain": "lighting",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "80 (Ra), per WELL v2 L08 Electric Light Quality, Part 1: Color Rendering, Option 1.",
+   "finish": "stop"
+  },
+  {
+   "id": "reverb",
+   "domain": "acoustic",
+   "grounded": true,
+   "why": "gold_all=True myth_asserted=False",
+   "answer": "Under WELL v2, the maximum reverberation time for a learning and conferencing space (including small areas) is **0.6 seconds**.\n\nThis is specified in **Feature S04: Reverberation Time, Part 1 (Precondition)**.",
+   "finish": "stop"
+  },
+  {
+   "id": "acoustic-lmax-cat3",
+   "domain": "acoustic",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=True",
+   "answer": "50 dBA. This is found in WELL v2 Feature S02 Maximum Noise Levels, Part 2: Maximum Instantaneous Sound Levels (LMax), Table 1 for Category 3 (Open areas for concentration).",
+   "finish": "stop"
+  },
+  {
+   "id": "acoustic-cat3-dbc-1pt",
+   "domain": "acoustic",
+   "grounded": false,
+   "why": "gold_all=False myth_asserted=False",
+   "answer": "50 dBC (under WELL v2 S02 Maximum Noise Levels, Part 1: Limit Sound Levels, Table S02-1, Category 3: Open Areas for Concentration).",
+   "finish": "stop"
+  }
+ ]
+}

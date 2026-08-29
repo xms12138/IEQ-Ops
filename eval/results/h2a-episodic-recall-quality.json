@@ -1,0 +1,741 @@
+{
+  "n": 12,
+  "macro_recall@1": 0.5,
+  "macro_recall@3": 1.0,
+  "macro_mrr": 0.722,
+  "n_within_domain_confusions": 6,
+  "rows": [
+    {
+      "task_id": "L3-recur-co2-damper",
+      "domain": "airquality",
+      "rank_of_correct": 3,
+      "recall@1": false,
+      "recall@3": true,
+      "mrr": 0.3333333333333333,
+      "top1_task_id": "L3-recur-co2-dcv",
+      "top1_score": 0.9934,
+      "confused_with": "L3-recur-co2-dcv",
+      "ranked": [
+        [
+          "L3-recur-co2-dcv",
+          0.9934
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.9886
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.9846
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.9821
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6869
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6834
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.67
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6681
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6615
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6564
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6365
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6299
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-thermal-solar",
+      "domain": "thermal",
+      "rank_of_correct": 1,
+      "recall@1": true,
+      "recall@3": true,
+      "mrr": 1.0,
+      "top1_task_id": "L3-recur-thermal-solar",
+      "top1_score": 0.9989,
+      "confused_with": null,
+      "ranked": [
+        [
+          "L3-recur-thermal-solar",
+          0.9989
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.824
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.8158
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6998
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6966
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.6965
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6911
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6646
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.6521
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6508
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6434
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6415
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-acoustic-fan",
+      "domain": "acoustic",
+      "rank_of_correct": 1,
+      "recall@1": true,
+      "recall@3": true,
+      "mrr": 1.0,
+      "top1_task_id": "L3-recur-acoustic-fan",
+      "top1_score": 0.9963,
+      "confused_with": null,
+      "ranked": [
+        [
+          "L3-recur-acoustic-fan",
+          0.9963
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.8533
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.8503
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.6859
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6837
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6823
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6804
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6624
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6229
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6196
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6176
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6175
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-co2-allhands",
+      "domain": "airquality",
+      "rank_of_correct": 2,
+      "recall@1": false,
+      "recall@3": true,
+      "mrr": 0.5,
+      "top1_task_id": "L3-recur-co2-damper",
+      "top1_score": 0.9827,
+      "confused_with": "L3-recur-co2-damper",
+      "ranked": [
+        [
+          "L3-recur-co2-damper",
+          0.9827
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.9806
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.9793
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.9789
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6892
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6864
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.6815
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6797
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6669
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6621
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6319
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6251
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-co2-damper-R3",
+      "domain": "airquality",
+      "rank_of_correct": 3,
+      "recall@1": false,
+      "recall@3": true,
+      "mrr": 0.3333333333333333,
+      "top1_task_id": "L3-recur-co2-dcv",
+      "top1_score": 0.9936,
+      "confused_with": "L3-recur-co2-dcv",
+      "ranked": [
+        [
+          "L3-recur-co2-dcv",
+          0.9936
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.9866
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.9844
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.9798
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.687
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6812
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.6706
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6689
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6656
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.66
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6332
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6288
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-co2-dcv",
+      "domain": "airquality",
+      "rank_of_correct": 2,
+      "recall@1": false,
+      "recall@3": true,
+      "mrr": 0.5,
+      "top1_task_id": "L3-recur-co2-damper-R3",
+      "top1_score": 0.9894,
+      "confused_with": "L3-recur-co2-damper-R3",
+      "ranked": [
+        [
+          "L3-recur-co2-damper-R3",
+          0.9894
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.9884
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.9847
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.9833
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6885
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6797
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.672
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6717
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6683
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6618
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6416
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6337
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-thermal-solar-east",
+      "domain": "thermal",
+      "rank_of_correct": 1,
+      "recall@1": true,
+      "recall@3": true,
+      "mrr": 1.0,
+      "top1_task_id": "L3-recur-thermal-solar-east",
+      "top1_score": 0.9911,
+      "confused_with": null,
+      "ranked": [
+        [
+          "L3-recur-thermal-solar-east",
+          0.9911
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.988
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.8304
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.6702
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6681
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6671
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6665
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.6647
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6629
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6625
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6611
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6275
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-thermal-reheat",
+      "domain": "thermal",
+      "rank_of_correct": 2,
+      "recall@1": false,
+      "recall@3": true,
+      "mrr": 0.5,
+      "top1_task_id": "L3-recur-thermal-solar-east",
+      "top1_score": 0.995,
+      "confused_with": "L3-recur-thermal-solar-east",
+      "ranked": [
+        [
+          "L3-recur-thermal-solar-east",
+          0.995
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.9848
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.8235
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.67
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.6697
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6691
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.6681
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6645
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6642
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6632
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6603
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6296
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-lighting-blind",
+      "domain": "lighting",
+      "rank_of_correct": 1,
+      "recall@1": true,
+      "recall@3": true,
+      "mrr": 1.0,
+      "top1_task_id": "L3-recur-lighting-blind",
+      "top1_score": 0.9736,
+      "confused_with": null,
+      "ranked": [
+        [
+          "L3-recur-lighting-blind",
+          0.9736
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.9683
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6659
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6643
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6456
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.644
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6393
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6372
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6296
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6285
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.6248
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.617
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-lighting-lamp",
+      "domain": "lighting",
+      "rank_of_correct": 1,
+      "recall@1": true,
+      "recall@3": true,
+      "mrr": 1.0,
+      "top1_task_id": "L3-recur-lighting-lamp",
+      "top1_score": 0.9794,
+      "confused_with": null,
+      "ranked": [
+        [
+          "L3-recur-lighting-lamp",
+          0.9794
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.9747
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6757
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6714
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6512
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6495
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6467
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6397
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.637
+        ],
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.6362
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.6328
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.6157
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-acoustic-fan-bearing",
+      "domain": "acoustic",
+      "rank_of_correct": 1,
+      "recall@1": true,
+      "recall@3": true,
+      "mrr": 1.0,
+      "top1_task_id": "L3-recur-acoustic-fan-bearing",
+      "top1_score": 0.9872,
+      "confused_with": null,
+      "ranked": [
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.9872
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.986
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.8578
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.6818
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6786
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6755
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6728
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6605
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6541
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.6513
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6384
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6311
+        ]
+      ]
+    },
+    {
+      "task_id": "L3-recur-acoustic-partition",
+      "domain": "acoustic",
+      "rank_of_correct": 2,
+      "recall@1": false,
+      "recall@3": true,
+      "mrr": 0.5,
+      "top1_task_id": "L3-recur-acoustic-fan-bearing",
+      "top1_score": 0.9868,
+      "confused_with": "L3-recur-acoustic-fan-bearing",
+      "ranked": [
+        [
+          "L3-recur-acoustic-fan-bearing",
+          0.9868
+        ],
+        [
+          "L3-recur-acoustic-partition",
+          0.9858
+        ],
+        [
+          "L3-recur-acoustic-fan",
+          0.8547
+        ],
+        [
+          "L3-recur-co2-allhands",
+          0.676
+        ],
+        [
+          "L3-recur-co2-dcv",
+          0.6703
+        ],
+        [
+          "L3-recur-co2-damper",
+          0.6703
+        ],
+        [
+          "L3-recur-co2-damper-R3",
+          0.6676
+        ],
+        [
+          "L3-recur-thermal-solar-east",
+          0.6615
+        ],
+        [
+          "L3-recur-thermal-solar",
+          0.653
+        ],
+        [
+          "L3-recur-thermal-reheat",
+          0.6523
+        ],
+        [
+          "L3-recur-lighting-blind",
+          0.6348
+        ],
+        [
+          "L3-recur-lighting-lamp",
+          0.6311
+        ]
+      ]
+    }
+  ]
+}

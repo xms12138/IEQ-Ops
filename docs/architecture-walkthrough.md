@@ -1,9 +1,9 @@
-# 架构理解笔记 — 顺一个 CO2 incident 走一遍
+# 架构走读 — 顺一个 CO2 incident 走一遍
 
-> **用途**:作者自学复看 / 答辩 / 面试讲这套 multi-agent 架构。
-> **分工**:CLAUDE.md=宪法/原则 · EXECUTION_PLAN=进度 · DEVLOG=踩坑 · TECH_STACK=选型 · **本文件=主链路怎么工作 + 几个易混点的澄清**。
+> **用途**:主链路怎么工作 + 几个容易混淆的边界的澄清,配合 README 的架构图一起看。
+> **分工**:README=原则与总览 · TECH_STACK=技术选型 · **本文件=主链路怎么工作**。
 > **取材**:真实运行 incident `I-20260531-R1-AQ-165631`(`co2_spike`,`uv run python -m ops.scripts.demo co2_spike`)。
-> ⚠️ 文中 `file:line` 是 2026-06 快照,代码改动后可能漂移,以当前代码为准。
+> ⚠️ 文中 `file:line` 是 2026-06 快照,代码改动后可能漂移,以当前代码为准;RAG corpus 和硬件接入状态见 README 的 "Implementation status"。
 
 ---
 
@@ -16,7 +16,7 @@ monitor → planner → hydrate_placeholders → dispatch ⇄ {airquality|therma
         → critic → autonomy_gate → action → ⟨挂起 15min⟩ → verifier → END
 ```
 
-每个节点换一个 agent、换一个视角、换它能看到的信息 —— 这就是 CLAUDE.md 说的 **"job isolation, not agent theater"**(职责隔离,不是 agent 表演)。
+每个节点换一个 agent、换一个视角、换它能看到的信息 —— 这就是这套系统的核心设计原则 **"job isolation, not agent theater"**(职责隔离,不是 agent 表演)。
 
 | 节点 | 谁 | 干什么 | 模型 |
 |---|---|---|---|
@@ -106,7 +106,7 @@ demo 里 `▶ critic: ✓ 批准` 背后只是一个 `{approved: true}` 布尔 �
 
 ## 5. 子图的 state —— 三个边界(共享的是"代码"不是"数据")
 
-CLAUDE.md 说四 domain "shared a compiled instance" —— **共享的是编译好的图(代码/结构),不是运行时 state 数据**。类比:四个人用同一个函数定义 `def diagnose(subtask)`,但每次调用各有独立局部变量。
+四个 domain "shared a compiled instance" —— **共享的是编译好的图(代码/结构),不是运行时 state 数据**。类比:四个人用同一个函数定义 `def diagnose(subtask)`,但每次调用各有独立局部变量。
 
 `SpecialistState` 字段(`agents/specialists/builder.py:58`):`subtask`(进)/ `sub_queries` / `current_query` / `rewrite_count` / `retrieved_chunks` / `sufficient` / `grade_reason` / `final_diagnosis`(出)。
 
@@ -155,7 +155,7 @@ CLAUDE.md 说四 domain "shared a compiled instance" —— **共享的是编译
 {"critic", _route_after_critic, {"autonomy_gate": "autonomy_gate", END: END}}  # 只有两个出口,没有 replan
 ```
 
-**设计意图(CLAUDE.md / `critic.py:22-25` 注释)**:否决应 → **replan**(失败触发重规划,而非沉默)。**但还没接。**
+**设计意图(`critic.py:22-25` 注释)**:否决应 → **replan**(失败触发重规划,而非沉默)。**但还没接。**
 
 **为什么 replan 没那么简单**(被推后的原因):
 1. 要重置 `subtask_results`(否则被否的烂诊断还赖在 state 里)

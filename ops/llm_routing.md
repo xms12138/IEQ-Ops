@@ -8,13 +8,13 @@
 >
 > **(B) STANDING POLICY — local-tier nodes run on `deepseek-v4-flash`.** The nodes the table marks **Local Qwen3-8B** (`#1 Monitor`, `#4d rewrite`, `#5 Critic`, `#6 Verifier`) run on `deepseek-v4-flash` in **both dev and production**. This is the active policy until the author wires a local Qwen3-8B client and switches these four nodes back — there is **no Phase 6 deadline** on that cutover. The local rationale, ablate conditions, and Qwen3-8B target in the per-node sections below are **retained** as the spec for that future switch-back, not deleted.
 >
-> **Known constraint breach (accepted, ongoing):** routing `#1 Monitor` to cloud is a known, ongoing deviation from `CLAUDE.md` Hard Constraint #1 (no cloud in the monitoring hot path). Restoring #1 compliance is deferred to the future local cutover above — it is **not** gated on Phase 6.
+> **Known constraint breach (accepted, ongoing):** routing `#1 Monitor` to cloud is a known, ongoing deviation from the project's hard rule that the monitoring hot path must never call a cloud LLM (see README → Architecture). Restoring compliance is deferred to the future local cutover above — it is **not** gated on Phase 6.
 >
 > **Latency caveat:** both `deepseek-v4-flash` and `deepseek-v4-pro` return `reasoning_content` (reasoning models), so real latency exceeds the table's `< 5 s` / `< 3 s first token` budgets. Don't validate latency claims against them; re-measure with production routing.
 >
 > **Not covered:** `#11 eval.judge` (GPT-4o + Claude, no keys yet — Phase 4 concern).
 
-**Authority:** This file is the canonical source for which LLM runs at each LangGraph node in IEQ-Ops. `CLAUDE.md` references this file; `core/router.py` must implement it.
+**Authority:** This file is the canonical source for which LLM runs at each LangGraph node in IEQ-Ops. `core/router.py` implements it.
 
 **Why this exists:** Agent-level routing ("Monitor=local, Planner=cloud") is too coarse. The same agent can have nodes with very different capability requirements (e.g. Specialist's `grade` is reasoning-heavy, `rewrite` is a short-string transform). Routing happens **per node**, driven by capability profiling (A4.5 experiment) and cost.
 
@@ -42,7 +42,7 @@
 | 10 | `rag.ingest.contextual_prefix` | One-shot | per corpus update | (chunk, full document) → 50–100 word prefix | **Cloud V4-Flash + implicit KV cache** (Track A validated, 96.4 % cache hit) | n/a | No |
 | 11 | `eval.judge` | Per-commit | ~20 commits/mo × 200 tasks | (agent answer, expected) → hit/partial/miss | **GPT-4o + Claude Sonnet 4.6 dual-judge** | n/a | No |
 
-★ = A4.5 hard constraint. Switching to local invalidates a dissertation success criterion. See `CLAUDE.md` Hard Constraints #11, #12.
+★ = hard constraint backed by capability-profiling evidence (A4.5). Switching these nodes to a local model reintroduces fabricated diagnoses / SOPs observed during profiling — see rationale below.
 
 ---
 
@@ -174,4 +174,4 @@ Routing in this document follows these profiles. Re-run the capability profile a
 
 - **Adding a new node:** Add a row to the 11-call-points table + a Rationale section. Update `core/router.py`. Cite the capability evidence (A4.5 question ID, or new ablation).
 - **Changing a node's model:** Bump the row, add a `Changed: YYYY-MM-DD, reason: …` line in the Rationale section. Re-run IEQ-Bench and attach the delta in the PR description.
-- **Disagreeing with a "mandatory cloud" tag:** Read the corresponding Hard Constraint in `CLAUDE.md` first. If you still want to challenge, run the equivalent of the A4.5 question battery on the candidate local model and post the numbers. Do not relax the tag based on cost alone.
+- **Disagreeing with a "mandatory cloud" tag:** read the rationale for that node above first. If you still want to challenge it, run the equivalent of the A4.5 question battery on the candidate local model and post the numbers. Do not relax the tag based on cost alone.

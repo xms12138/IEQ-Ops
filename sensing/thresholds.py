@@ -53,11 +53,14 @@ THRESHOLDS: dict[str, Threshold] = {
     },
     "noise_db": {
         "unit": "dBA",
+        # WELL S02 is TIERED by achievement level (Category 3, open areas): 50 dBA at
+        # 1 point, 45 dBA at 3 points. We use the 1-point (entry) threshold = 50 dBA.
+        # The stricter 45 dBA target is a future tightening, not a correction of an error.
         "low": None,
         "high": 50.0,
         "rule": (
             "noise must stay <= 50 dBA average background "
-            "(WELL v2 Sound S02 Maximum Noise Levels, Leq)"
+            "(WELL v2 Sound S02 Maximum Noise Levels, Leq, Category 3, 1-point tier)"
         ),
     },
 }

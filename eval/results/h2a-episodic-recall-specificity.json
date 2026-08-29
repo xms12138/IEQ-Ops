@@ -1,0 +1,99 @@
+{
+  "n": 4,
+  "contamination_rate": 1.0,
+  "rows": [
+    {
+      "task_id": "novel-co2-window",
+      "domain": "airquality",
+      "true_cause_hint": "windows sealed shut trapping stale air at low occupancy (not damper/DCV/all-hands)",
+      "recalled_task_ids": [
+        "L3-recur-co2-damper",
+        "L3-recur-co2-allhands",
+        "L3-recur-co2-damper-R3"
+      ],
+      "risk_keywords": [
+        "all-hands",
+        "damper",
+        "pre-empt"
+      ],
+      "contaminated": true,
+      "contaminating_keywords": [
+        "damper"
+      ],
+      "diagnosis_off": "The elevated CO2 level of 1150 ppm exceeds the WELL v2 Air threshold of 900 ppm (excerpt [1] and [4]). The likely cause is inadequate ventilation. The corrective action is to increase outdoor air ventilation, ideally via demand-controlled ventilation (DCV) as described in excerpt [6], to bring CO2 levels below the 900 ppm threshold. The target is to reduce CO2 to 900 ppm or lower.",
+      "diagnosis_on": "The CO2 level of 1150 ppm exceeds the WELL v2 threshold of 900 ppm (excerpt 1). The likely cause is a stuck or jammed outdoor-air damper causing recirculation of stale air, as excerpt 6 notes that recirculating contaminated air can be avoided by supplying 100% outdoor air. The corrective action is to inspect and repair the outdoor-air damper to ensure it opens properly, thereby increasing outdoor air supply and reducing CO2. The target is to bring CO2 below the WELL v2 threshold of 900 ppm."
+    },
+    {
+      "task_id": "novel-thermal-setback",
+      "domain": "thermal",
+      "true_cause_hint": "night HVAC setback failed to reset before opening hours (not solar gain/reheat valve)",
+      "recalled_task_ids": [
+        "L3-recur-thermal-solar-east",
+        "L3-recur-thermal-solar",
+        "L3-recur-thermal-reheat"
+      ],
+      "risk_keywords": [
+        "blind",
+        "reheat",
+        "solar",
+        "valve"
+      ],
+      "contaminated": true,
+      "contaminating_keywords": [
+        "blind",
+        "solar"
+      ],
+      "diagnosis_off": "The space is at 26.5 °C, exceeding the WELL v2 T01 dry bulb temperature range of 21–25 °C (excerpt [1]). To remediate, adjust the HVAC system to cool the space until the temperature is within the specified range, targeting a maximum of 25 °C as the upper limit for compliance.",
+      "diagnosis_on": "The 26.5°C temperature exceeds the 21–25°C band required by WELL v2 Feature T06 (excerpt [4]). The cause is likely solar gain through unshaded east/west glazing, as excerpt [11] lists 'Solar radiation' and 'Hot/cold air coming from windows' as thermal discomfort sources, and excerpt [10] recommends shading to mitigate elevated temperatures. The corrective action is to deploy shading (e.g., blinds or external shades) on the east/west glazing to reduce solar heat gain, targeting a temperature of 25°C to bring the space back within the acceptable band."
+    },
+    {
+      "task_id": "novel-lighting-sensor",
+      "domain": "lighting",
+      "true_cause_hint": "daylight sensor miscalibration over-dimming the LED fixtures (not stuck blind/lamp depreciation)",
+      "recalled_task_ids": [
+        "L3-recur-lighting-blind",
+        "L3-recur-lighting-lamp",
+        "L3-recur-thermal-solar-east"
+      ],
+      "risk_keywords": [
+        "blind",
+        "lamp",
+        "replace",
+        "solar"
+      ],
+      "contaminated": true,
+      "contaminating_keywords": [
+        "blind",
+        "replace"
+      ],
+      "diagnosis_off": "The task surface illuminance is 240 lux, below the 320 lux minimum required for offices and classrooms per CIBSE SLL Code for Lighting (excerpt 1). The likely cause is insufficient electric lighting output or improper lighting design. Corrective action: adjust or supplement the lighting system to achieve at least 320 lux at the task surface, as specified in the standard. The target is to reach 320 lux.",
+      "diagnosis_on": "The task-surface illuminance of 240 lux is below the 320 lux minimum for offices/classrooms per WELL v2 Option 2 (excerpt [3]). The likely cause is a combination of stuck motorised blinds blocking daylight and aged LED fixtures with reduced light output. Corrective action: inspect and repair/replace stuck motorised blinds to restore daylight contribution, and replace aged LED fixtures to restore their rated output, targeting a task-surface illuminance of at least 320 lux as measured by a lux sensor."
+    },
+    {
+      "task_id": "novel-acoustic-door",
+      "domain": "acoustic",
+      "true_cause_hint": "a corridor fire door propped open letting hallway chatter through (not fan bearing/partition gap)",
+      "recalled_task_ids": [
+        "L3-recur-acoustic-fan",
+        "L3-recur-acoustic-partition",
+        "L3-recur-acoustic-fan-bearing"
+      ],
+      "risk_keywords": [
+        "bearing",
+        "fan",
+        "imbalanc",
+        "partition",
+        "rebalanc",
+        "unbalanc"
+      ],
+      "contaminated": true,
+      "contaminating_keywords": [
+        "fan",
+        "imbalanc",
+        "rebalanc"
+      ],
+      "diagnosis_off": "The 52 dBA average background noise exceeds the WELL v2 S02 limit of 50 dBA (Average SPL Leq, Category 1, 1 point) for all spaces except dwelling units. The likely cause is HVAC equipment or exterior noise intrusion, as per the WELL intent. Corrective action: select HVAC equipment with lower sound ratings and design the system to reduce sound within ducts, and/or provide sound reduction at the building façade, windows, and exterior penetrations, to bring the average background noise level to or below the 50 dBA threshold.",
+      "diagnosis_on": "The elevated background noise of 52 dBA exceeds the WELL v2 S02 Part 1 limit for Category 3 spaces, which caps average SPL (Leq) at 50 dBA (excerpt 3). The likely in-room source is HVAC supply fan imbalance, as excerpt 9 notes that 'planning and commissioning of an isolated and balanced HVAC system provides a firm baseline for the anticipated background noise level.' Corrective action is to rebalance the HVAC supply fan to reduce noise at the source, rather than using acoustic masking, since excerpt 6 states interior noise sources 'can be controlled by selecting HVAC equipment with lower sound ratings and by designing the system to reduce sound within ducts.' The target is to bring the average background noise level to no more than 50 dBA, the WELL v2 threshold for Category 3 spaces."
+    }
+  ]
+}

@@ -2,8 +2,8 @@
 
 Technology decisions and rationale for IEQ-Ops.
 
-**Authority:** Per CLAUDE.md, this file wins for **specific tool choices**;
-CLAUDE.md wins for **principles**. Per-node LLM model selection is owned by
+**Authority:** this file owns **specific tool choices**; architectural principles
+live in the README. Per-node LLM model selection is owned by
 [`ops/llm_routing.md`](ops/llm_routing.md), not here.
 
 ---
@@ -46,7 +46,7 @@ controllable actuator (smart plug / WiFi bulb / ESP32 fan) ·
 ## Key decisions expanded
 
 ### LangGraph only
-Three independent graphs + one shared subgraph (see CLAUDE.md "Graph Topology").
+Three independent graphs + one shared subgraph (see README "Graph Topology").
 `Chain`/`AgentExecutor`/`create_react_agent` are banned (Hard #6/#7) — the
 Plan-and-Execute + ReWOO planner and the 5-node Agentic RAG loop are custom graphs.
 
@@ -103,6 +103,6 @@ the bottom of that file. Embedders at fp16; Qwen3-8B served by Windows ollama.
 
 ## See also
 
-- [`CLAUDE.md`](CLAUDE.md) — principles, hard constraints, graph topology
+- [`README.md`](README.md) — principles, architecture, graph topology
 - [`ops/llm_routing.md`](ops/llm_routing.md) — authoritative per-node model selection
-- [`EXECUTION_PLAN.md`](EXECUTION_PLAN.md) — phased roadmap
+- [`docs/architecture-walkthrough.md`](docs/architecture-walkthrough.md) — one incident traced end to end

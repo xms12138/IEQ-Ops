@@ -1,0 +1,161 @@
+{
+  "n": 12,
+  "diagnosis_off_rate": 0.0,
+  "diagnosis_on_rate": 1.0,
+  "macro_lift": 1.0,
+  "rows": [
+    {
+      "task_id": "L3-recur-co2-damper",
+      "domain": "airquality",
+      "gold": [
+        "damper"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The CO2 reading of 1300 ppm exceeds the WELL v2 threshold of 900 ppm (excerpt 2, 5). The likely cause is inadequate ventilation or lack of demand-controlled ventilation, which should regulate outdoor air to keep CO2 below 900 ppm (excerpt 5). Corrective action: increase outdoor air supply or implement demand-controlled ventilation to bring CO2 below 900 ppm, as per WELL v2 requirements.",
+      "diagnosis_on": "The elevated CO2 in R1 is likely caused by the stuck outdoor-air damper, which prevents the delivery of fresh outdoor air and allows recirculated air to accumulate CO2, exceeding the WELL v2 threshold of 900 ppm. Per WELL v2, CO2 levels must be kept below 900 ppm at maximum intended occupancy. The corrective action is to repair or unstick the outdoor-air damper to restore fresh-air delivery, ensuring CO2 levels fall below the 900 ppm threshold."
+    },
+    {
+      "task_id": "L3-recur-thermal-solar",
+      "domain": "thermal",
+      "gold": [
+        "solar",
+        "blind"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The indoor temperature of 29.0 °C exceeds the comfort range of 21-25 °C specified in the WELL standard (excerpt [3]). The likely cause is inadequate cooling or excessive heat gain. The corrective action is to adjust the HVAC system to bring the temperature back within the acceptable range, targeting a maximum of 25 °C as the upper limit of the comfort range.",
+      "diagnosis_on": "The 29.0°C temperature exceeds the acceptable range of 21-25°C (70-77°F) for at least 90% of occupied hours as specified in the WELL standard. The cause is likely solar gain from west-facing windows, as the standard identifies solar radiation as a source of local thermal discomfort. Corrective action: close blinds to reduce solar heat gain and increase cooling to bring the temperature back within the 21-25°C range. The target is to achieve a temperature of 25°C or below."
+    },
+    {
+      "task_id": "L3-recur-acoustic-fan",
+      "domain": "acoustic",
+      "gold": [
+        "fan",
+        "imbalanc",
+        "unbalanc",
+        "rebalanc"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The reported 68 dBA background noise exceeds the WELL v2 S02 maximum of 50 dBA Leq for Category 3 open areas (excerpt [4]). The likely cause is HVAC or exterior noise intrusion, as per the feature intent (excerpt [3]). Corrective action: select HVAC equipment with lower sound ratings and design ducts to reduce sound, and provide sound reduction at the building façade, windows, and exterior penetrations (excerpt [6]). Target: reduce background noise to 50 dBA Leq.",
+      "diagnosis_on": "The elevated background noise (noise_db 68 vs 50 dBA limit) is likely caused by the unbalanced HVAC supply fan, as the WELL standard notes that a balanced HVAC system provides a firm baseline for background noise and that HVAC equipment with lower sound ratings and duct sound reduction can control interior noise sources. The corrective action is to balance the HVAC supply fan and reduce sound within ducts to bring background noise below the 50 dBA limit for Category 2 enclosed areas (WELL v2, Part 1)."
+    },
+    {
+      "task_id": "L3-recur-co2-allhands",
+      "domain": "airquality",
+      "gold": [
+        "all-hands",
+        "pre-empt"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The elevated CO2 level of 1250 ppm exceeds the 900 ppm threshold specified in WELL v2 for demand-controlled ventilation (excerpt 1). The likely cause is insufficient outdoor air supply. Corrective action: increase the outdoor air ventilation rate, as per Part 1 Increase Outdoor Air Supply (excerpt 3), to bring CO2 below 900 ppm. The target is to reduce CO2 to 900 ppm.",
+      "diagnosis_on": "The R3 CO2 spike to 1250 ppm exceeds the WELL v2 threshold of 900 ppm for CO2 in regularly occupied spaces (excerpt [2] and [5]). The recurring 14:00 all-hands meeting pattern suggests occupancy-driven CO2 accumulation. Corrective action: pre-emptively increase outdoor air supply starting 30 minutes before the meeting to keep CO2 at or below 900 ppm, as per the WELL v2 threshold. This aligns with the demand-controlled ventilation option that regulates outdoor air to keep CO2 below 900 ppm (excerpt [5])."
+    },
+    {
+      "task_id": "L3-recur-co2-damper-R3",
+      "domain": "airquality",
+      "gold": [
+        "damper"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The CO2 level of 1500 ppm exceeds the WELL v2 threshold of 900 ppm for regularly occupied spaces. The likely cause is inadequate ventilation. The corrective action is to increase the outdoor air ventilation rate, ideally through demand-controlled ventilation, to reduce CO2 levels below the 900 ppm threshold.",
+      "diagnosis_on": "Elevated CO2 in Room R3 is likely due to a stuck or jammed outdoor-air damper linkage, which restricts outdoor air supply. Per WELL v2, demand-controlled ventilation should keep CO2 below 900 ppm at maximum intended occupancy (excerpt 2, 16). Corrective action: inspect and free the outdoor-air damper linkage to restore outdoor air supply, and verify that the ventilation system meets ASHRAE 62.1-2010 rates (excerpt 3). Target: CO2 below 900 ppm."
+    },
+    {
+      "task_id": "L3-recur-co2-dcv",
+      "domain": "airquality",
+      "gold": [
+        "sensor",
+        "drift"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The elevated CO2 level of 1420 ppm exceeds the WELL v2 threshold of 900 ppm for regularly occupied spaces. This indicates inadequate outdoor air supply. To remediate, increase the outdoor air supply rate as per ASHRAE 62.1-2010, exceeding the required rates by at least 30% (or 60% for higher points) as specified in WELL v2 Part 1: Increase Outdoor Air Supply. The corrective action is to adjust the ventilation system to bring CO2 levels down to or below the WELL v2 threshold of 900 ppm.",
+      "diagnosis_on": "The elevated CO2 of 1420 ppm exceeds the WELL v2 threshold of 900 ppm for demand-controlled ventilation (DCV) systems, which must keep CO2 levels below 900 ppm at maximum intended occupancy (excerpt [2]). The DCV loop may be under-ventilating due to a drifted CO2 sensor, as sensor accuracy is required to be within 10% at 750 ppm (excerpt [6]), and inadequate maintenance is associated with reduced ventilation performance (excerpt [13]). Corrective action: calibrate or replace the CO2 sensor and verify the DCV system regulates outdoor air to maintain CO2 below the 900 ppm threshold (excerpt [2])."
+    },
+    {
+      "task_id": "L3-recur-thermal-solar-east",
+      "domain": "thermal",
+      "gold": [
+        "solar"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The operative temperature of 28.0°C exceeds the WELL v2 T01 comfort band of 21–25°C (excerpt [1]). To restore compliance, the HVAC system must be adjusted to reduce the operative temperature to at most 25°C, the upper limit of the required range. Corrective action: increase cooling or ventilation to bring the operative temperature down to 25°C or below, ensuring it remains within the specified band for at least 90% of occupied hours.",
+      "diagnosis_on": "The 28.0°C operative temperature exceeds the 21–25°C comfort band specified in excerpt [12] for dry bulb temperature (which may be used in place of operative temperature). The likely cause is direct solar gain through unshaded east-facing glazing, as excerpt [6] states that shading can reduce surface temperatures by up to 25°C, and excerpt [10] recommends shading structures to mitigate heat gain. The corrective action is to install shading (e.g., canopies or vegetation) on the east-facing glazing to reduce solar heat gain and restore operative temperature to the comfort band. The target is to achieve an operative temperature of 25°C or below, consistent with the upper limit of the comfort band."
+    },
+    {
+      "task_id": "L3-recur-thermal-reheat",
+      "domain": "thermal",
+      "gold": [
+        "reheat",
+        "valve"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The operative temperature exceeds the 21-25 °C comfort band, likely due to inadequate HVAC control or high thermal loads. Per WELL v2, mechanically conditioned spaces must maintain dry bulb temperature between 21-25 °C for at least 90% of occupied hours. Corrective action: adjust HVAC setpoints and increase cooling to bring operative temperature back to 25 °C or below, as per the standard's upper limit.",
+      "diagnosis_on": "The elevated operative temperature (27.0°C) exceeds the acceptable range for mechanically conditioned spaces per ASHRAE 55-2013, which requires PMV within ±0.5 for at least 90% of occupied hours (excerpt 3). The suspected stuck-open reheat valve on the VAV box is likely causing continuous heating, raising the operative temperature above the 21-25°C comfort range. Corrective action: inspect and repair or replace the reheat valve to ensure it closes properly when cooling is needed, and verify that the VAV box modulates supply air temperature to maintain operative temperature within the acceptable range. The target is to bring the operative temperature down to 25°C, the upper limit of the comfort range."
+    },
+    {
+      "task_id": "L3-recur-lighting-blind",
+      "domain": "lighting",
+      "gold": [
+        "blind"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The work-plane illuminance is below 300 lux, which fails to meet the target illuminance of 300 lux (28 fc) required for regularly occupied spaces as specified in the WELL v2 standard (excerpts [1]-[4]). The likely cause is insufficient daylight or electric lighting provision. To remediate, increase electric lighting output or enhance daylighting to achieve the target illuminance of 300 lux at the work plane, as per the standard's requirement. The corrective action is to adjust lighting controls or add luminaires to ensure the illuminance reaches the target value of 300 lux.",
+      "diagnosis_on": "The work-plane illuminance of 180 lux is below the 300 lux minimum required by the WELL standard (excerpts 1, 2, 4, 5). The likely cause is the motorised blinds being stuck closed due to a controller fault, blocking daylight. The corrective action is to reset the blind controller to open the blinds and restore daylight, targeting a work-plane illuminance of at least 300 lux."
+    },
+    {
+      "task_id": "L3-recur-lighting-lamp",
+      "domain": "lighting",
+      "gold": [
+        "lamp",
+        "replace"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The work plane illuminance of 210 lux is below the required 300 lux minimum for regularly occupied spaces, as specified in the WELL v2 standard (target illuminance of 28 fc/300 lux). The likely cause is insufficient electric lighting output or improper lighting design. The corrective action is to adjust or supplement the lighting system to achieve the required 300 lux on the work plane, ensuring compliance with the standard. The target is to reach 300 lux.",
+      "diagnosis_on": "The work-plane illuminance in R5 is 210 lux, below the required ≥300 lux threshold cited in the WELL v2 excerpts (e.g., 'Target illuminance 28 fc(300 lux)'). The likely cause is lamp lumen depreciation of aged LED fixtures, which reduces light output over time. The corrective action is to replace the aged LED luminaires with new ones to restore illuminance to the required level. The target is to achieve at least 300 lux on the work plane, as specified in the standard."
+    },
+    {
+      "task_id": "L3-recur-acoustic-fan-bearing",
+      "domain": "acoustic",
+      "gold": [
+        "fan",
+        "bearing"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The 58 dBA background noise exceeds the 45 dBA limit for Category 2 spaces per WELL v2 S02 (excerpt 1). The likely cause is interior HVAC equipment noise, as excerpt 6 states that interior noise sources can be controlled by selecting HVAC equipment with lower sound ratings and designing the system to reduce sound within ducts. Corrective action: implement HVAC noise reduction measures to bring the average SPL to or below 45 dBA, the Category 2 limit.",
+      "diagnosis_on": "The elevated background noise of 58 dBA exceeds the WELL v2 S02 limit of 45 dBA (Category 3, Average SPL Leq) for open areas for concentration. The likely cause is the worn AHU fan bearing tonal rumble, as identified in a similar past incident, rather than an airflow-balance issue. Corrective action: replace or repair the worn AHU fan bearing to eliminate the tonal rumble, targeting a background noise level at or below the WELL v2 S02 limit of 45 dBA."
+    },
+    {
+      "task_id": "L3-recur-acoustic-partition",
+      "domain": "acoustic",
+      "gold": [
+        "partition"
+      ],
+      "diagnosis_hit_off": false,
+      "diagnosis_hit_on": true,
+      "lift": 1,
+      "diagnosis_off": "The reported background noise level of 55 dBA exceeds the WELL v2 S02 Category 3 limit of 45 dBA (Leq) for open areas for concentration, as specified in the excerpt. To remediate, implement acoustical treatment that significantly reduces sound across human speech frequencies, such as adding highly absorptive ceiling materials, which can reduce reverberation and control occupied noise levels. The corrective action should aim to bring the average background noise level to or below the 45 dBA threshold.",
+      "diagnosis_on": "The 55 dBA background noise exceeds the WELL v2 S02 limit of 45 dBA for adjacent Quiet zones (excerpt [1]). The dominant source is speech intrusion through the demountable partition with low STC, as demountable partitions offer minimum acoustic separation and speech privacy (excerpt [10]). Corrective action: upgrade the partition to meet the minimum STC 50 for adjacent Quiet zones (excerpt [8]) and ensure doors have non-hollow core with STC 30 and seals (excerpt [9]). Additionally, install a sound masking system to elevate ambient background sound to increase speech privacy (excerpts [2], [7]). Target: reduce background noise to 45 dBA."
+    }
+  ]
+}
