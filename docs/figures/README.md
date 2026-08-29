@@ -35,3 +35,5 @@ the vector source.
 | `fig-26-ieq-bench-aggregate.png` | IEQ-Bench pass rate by capability layer |
 | `fig-27-kiosk-incident-lifecycle.png` | One incident's lifecycle as shown on the kiosk UI |
 | `fig03-device-*.jpg`, `fig17-kiosk-*.jpg` | Source photographs composited into fig-03 / fig-17 |
+| `fig28-presenter-at-exhibition.jpg` | Presenting IEQ-Ops in person at the CASA end-of-year show |
+| `fig29-node-closeup.jpg` | Close-up of the node: touchscreen, carry handle, USB conferencing speakerphone for the voice butler |

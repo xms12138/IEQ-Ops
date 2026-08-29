@@ -186,6 +186,10 @@ hidden limitation.
 
 ## The exhibit in action
 
+**Demo video** — a walkthrough of the kiosk running live, end to end:
+
+[![Watch the demo video on YouTube](https://img.youtube.com/vi/Q65Io29d08A/maxresdefault.jpg)](https://youtu.be/Q65Io29d08A)
+
 The kiosk shows its own reasoning, not just a number: the live sensor tiles,
 the plan it wrote for the current incident, the retrieved standards evidence
 behind the diagnosis, and the room butler, all on one screen.
@@ -199,6 +203,16 @@ visibly, on the device:
 
 <p align="center">
   <img src="docs/figures/fig-27-kiosk-incident-lifecycle.png" alt="The incident lifecycle on the kiosk: Detect, Plan, Diagnose, Act, Verify, Done" width="800">
+</p>
+
+A closer look at the node itself — the touchscreen, carry handle and the
+conferencing speakerphone that gives the room butler its microphone and
+speaker — and the unit on show, presented in person:
+
+<p align="center">
+  <img src="docs/figures/fig29-node-closeup.jpg" alt="Close-up of the deployed node: touchscreen, carry handle, and USB conferencing speakerphone for the voice butler" width="440">
+  &nbsp;&nbsp;
+  <img src="docs/figures/fig28-presenter-at-exhibition.jpg" alt="Presenting IEQ-Ops at the CASA end-of-year show" width="440">
 </p>
 
 More photographs and diagrams — including the negative case where a diagnosis
