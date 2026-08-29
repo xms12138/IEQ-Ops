@@ -31,6 +31,7 @@ sensor node over MQTT.
 - [Architecture](#architecture)
 - [Design principles](#design-principles)
 - [Hardware](#hardware)
+- [The exhibit in action](#the-exhibit-in-action)
 - [Evaluation](#evaluation)
 - [Implementation status](#implementation-status)
 - [Repository layout](#repository-layout)
@@ -58,6 +59,10 @@ it is, verify the outcome against the same sensors that raised the alarm, and
 feed every closed incident back into memory so recurring problems get
 recognised — and eventually anticipated — faster over time.
 
+<p align="center">
+  <img src="docs/figures/fig-01-problem-sdc.png" alt="Problem chain (invisible risk to passive tooling) resolved by a Sense / Deploy / Communicate framework" width="800">
+</p>
+
 ## Architecture
 
 The system compiles into **three independent LangGraphs** plus **one reusable
@@ -84,6 +89,10 @@ monitor → memory_retrieve → planner → dispatch → {airquality|thermal|lig
   subgraph (`decompose → retrieve → grade → rewrite → generate`) invoked once
   per subtask with a `domain` parameter that selects the retrieval slice.
   Retries on a failed grade are capped at 3.
+
+  <p align="center">
+    <img src="docs/figures/fig-05-rag-pipeline.png" alt="Agentic RAG: the 5-node subgraph loop, with the retrieve node expanded into BM25 + BGE-M3 + RRF fusion + reranker" width="750">
+  </p>
 - **`critic`** reviews the primary diagnosis before anything is allowed to act
   on it — a deterministic plausibility floor (is the target value physically
   sane?) AND-ed with an LLM coherence check, deliberately blind to the
@@ -145,7 +154,7 @@ usually get the design wrong, is in
 ## Hardware
 
 <p align="center">
-  <img src="docs/figures/fig-03-deployment-photos.jpg" alt="Physical deployment: kiosk front, 3D-printed enclosure rear, sensor face" width="800">
+  <img src="docs/figures/fig-03-deployment-photos.png" alt="Physical deployment: kiosk front, 3D-printed enclosure rear, sensor face" width="800">
 </p>
 
 The exhibit unit is one self-contained node:
@@ -158,7 +167,11 @@ The exhibit unit is one self-contained node:
 | Sensirion SCD-30 | CO₂ + temperature + humidity (I²C) |
 | Grove Light Sensor v1.1 | Relative illuminance (analog) |
 | Grove Sound Sensor v1.6 | Relative sound level (analog) |
-| Custom 3D-printed enclosure | STL/3MF in [`sensing/hardware/enclosure/`](sensing/hardware/enclosure/) |
+| Custom 3D-printed enclosure | STL/3MF/G-code in [`sensing/hardware/enclosure/`](sensing/hardware/enclosure/) — print it yourself |
+
+<p align="center">
+  <img src="docs/figures/fig-04-sensing-pipeline.png" alt="Sensing pipeline: sensor node to MQTT to bounds filter to Postgres to Monitor" width="700">
+</p>
 
 Firmware: [`sensing/hardware/mkr1010_node/mkr1010_node.ino`](sensing/hardware/mkr1010_node/mkr1010_node.ino)
 (copy `arduino_secrets.h.example` to `arduino_secrets.h` and fill in your own
@@ -170,6 +183,27 @@ simulator (see `fig-08-sim-vs-real` in [`docs/figures/`](docs/figures/)).
 The light and sound sensors report relative, uncalibrated values rather than
 true lux/dBA — a deliberate, disclosed trade-off for an exhibit build, not a
 hidden limitation.
+
+## The exhibit in action
+
+The kiosk shows its own reasoning, not just a number: the live sensor tiles,
+the plan it wrote for the current incident, the retrieved standards evidence
+behind the diagnosis, and the room butler, all on one screen.
+
+<p align="center">
+  <img src="docs/figures/fig-17-raw-vs-nl.png" alt="From raw channel readings to natural language on the kiosk: in-band, out-of-band, a history query answered, and an out-of-scope question declined" width="800">
+</p>
+
+Every incident the kiosk raises goes through the same six-stage lifecycle,
+visibly, on the device:
+
+<p align="center">
+  <img src="docs/figures/fig-27-kiosk-incident-lifecycle.png" alt="The incident lifecycle on the kiosk: Detect, Plan, Diagnose, Act, Verify, Done" width="800">
+</p>
+
+More photographs and diagrams — including the negative case where a diagnosis
+is rejected and the loop fails safe instead of acting — are in
+[`docs/figures/`](docs/figures/).
 
 ## Evaluation
 
@@ -194,12 +228,22 @@ as a point estimate from a small-n case study, not a large-scale claim.
 | Is proactive 5-min monitoring actually better than polling? | **100%** incident-detection coverage (median 3-min lead) vs. **9.75%** coverage at 2-hourly reactive polling |
 | Is the dual LLM-judge trustworthy? | 91.9% inter-judge agreement (κ = 0.822) against a deterministic grader |
 
+<p align="center">
+  <img src="docs/figures/fig-10-h1-ablation.png" alt="Standards grounding lifts accuracy from 0.43 to 0.76, paired-significant by McNemar's test" width="650">
+  &nbsp;&nbsp;
+  <img src="docs/figures/fig-25-closed-loop-success.png" alt="Twenty real incidents through the full closed loop: three correct behaviours, zero wrong autonomous action" width="650">
+</p>
+
 Reported honestly, not smoothed over: the multi-agent architecture does
 **not** uniformly beat a single-agent ReAct baseline — one domain shows a
 negative gap on a small sample — and a negative-control test shows the memory
 system can misfire on genuinely novel incidents that share surface keywords
 with past cases (100% false-recall on 4 adversarial probes). Both are in
-[`eval/results/README.md`](eval/results/README.md) alongside everything else.
+[`eval/results/README.md`](eval/results/README.md) alongside everything else,
+together with the rest of the figures referenced above
+(retrieval-pipeline ablation, memory macro-lift, detection coverage and
+lead-time, judge agreement, edge-latency breakdown) in
+[`docs/figures/`](docs/figures/).
 
 ## Implementation status
 
